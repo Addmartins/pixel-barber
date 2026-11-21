@@ -57,7 +57,7 @@ Antes de publicar uma compilação da Sprint 2 na Vercel, aplique a migração d
 
 ## Sprint Arcade
 
-O painel **Arcade** inclui Navalha Rush, Barba Fighter II e Torre do Fade. Use o D-Pad e os botões A/B na tela ou as setas, Z e X no teclado. A demonstração roda sem Supabase e mantém recordes somente enquanto a sessão local estiver aberta.
+O painel **Arcade** inclui Navalha Rush, Barba Fighter II e Torre do Fade. Use o D-Pad e os botões A/B na tela ou as setas, Z para B e X para A no teclado. A demonstração roda sem Supabase e mantém recordes somente enquanto a sessão local estiver aberta.
 
 | Jogo | Pontuação de referência |
 | --- | --- |
@@ -67,6 +67,14 @@ O painel **Arcade** inclui Navalha Rush, Barba Fighter II e Torre do Fade. Use o
 
 O servidor inicia cada partida com uma semente e associa a sessão à conta autenticada. Ao fim, a API recebe os comandos e reproduz a partida a 60 passos por segundo para calcular o placar. O PostgreSQL compara a duração simulada ao tempo decorrido, salva a melhor marca e credita até três partidas com placar positivo por dia no horário de Brasília. O crédito e o lançamento no ledger são atômicos e o reenvio da mesma partida não duplica pontos. A reprodução verifica a coerência dos comandos, mas um bot ainda pode jogar seguindo as regras.
 
-Para publicar, aplique primeiro as migrações pendentes até `20261121000003_arcade.sql`. Configure `SUPABASE_SECRET_KEY` como variável exclusiva do servidor na Vercel e em `.env.local` para desenvolvimento com a API real. A API também aceita `SUPABASE_SERVICE_ROLE_KEY` em projetos com chaves legadas. As variáveis públicas do Supabase permanecem as mesmas.
+Para publicar, aplique primeiro as migrações pendentes até `20261121000004_arcade_difficulty.sql`. Configure `SUPABASE_SECRET_KEY` como variável exclusiva do servidor na Vercel e em `.env.local` para desenvolvimento com a API real. A API também aceita `SUPABASE_SERVICE_ROLE_KEY` em projetos com chaves legadas. As variáveis públicas do Supabase permanecem as mesmas.
 
 Execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/arcade.sql` em um banco de teste migrado para verificar duração inválida, titularidade, teto diário, recorde na quarta partida, reenvio, saldo e ranking.
+
+### Pixel Boy e dificuldade
+
+Selecione um cartucho e escolha **Iniciante (1,0×)**, **Experiente (1,5×)** ou **Mestre (2,5×)**. Use **SELECT** ou **Shift** para alternar, e **START** ou **Enter** para começar. As setas controlam o D-Pad, **Z** aciona B, e **X** ou **Espaço** acionam A.
+
+A dificuldade fica vinculada à sessão e o servidor aplica o multiplicador ao placar reconstituído, com arredondamento ao inteiro mais próximo. Uma vitória em Mestre libera uma conquista para o jogo no ranking, inclusive se a cota diária de crédito já tiver sido atingida. Os recordes anteriores continuam válidos, com os registros antigos classificados como Iniciante e sem conquista retroativa.
+
+Aplique `20261121000004_arcade_difficulty.sql` antes de publicar o frontend atualizado. Partidas abertas no motor anterior precisam ser reiniciadas após a atualização.

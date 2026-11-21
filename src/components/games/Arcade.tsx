@@ -5,25 +5,54 @@ import { Gamepad2, Scissors, Timer, TrendingUp } from "lucide-react";
 import { createGame } from "@/lib/games";
 import { finishRun, getArcadeStats, startRun } from "@/lib/games/client";
 import {
-  A, B, canvasHeight, canvasWidth, DOWN, LEFT, RIGHT, ticksPerSecond, UP,
-  type GameCode, type GameResult, type GameState, type InputChange, type Run,
+  A, B, canvasHeight, canvasWidth, difficulties, DOWN, LEFT, multipliers, RIGHT, roundSeconds, ticksPerSecond, UP,
+  type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
 } from "@/lib/games/types";
-import { ArcadeFrame } from "./ArcadeFrame";
+import { GameBoyFrame } from "./GameBoyFrame";
 import "./arcade.css";
 
 const cartridges = [
   { code: "NAVALHA_RUSH", title: "Navalha Rush", icon: Scissors, accent: "mint",
     instructions: "Use as direções para coletar pomadas (+10). Toalhas quentes (+50) deixam os inimigos azuis para você encadear combos." },
   { code: "BARBA_FIGHTER", title: "Barba Fighter II", icon: TrendingUp, accent: "rose",
-    instructions: "Segure a direção indicada para esquivar. Depois toque A (tesoura) ou B (navalha) conforme o sinal. Após cinco acertos, use B para o Corte Turbo." },
+    instructions: "Segure a direção indicada para esquivar. Depois toque A (tesoura) ou B (navalha) conforme o sinal. Após cinco acertos, use B para o Corte Turbo. No nível Mestre, faça os dois cortes na ordem mostrada." },
   { code: "TORRE_FADE", title: "Torre do Fade", icon: Timer, accent: "gold",
-    instructions: "Use ◀ e ▶ para se mover e A ou ▲ para pular. Atravesse as esteiras e as poças de xampu para chegar ao topo em até 60 segundos." },
+    instructions: "Use ◀ e ▶ para se mover e A ou ▲ para pular. Atravesse as esteiras e as poças de xampu para chegar ao topo antes que o tempo acabe." },
 ] as const;
 
 const keyboard: Partial<Record<string, number>> = {
   ArrowLeft: LEFT, ArrowRight: RIGHT, ArrowUp: UP, ArrowDown: DOWN,
-  KeyZ: A, Space: A, KeyX: B,
+  KeyZ: B, Space: A, KeyX: A,
 };
+
+const levels: Record<Difficulty, { title: string; subtitle: string; description: string }> = {
+  EASY: { title: "Iniciante", subtitle: "Fade Suave", description: "Para quem está pegando a navalha pela primeira vez." },
+  MEDIUM: { title: "Experiente", subtitle: "Corte Preciso", description: "Para barbeiros que já dominam o degradê." },
+  HARD: { title: "Mestre", subtitle: "Navalha de Ouro", description: "Apenas para lendas do salão. Pontuação máxima!" },
+};
+
+function playBootChime() {
+  if (typeof window.AudioContext !== "function") return;
+  try {
+    const audio = new AudioContext();
+    void audio.resume().then(() => {
+      const tone = audio.createOscillator();
+      const gain = audio.createGain();
+      const start = audio.currentTime + 1.12;
+      tone.type = "square";
+      tone.frequency.setValueAtTime(523.25, start);
+      tone.frequency.setValueAtTime(784, start + 0.075);
+      gain.gain.setValueAtTime(0.045, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+      tone.connect(gain).connect(audio.destination);
+      tone.onended = () => void audio.close();
+      tone.start(start);
+      tone.stop(start + 0.21);
+    }).catch(() => { void audio.close(); });
+  } catch {
+    // The visual boot screen is also available on devices without audio.
+  }
+}
 
 type FinishedRun = { run: Run; snapshot: GameState; changes: InputChange[] };
 type Phase = "idle" | "starting" | "playing" | "finished";
@@ -35,6 +64,8 @@ export function Arcade({ demo, visible, onBalance }: {
   onBalance: (balance: number) => void;
 }) {
   const [selected, setSelected] = useState<GameCode>("NAVALHA_RUSH");
+  const [difficulty, setDifficulty] = useState<Difficulty>("EASY");
+  const [booting, setBooting] = useState(false);
   const [run, setRun] = useState<Run | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [snapshot, setSnapshot] = useState<GameState | null>(null);
@@ -50,6 +81,16 @@ export function Arcade({ demo, visible, onBalance }: {
   const justPressed = useRef(0);
   const cartridge = cartridges.find(({ code }) => code === selected) ?? cartridges[0];
   const playing = phase === "playing";
+  const controlsLocked = playing || phase === "starting" || sending || Boolean(pending) || booting;
+  const activeDifficulty = run?.difficulty ?? difficulty;
+  const points = result?.score ?? Math.round((snapshot?.score ?? 0) * multipliers[activeDifficulty]);
+  const remaining = Math.max(0, roundSeconds(selected, activeDifficulty) - Math.floor((snapshot?.ticks ?? 0) / ticksPerSecond));
+
+  useEffect(() => {
+    if (!booting) return;
+    const timer = window.setTimeout(() => setBooting(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [booting]);
 
   const onInput = useCallback((key: number | string, bit: number) => {
     if (bit) {
@@ -74,7 +115,7 @@ export function Arcade({ demo, visible, onBalance }: {
     if (!playing || !visible) return;
     function keydown(event: KeyboardEvent) {
       const bit = keyboard[event.code];
-      if (!bit || (event.code === "Space" && event.target instanceof HTMLButtonElement)) return;
+      if (!bit || event.defaultPrevented) return;
       event.preventDefault();
       onInput(event.code, bit);
     }
@@ -120,7 +161,7 @@ export function Arcade({ demo, visible, onBalance }: {
       return;
     }
     context.imageSmoothingEnabled = false;
-    const engine = createGame(run.game, run.seed);
+    const engine = createGame(run.game, run.seed, run.difficulty);
     const changes: InputChange[] = [];
     let previousMask = 0;
     let previousTime = performance.now();
@@ -156,7 +197,7 @@ export function Arcade({ demo, visible, onBalance }: {
         return;
       }
       setPhase("finished");
-      if (demo) setBest((previous) => ({ ...previous, [run!.game]: Math.max(previous[run!.game] ?? 0, score) }));
+      if (demo) setBest((previous) => ({ ...previous, [run!.game]: Math.max(previous[run!.game] ?? 0, Math.round(score * multipliers[run!.difficulty])) }));
       else {
         const finished = { run: run!, snapshot: { score, status, ticks }, changes };
         setPending(finished);
@@ -167,8 +208,8 @@ export function Arcade({ demo, visible, onBalance }: {
     return () => cancelAnimationFrame(frame);
   }, [run, demo, save]);
 
-  async function start() {
-    if (phase === "starting" || playing || sending) return;
+  const start = useCallback(async () => {
+    if (controlsLocked) return;
     setError("");
     setResult(null);
     setPending(null);
@@ -179,18 +220,20 @@ export function Arcade({ demo, visible, onBalance }: {
     setPhase("starting");
     try {
       const next = demo
-        ? { id: "demo", seed: 1 + Math.floor(Math.random() * 2147483646), game: selected }
-        : await startRun(selected);
+        ? { id: "demo", seed: 1 + Math.floor(Math.random() * 2147483646), game: selected, difficulty }
+        : await startRun(selected, difficulty);
       setRun(next);
       setPhase("playing");
     } catch (failure) {
       setPhase("idle");
       setError(failure instanceof Error ? failure.message : "Não foi possível iniciar.");
     }
-  }
+  }, [controlsLocked, demo, selected, difficulty]);
 
   function select(code: GameCode) {
     setSelected(code);
+    setBooting(true);
+    playBootChime();
     setRun(null);
     setSnapshot(null);
     setResult(null);
@@ -198,8 +241,36 @@ export function Arcade({ demo, visible, onBalance }: {
     setPhase("idle");
   }
 
-  const controlsLocked = playing || phase === "starting" || sending || Boolean(pending);
-  const remaining = Math.max(0, 60 - Math.floor((snapshot?.ticks ?? 0) / ticksPerSecond));
+  function selectDifficulty(level: Difficulty) {
+    setDifficulty(level);
+    setRun(null);
+    setSnapshot(null);
+    setResult(null);
+    setError("");
+    setPhase("idle");
+  }
+
+  const cycleDifficulty = useCallback(() => {
+    if (controlsLocked) return;
+    selectDifficulty(difficulties[(difficulties.indexOf(difficulty) + 1) % difficulties.length]);
+  }, [controlsLocked, difficulty]);
+
+  useEffect(() => {
+    if (!visible) return;
+    function menuKeys(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat) return;
+      if (event.key === "Shift" && !controlsLocked) {
+        event.preventDefault();
+        cycleDifficulty();
+      }
+      if (event.key === "Enter" && !controlsLocked && (!(event.target instanceof HTMLButtonElement) || event.target.closest(".arcade-cartridges"))) {
+        event.preventDefault();
+        void start();
+      }
+    }
+    window.addEventListener("keydown", menuKeys);
+    return () => window.removeEventListener("keydown", menuKeys);
+  }, [visible, controlsLocked, cycleDifficulty, start]);
   return (
     <section className="arcade-games" aria-labelledby="arcade-title">
       <h2 id="arcade-title">Fliperama</h2>
@@ -216,21 +287,40 @@ export function Arcade({ demo, visible, onBalance }: {
         : <p className="muted">{credited === null ? "Até três partidas com pontos por dia." : `${credited}/3 partidas creditadas hoje, no horário de Brasília.`}</p>}
       {statsError && <p className="error">Os recordes salvos estão indisponíveis no momento.</p>}
 
-      <ArcadeFrame playing={playing} onInput={onInput}>
+      <GameBoyFrame playing={playing} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
+        startDisabled={controlsLocked} selectDisabled={controlsLocked}>
         <div className="arcade-scoreboard">
-          <span>PLACAR <strong>{snapshot?.score ?? 0}</strong></span>
+          <span>PLACAR <strong>{points}</strong></span>
           <span>RECORDE <strong>{best[selected] ?? 0}</strong></span>
           <span>TEMPO <strong>{remaining}s</strong></span>
         </div>
         <div className="arcade-display">
           <canvas ref={canvas} width={canvasWidth} height={canvasHeight} role="img"
             aria-label={`Tela de ${cartridge.title}`} />
-          {!run && <div className="arcade-title-screen"><Gamepad2 size={40} aria-hidden="true" /><strong>{cartridge.title}</strong></div>}
+          {booting ? <div className="arcade-boot" role="status"><strong>PIXEL BARBER</strong></div> :
+            !run && <div className="arcade-title-screen">
+              <Gamepad2 size={28} aria-hidden="true" />
+              <strong>{cartridge.title}</strong>
+              <span className="arcade-lcd-level">{levels[difficulty].subtitle} · {String(multipliers[difficulty]).replace(".", ",")}×</span>
+            </div>}
         </div>
-      </ArcadeFrame>
-      <p className="muted arcade-keys">Teclado: setas, Z para A e X para B.</p>
+      </GameBoyFrame>
+      <fieldset className="arcade-difficulty" disabled={controlsLocked}>
+        <legend>Dificuldade</legend>
+        <div className="arcade-levels">
+          {difficulties.map((level) => (
+            <label key={level}>
+              <input type="radio" className="sr-only" name="arcade-difficulty" checked={difficulty === level}
+                onChange={() => selectDifficulty(level)} />
+              <span>{levels[level].title} <strong>{multipliers[level].toFixed(1).replace(".", ",")}×</strong></span>
+            </label>
+          ))}
+        </div>
+        <p className="muted">{levels[difficulty].description}</p>
+      </fieldset>
+      <p className="muted arcade-keys">Teclado: setas, Z = B, X ou Espaço = A, Enter = START, Shift = SELECT.</p>
       {phase === "finished" && snapshot && <p role="status" className="arcade-result">
-        {snapshot.status === "won" ? "Você venceu!" : "Fim de jogo."} {snapshot.score} pontos de placar.
+        {snapshot.status === "won" ? "Você venceu!" : "Fim de jogo."} {points} pontos de placar.
         {result && (result.points_awarded > 0 ? ` +${result.points_awarded} pontos no seu saldo.` :
           result.score > 0 ? " Limite diário atingido. A partida contou para o recorde." : " Nenhum ponto creditado.")}
       </p>}
@@ -241,7 +331,7 @@ export function Arcade({ demo, visible, onBalance }: {
           <button type="button" className="secondary" onClick={() => { setPending(null); setError(""); }}>Fechar resultado</button>
         </div>
       )}
-      {!playing && !pending && <button type="button" className="primary w-full" disabled={phase === "starting" || sending}
+      {!playing && !pending && <button type="button" className="primary w-full" disabled={controlsLocked}
         onClick={() => void start()}>{phase === "starting" ? "Carregando cartucho…" : phase === "finished" ? "Jogar novamente" : "Iniciar partida"}</button>}
       {sending && <p role="status">Validando partida…</p>}
     </section>

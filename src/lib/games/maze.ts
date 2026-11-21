@@ -1,4 +1,4 @@
-import { DOWN, LEFT, RIGHT, UP, maxTicks, ticksPerSecond, type Game, type State } from "./types";
+import { DOWN, LEFT, RIGHT, UP, maxTicks, ticksPerSecond, type Difficulty, type Game, type State } from "./types";
 
 const plan = [
   "###################",
@@ -17,7 +17,12 @@ const columns = plan[0].length;
 const tileSize = 12;
 const offsetX = 6;
 const offsetY = 14;
-const towelDuration = 480;
+const settings = {
+  EASY: { enemyCount: 2, speed: 100, towelDuration: 480, lives: 3, scoreLimit: 400 },
+  MEDIUM: { enemyCount: 3, speed: 130, towelDuration: 300, lives: 2, scoreLimit: 400 },
+  HARD: { enemyCount: 4, speed: 160, towelDuration: 180, lives: 2, scoreLimit: 2000 },
+};
+const hardCombo = [50, 100, 250, 500];
 
 function position(x: number, y: number) {
   return y * columns + x;
@@ -28,7 +33,7 @@ const paths = plan.flatMap((row, y) => [...row].flatMap((tile, x) =>
 const corridors = new Set(paths);
 const start = position(1, 1);
 const towels = [position(17, 1), position(1, 9)];
-const enemySpawns = [position(17, 9), position(8, 4)];
+const enemySpawns = [position(17, 9), position(8, 4), position(1, 6), position(15, 4)];
 
 const directions = [
   { bit: LEFT, offset: -1 },
@@ -45,7 +50,9 @@ type Enemy = {
 };
 
 type MazeState = State & {
+  difficulty: Difficulty;
   player: number;
+  heading: number;
   seed: number;
   nextMove: number;
   pomades: Set<number>;
@@ -61,8 +68,8 @@ function nextRandom(seed: number) {
   return (Math.imul(seed, 1664525) + 1013904223) >>> 0;
 }
 
-function shuffledPaths(initialSeed: number) {
-  const candidates = paths.filter((tile) => tile !== start && !towels.includes(tile) && !enemySpawns.includes(tile));
+function shuffledPaths(initialSeed: number, spawns: number[]) {
+  const candidates = paths.filter((tile) => tile !== start && !towels.includes(tile) && !spawns.includes(tile));
   let seed = initialSeed;
   for (let i = candidates.length - 1; i > 0; i--) {
     seed = nextRandom(seed);
@@ -93,8 +100,13 @@ function collide(state: MazeState) {
     if (enemy.tile !== state.player || enemy.stunnedUntil !== 0) continue;
     if (state.boostUntil > state.ticks) {
       state.combo++;
-      state.score = Math.min(400, state.score + Math.min(10 * state.combo, 30));
-      enemy.stunnedUntil = state.ticks + 150;
+      const bonus = state.difficulty === "HARD"
+        ? hardCombo[Math.min(state.combo, hardCombo.length) - 1]
+        : Math.min(10 * state.combo, 30);
+      state.score = Math.min(settings[state.difficulty].scoreLimit, state.score + bonus);
+      enemy.stunnedUntil = state.difficulty === "HARD"
+        ? Math.max(state.ticks + 150, state.boostUntil)
+        : state.ticks + 150;
       continue;
     }
     if (state.safeUntil > state.ticks) continue;
@@ -104,17 +116,29 @@ function collide(state: MazeState) {
       return;
     }
     state.player = start;
+    state.heading = 0;
     state.safeUntil = state.ticks + 150;
   }
 }
 
 function stepEnemies(state: MazeState) {
-  const due = state.enemies.some((enemy, index) => state.ticks % (25 + index * 5) === 0 &&
+  const { speed } = settings[state.difficulty];
+  const interval = (index: number) => Math.round((25 + index * 5) * 100 / speed);
+  const due = state.enemies.some((enemy, index) => state.ticks % interval(index) === 0 &&
     state.ticks >= enemy.stunnedUntil);
   if (!due) return;
   const distances = distancesFromPlayer(state.player);
+  const fleeing = state.boostUntil > state.ticks;
+  const flank = state.difficulty === "HARD" && !fleeing;
+  const predict = (heading: number) => {
+    let target = state.player;
+    for (let step = 0; step < 4 && corridors.has(target + heading); step++) target += heading;
+    return target === state.player ? distances : distancesFromPlayer(target);
+  };
+  const frontDistances = flank ? predict(state.heading) : distances;
+  const rearDistances = flank ? predict(-state.heading) : distances;
   state.enemies.forEach((enemy, index) => {
-    if (state.ticks % (25 + index * 5) !== 0 || state.ticks < enemy.stunnedUntil) return;
+    if (state.ticks % interval(index) !== 0 || state.ticks < enemy.stunnedUntil) return;
     if (enemy.stunnedUntil) {
       enemy.tile = enemy.spawn;
       enemy.previous = -1;
@@ -122,13 +146,13 @@ function stepEnemies(state: MazeState) {
     }
     const adjacent = directions.map(({ offset }) => enemy.tile + offset).filter((tile) => corridors.has(tile));
     const onward = adjacent.filter((tile) => tile !== enemy.previous);
-    const options = onward.length ? onward : adjacent;
-    const fleeing = state.boostUntil > state.ticks;
+    const options = state.difficulty === "EASY" && onward.length ? onward : adjacent;
+    const pursuit = index === 1 || index === 3 ? frontDistances : index === 2 ? rearDistances : distances;
     const sign = fleeing ? -1 : 1;
-    options.sort((a, b) => sign * ((distances.get(a) ?? 0) - (distances.get(b) ?? 0)));
+    options.sort((a, b) => sign * ((pursuit.get(a) ?? 0) - (pursuit.get(b) ?? 0)));
     state.seed = nextRandom(state.seed);
     const previous = enemy.tile;
-    const wander = index === 1 && state.seed % 3 !== 0;
+    const wander = state.difficulty === "EASY" && index === 1 && state.seed % 3 !== 0;
     enemy.tile = (wander ? options[state.seed % options.length] : options[0]) ?? previous;
     enemy.previous = previous;
   });
@@ -142,11 +166,11 @@ function tileY(tile: number) {
   return offsetY + Math.floor(tile / columns) * tileSize;
 }
 
-function drawEnemy(context: CanvasRenderingContext2D, enemy: Enemy, scissors: boolean, boosted: boolean) {
+function drawEnemy(context: CanvasRenderingContext2D, enemy: Enemy, index: number, boosted: boolean) {
   const x = tileX(enemy.tile);
   const y = tileY(enemy.tile);
-  context.fillStyle = boosted ? "#52baff" : scissors ? "#f6a6c7" : "#f7b462";
-  if (scissors) {
+  context.fillStyle = boosted ? "#52baff" : ["#f7b462", "#f6a6c7", "#a4d978", "#b6a0f0"][index];
+  if (index % 2 === 1) {
     context.fillRect(x + 2, y + 2, 3, 4);
     context.fillRect(x + 7, y + 2, 3, 4);
     context.fillRect(x + 4, y + 5, 4, 3);
@@ -163,18 +187,22 @@ function drawEnemy(context: CanvasRenderingContext2D, enemy: Enemy, scissors: bo
 }
 
 export const maze: Game<MazeState> = {
-  create(seed) {
+  create(seed, difficulty: Difficulty = "EASY") {
+    const { enemyCount, lives } = settings[difficulty];
+    const spawns = enemySpawns.slice(0, enemyCount);
     return {
       score: 0,
       ticks: 0,
       status: "playing",
+      difficulty,
       player: start,
+      heading: 0,
       seed,
       nextMove: 0,
-      pomades: new Set(shuffledPaths(seed).slice(0, 17)),
+      pomades: new Set(shuffledPaths(seed, spawns).slice(0, 17)),
       towels: new Set(towels),
-      enemies: enemySpawns.map((tile) => ({ tile, spawn: tile, previous: -1, stunnedUntil: 0 })),
-      lives: 3,
+      enemies: spawns.map((tile) => ({ tile, spawn: tile, previous: -1, stunnedUntil: 0 })),
+      lives,
       boostUntil: 0,
       safeUntil: 0,
       combo: 0,
@@ -183,15 +211,17 @@ export const maze: Game<MazeState> = {
 
   step(state, input) {
     if (state.status !== "playing") return;
+    const { scoreLimit, speed, towelDuration } = settings[state.difficulty];
     state.ticks++;
     if (state.ticks >= state.nextMove) {
       const move = directions.find(({ bit, offset }) => (input & bit) && corridors.has(state.player + offset));
       if (move) {
         state.player += move.offset;
-        state.nextMove = state.ticks + 8;
-        if (state.pomades.delete(state.player)) state.score = Math.min(400, state.score + 10);
+        state.heading = move.offset;
+        state.nextMove = state.ticks + Math.round(800 / speed);
+        if (state.pomades.delete(state.player)) state.score = Math.min(scoreLimit, state.score + 10);
         if (state.towels.delete(state.player)) {
-          state.score = Math.min(400, state.score + 50);
+          state.score = Math.min(scoreLimit, state.score + 50);
           state.boostUntil = state.ticks + towelDuration;
           state.combo = 0;
         }
@@ -251,7 +281,7 @@ export const maze: Game<MazeState> = {
     }
     const boosted = state.boostUntil > state.ticks;
     state.enemies.forEach((enemy, index) => {
-      if (!enemy.stunnedUntil) drawEnemy(context, enemy, index === 1, boosted);
+      if (!enemy.stunnedUntil) drawEnemy(context, enemy, index, boosted);
     });
 
     if (state.safeUntil <= state.ticks || Math.floor(state.ticks / 6) % 2 === 0) {

@@ -166,3 +166,11 @@
   width: 2rem;
   flex: 0 0 2rem;
 }
+
+.badges { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .25rem; }
+.podiumLabel .badges { justify-content: center; }
+.badges li {
+  min-width: 0; padding: .15rem .35rem;
+  border: 1px solid #a87e50; background: #352739; color: #ffde96;
+  font-size: .76rem; line-height: 1.25; overflow-wrap: anywhere;
+}

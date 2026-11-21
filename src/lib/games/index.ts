@@ -1,10 +1,10 @@
 import { fighter } from "./fighter";
 import { maze } from "./maze";
 import { tower } from "./tower";
-import { maxTicks, type Game, type GameCode, type GameState, type InputChange } from "./types";
+import { maxTicks, type Difficulty, type Game, type GameCode, type GameState, type InputChange } from "./types";
 
-function instantiate<S extends GameState>(game: Game<S>, seed: number) {
-  const state = game.create(seed);
+function instantiate<S extends GameState>(game: Game<S>, seed: number, difficulty: Difficulty) {
+  const state = game.create(seed, difficulty);
   return {
     state,
     step(input: number) {
@@ -16,16 +16,16 @@ function instantiate<S extends GameState>(game: Game<S>, seed: number) {
   };
 }
 
-export function createGame(code: GameCode, seed: number) {
+export function createGame(code: GameCode, seed: number, difficulty: Difficulty = "EASY") {
   switch (code) {
-    case "NAVALHA_RUSH": return instantiate(maze, seed);
-    case "BARBA_FIGHTER": return instantiate(fighter, seed);
-    case "TORRE_FADE": return instantiate(tower, seed);
+    case "NAVALHA_RUSH": return instantiate(maze, seed, difficulty);
+    case "BARBA_FIGHTER": return instantiate(fighter, seed, difficulty);
+    case "TORRE_FADE": return instantiate(tower, seed, difficulty);
   }
 }
 
-export function replay(code: GameCode, seed: number, ticks: number, changes: InputChange[]) {
-  const engine = createGame(code, seed);
+export function replay(code: GameCode, seed: number, ticks: number, changes: InputChange[], difficulty: Difficulty = "EASY") {
+  const engine = createGame(code, seed, difficulty);
   let mask = 0;
   let next = 0;
   for (let tick = 0; tick < ticks; tick++) {

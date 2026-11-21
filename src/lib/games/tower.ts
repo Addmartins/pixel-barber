@@ -1,21 +1,23 @@
 import {
   A, LEFT, RIGHT, UP, canvasHeight as HEIGHT, canvasWidth as WIDTH,
-  maxTicks as LIMIT, ticksPerSecond, type Game, type GameState,
+  ticksPerSecond, type Difficulty, type Game, type GameState,
 } from "./types";
 
 const SCALE = 16;
 const FLOOR = 530;
 const PLATFORM_HEIGHT = 8;
 const PLAYER_HALF = 5;
+const timeLimits: Record<Difficulty, number> = { EASY: 60, MEDIUM: 45, HARD: 30 };
 
 type Kind = "floor" | "chair" | "belt" | "goal";
 type Platform = {
   x: number;
+  origin: number;
   y: number;
   width: number;
   kind: Kind;
   belt: number;
-  puddle: number | null;
+  puddle: { x: number; width: number } | null;
 };
 
 type TowerState = GameState & {
@@ -27,24 +29,33 @@ type TowerState = GameState & {
   resting: Platform | null;
   jumpHeld: boolean;
   camera: number;
+  limit: number;
+  moving: boolean;
 };
 
-function buildTower(seed: number): Platform[] {
-  const floor: Platform = { x: 0, y: FLOOR, width: WIDTH, kind: "floor", belt: 0, puddle: null };
+function platformOffset(ticks: number, index: number) {
+  const phase = (Math.floor(ticks / 3) + index * 11) % 64;
+  return 16 - Math.abs(phase - 32);
+}
+
+function buildTower(seed: number, difficulty: Difficulty): Platform[] {
+  const floor: Platform = { x: 0, origin: 0, y: FLOOR, width: WIDTH, kind: "floor", belt: 0, puddle: null };
   const landings = Array.from({ length: 8 }, (_, index): Platform => {
     const onLeft = (index + (seed & 1)) % 2 === 0;
     const kind = index % 3 === 1 ? "belt" : "chair";
     const variation = (seed >>> (index + 1)) % 13;
+    const origin = onLeft ? 18 + variation : 117 - variation;
     return {
-      x: onLeft ? 18 + variation : 117 - variation,
+      x: origin + (difficulty === "MEDIUM" ? platformOffset(0, index + 1) : 0),
+      origin,
       y: FLOOR - (index + 1) * 52,
-      width: 93,
+      width: difficulty === "MEDIUM" ? 102 : 93,
       kind,
-      belt: kind === "belt" ? (onLeft ? -10 : 10) : 0,
-      puddle: index % 3 === 2 ? (onLeft ? 23 : 47) : null,
+      belt: difficulty === "HARD" && kind === "belt" ? (onLeft ? -24 : 24) : 0,
+      puddle: index % 3 === 2 ? { x: onLeft ? 23 : 47, width: difficulty === "EASY" ? 10 : 22 } : null,
     };
   });
-  return [floor, ...landings, { x: 83, y: FLOOR - 9 * 52, width: 74, kind: "goal", belt: 0, puddle: null }];
+  return [floor, ...landings, { x: 83, origin: 83, y: FLOOR - 9 * 52, width: 74, kind: "goal", belt: 0, puddle: null }];
 }
 
 function overPlatform(x: number, platform: Platform) {
@@ -72,7 +83,7 @@ function drawPlatform(ctx: CanvasRenderingContext2D, platform: Platform, y: numb
 
   if (kind === "belt") {
     ctx.fillStyle = "#217e80";
-    const offset = (Math.floor(ticks / 4) * Math.sign(belt) + 12 * WIDTH) % 12;
+    const offset = (Math.floor(ticks / 2) * Math.sign(belt) + 12 * WIDTH) % 12;
     for (let mark = offset; mark + 3 < width; mark += 12) {
       ctx.fillRect(x + mark, y + 4, 3, 3);
     }
@@ -80,9 +91,9 @@ function drawPlatform(ctx: CanvasRenderingContext2D, platform: Platform, y: numb
 
   if (puddle !== null) {
     ctx.fillStyle = "#74aafa";
-    ctx.fillRect(x + puddle, y - 2, 22, 2);
+    ctx.fillRect(x + puddle.x, y - 2, puddle.width, 2);
     ctx.fillStyle = "#c3f4ff";
-    ctx.fillRect(x + puddle + 3, y - 3, 7, 1);
+    ctx.fillRect(x + puddle.x + 2, y - 3, Math.floor(puddle.width / 3), 1);
   }
 
   if (kind === "goal") {
@@ -99,8 +110,8 @@ function drawPlatform(ctx: CanvasRenderingContext2D, platform: Platform, y: numb
 }
 
 export const tower: Game<TowerState> = {
-  create(seed) {
-    const platforms = buildTower(seed);
+  create(seed, difficulty: Difficulty = "EASY") {
+    const platforms = buildTower(seed, difficulty);
     return {
       score: 0,
       ticks: 0,
@@ -113,13 +124,15 @@ export const tower: Game<TowerState> = {
       resting: platforms[0],
       jumpHeld: false,
       camera: FLOOR + 18 - HEIGHT,
+      limit: timeLimits[difficulty] * ticksPerSecond,
+      moving: difficulty === "MEDIUM",
     };
   },
 
   step(state, input) {
     if (state.status !== "playing") return;
     state.ticks++;
-    if (state.ticks >= LIMIT) {
+    if (state.ticks >= state.limit) {
       state.status = "lost";
       return;
     }
@@ -127,8 +140,17 @@ export const tower: Game<TowerState> = {
     const jump = Boolean(input & (A | UP));
     const direction = Number(Boolean(input & RIGHT)) - Number(Boolean(input & LEFT));
     const ground = state.resting;
+    if (state.moving) {
+      for (let index = 1; index < state.platforms.length - 1; index++) {
+        const platform = state.platforms[index];
+        const nextX = platform.origin + platformOffset(state.ticks, index);
+        if (ground === platform) state.x += (nextX - platform.x) * SCALE;
+        platform.x = nextX;
+      }
+    }
     const localX = ground ? state.x / SCALE - ground.x : 0;
-    const slippery = Boolean(ground && ground.puddle !== null && localX >= ground.puddle && localX < ground.puddle + 22);
+    const puddle = ground?.puddle;
+    const slippery = Boolean(puddle && localX >= puddle.x && localX < puddle.x + puddle.width);
     const speed = slippery ? 38 : 34;
     const acceleration = slippery ? 2 : 7;
     const target = direction * speed;
@@ -157,7 +179,7 @@ export const tower: Game<TowerState> = {
             state.resting = platform;
             if (platform.kind === "goal") {
               state.status = "won";
-              state.score = 100 + Math.floor((LIMIT - state.ticks) * 150 / LIMIT);
+              state.score = 100 + Math.floor((state.limit - state.ticks) * 150 / state.limit);
             }
             break;
           }
@@ -209,7 +231,7 @@ export const tower: Game<TowerState> = {
     ctx.fillStyle = "#f5c66f";
     ctx.font = "bold 9px monospace";
     ctx.textBaseline = "top";
-    ctx.fillText(`TEMPO ${String(Math.ceil((LIMIT - state.ticks) / ticksPerSecond)).padStart(2, "0")}`, 10, 8);
+    ctx.fillText(`TEMPO ${String(Math.ceil((state.limit - state.ticks) / ticksPerSecond)).padStart(2, "0")}`, 10, 8);
     ctx.fillStyle = "#6ae5cf";
     const progress = Math.max(0, Math.min(100, Math.floor(100 * (FLOOR - state.y / SCALE) / (9 * 52))));
     ctx.fillText(`ALTURA ${progress}%`, 161, 8);

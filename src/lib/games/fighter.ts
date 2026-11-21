@@ -1,13 +1,20 @@
-import { A, B, LEFT, RIGHT, type Game, type GameState } from "./types";
+import { A, B, LEFT, RIGHT, maxTicks, type Difficulty, type Game, type GameState } from "./types";
 
 const opponents = [
   { name: "LENHADOR NÓRDICO", skin: "#de9469", beard: "#934c38", shirt: "#427669", health: 5 },
   { name: "HIPSTER DE FERRO", skin: "#ae745f", beard: "#2e253a", shirt: "#5b668e", health: 7 },
 ] as const;
 
-type Phase = "idle" | "warning" | "strike" | "opening";
+const settings = {
+  EASY: { hearts: 4, warning: 60, feint: 0, strike: 10, opening: 54, recovery: 24, intermission: 95 },
+  MEDIUM: { hearts: 3, warning: 36, feint: 14, strike: 8, opening: 36, recovery: 18, intermission: 74 },
+  HARD: { hearts: 2, warning: 24, feint: 8, strike: 6, opening: 30, recovery: 15, intermission: 60 },
+};
+
+type Phase = "idle" | "feint" | "warning" | "strike" | "opening";
 
 type FighterState = GameState & {
+  difficulty: Difficulty;
   opponent: number;
   health: number;
   hearts: number;
@@ -18,6 +25,7 @@ type FighterState = GameState & {
   expires: number;
   direction: number;
   tool: number;
+  chainStarted: boolean;
   dodged: boolean;
   previousInput: number;
   random: number;
@@ -26,11 +34,13 @@ type FighterState = GameState & {
   turboFlash: number;
 };
 
-function create(seed: number): FighterState {
+function create(seed: number, difficulty: Difficulty = "EASY"): FighterState {
   return {
+    difficulty,
     score: 0, ticks: 0, status: "playing", opponent: 0, health: opponents[0].health,
-    hearts: 4, streak: 0, special: false, cycle: 0, phase: "idle", expires: 62,
-    direction: LEFT, tool: A, dodged: false, previousInput: 0, random: seed | 0, flash: 0, attack: 0, turboFlash: 0,
+    hearts: settings[difficulty].hearts, streak: 0, special: false, cycle: 0, phase: "idle", expires: 62,
+    direction: LEFT, tool: A, chainStarted: false, dodged: false, previousInput: 0, random: seed | 0,
+    flash: 0, attack: 0, turboFlash: 0,
   };
 }
 
@@ -39,17 +49,20 @@ function resetCombo(state: FighterState) {
   state.special = false;
 }
 
-function beginWarning(state: FighterState) {
+function beginAttack(state: FighterState) {
   // Each round selects the next side from the session seed.
   state.random = (Math.imul(state.random, 1664525) + 1013904223) | 0;
   state.direction = state.random >>> 30 < 2 ? LEFT : RIGHT;
   state.tool = state.cycle % 2 === 0 ? A : B;
+  state.chainStarted = false;
   state.cycle += 1;
-  state.phase = "warning";
-  state.expires = state.ticks + (state.opponent ? 44 : 54);
+  const { feint, warning } = settings[state.difficulty];
+  state.phase = feint ? "feint" : "warning";
+  state.expires = state.ticks + (feint || warning);
 }
 
 function hit(state: FighterState, usingSpecial: boolean) {
+  const { recovery, intermission, hearts } = settings[state.difficulty];
   state.attack = 16;
   if (usingSpecial) state.turboFlash = 30;
   state.health -= usingSpecial ? 2 : 1;
@@ -61,45 +74,54 @@ function hit(state: FighterState, usingSpecial: boolean) {
   }
 
   state.phase = "idle";
-  state.expires = state.ticks + 24;
+  state.expires = state.ticks + recovery;
   if (state.health > 0) return;
 
   if (state.opponent === 0) {
     state.opponent = 1;
     state.health = opponents[1].health;
-    state.expires = state.ticks + 95;
-    state.score += 25;
+    state.expires = state.ticks + intermission;
+    state.score = Math.min(400, state.score + 25);
     return;
   }
 
-  state.score = Math.min(400, state.score + 45 + (state.hearts === 4 ? 40 : 0));
+  state.score = Math.min(400, state.score + 45 + (state.hearts === hearts ? 40 : 0));
   state.status = "won";
 }
 
 function step(state: FighterState, input: number) {
   if (state.status !== "playing") return;
+  const { warning, strike, opening, recovery } = settings[state.difficulty];
   state.ticks++;
   const pressed = input & ~state.previousInput;
   state.previousInput = input;
   state.attack = Math.max(0, state.attack - 1);
   state.flash = Math.max(0, state.flash - 1);
   state.turboFlash = Math.max(0, state.turboFlash - 1);
-  if (state.ticks >= 3600) {
+  if (state.ticks >= maxTicks) {
     state.status = "lost";
     return;
   }
 
   if (state.phase === "opening") {
-    if (pressed & (A | B)) {
-      if (state.special && (pressed & B)) {
+    const cut = pressed & (A | B);
+    if (cut) {
+      if (state.special && cut === B && !state.chainStarted) {
         hit(state, true);
         return;
       }
-      if ((pressed & (A | B)) === state.tool) {
+      const expectedTool = state.chainStarted ? (state.tool === A ? B : A) : state.tool;
+      if (cut === expectedTool) {
+        if (state.difficulty === "HARD" && !state.chainStarted) {
+          state.chainStarted = true;
+          state.attack = 8;
+          return;
+        }
         hit(state, false);
         return;
       }
       resetCombo(state);
+      state.chainStarted = false;
     }
   }
 
@@ -107,13 +129,17 @@ function step(state: FighterState, input: number) {
 
   switch (state.phase) {
     case "idle":
-      beginWarning(state);
+      beginAttack(state);
+      break;
+    case "feint":
+      state.phase = "warning";
+      state.expires = state.ticks + warning;
       break;
     case "warning":
       // The shown direction is the safe side of the chair.
       state.dodged = (input & (LEFT | RIGHT)) === state.direction;
       state.phase = "strike";
-      state.expires = state.ticks + 10;
+      state.expires = state.ticks + strike;
       if (!state.dodged) {
         state.hearts--;
         state.flash = 16;
@@ -123,12 +149,12 @@ function step(state: FighterState, input: number) {
       break;
     case "strike":
       state.phase = state.dodged ? "opening" : "idle";
-      state.expires = state.ticks + (state.dodged ? 46 : 22);
+      state.expires = state.ticks + (state.dodged ? opening : recovery);
       break;
     case "opening":
       resetCombo(state);
       state.phase = "idle";
-      state.expires = state.ticks + 22;
+      state.expires = state.ticks + recovery;
       break;
   }
 }
@@ -166,7 +192,7 @@ function draw(ctx: CanvasRenderingContext2D, state: FighterState) {
   block(155, 70, 39, 41, "#994961");
   block(157, 115, 34, 5, "#88809a");
   block(171, 110, 8, 15, "#88809a");
-  const ox = state.phase === "strike" ? 149 : 160;
+  const ox = state.phase === "strike" ? 149 : state.phase === "feint" ? (state.direction === LEFT ? 153 : 167) : 160;
   const oy = state.attack ? 53 : 50;
   const blinking = state.phase === "warning" && Math.floor(state.ticks / 7) % 2 === 0;
   block(ox - 4, oy + 29, 36, 25, opponent.shirt);
@@ -202,7 +228,7 @@ function draw(ctx: CanvasRenderingContext2D, state: FighterState) {
 
   block(0, 0, 240, 34, "#171222");
   text(opponent.name, 8, 12);
-  text(`FÔLEGO ${state.hearts}/4`, 167, 12);
+  text(`FÔLEGO ${state.hearts}/${settings[state.difficulty].hearts}`, 167, 12);
   block(8, 19, 90, 5, "#462e48");
   block(8, 19, Math.ceil(90 * Math.max(0, state.health) / opponent.health), 5, "#ff828d");
   text(`RITMO ${Math.min(state.streak, 5)}/5`, 167, 24, "#93f0d4");
@@ -210,10 +236,17 @@ function draw(ctx: CanvasRenderingContext2D, state: FighterState) {
   block(0, 134, 240, 26, "#171222");
   if (state.status === "won") text("TRABALHO IMPECÁVEL!", 8, 150, "#98f4d0");
   else if (state.status === "lost") text("FIM DO TURNO", 8, 150, "#ff9f9c");
+  else if (state.phase === "feint") text("FINTA! ESPERE O SINAL", 8, 150, "#fba6aa");
   else if (state.phase === "warning") {
     text(state.direction === LEFT ? "ESQUIVE PARA A ESQUERDA" : "ESQUIVE PARA A DIREITA", 8, 150, "#ffd47f");
   } else if (state.phase === "opening") {
-    text(state.special ? "B · CORTE TURBO!" : state.tool === A ? "A · TESOURA, AGORA!" : "B · NAVALHA, AGORA!", 8, 150, "#98f4d0");
+    const tool = state.chainStarted ? (state.tool === A ? B : A) : state.tool;
+    const cut = tool === A ? "A · TESOURA" : "B · NAVALHA";
+    const prompt = state.special && !state.chainStarted ? "B · CORTE TURBO!"
+      : state.chainStarted ? `DEPOIS ${cut}!`
+      : state.difficulty === "HARD" ? `${cut}, DEPOIS ${tool === A ? "B" : "A"}!`
+      : `${cut}, AGORA!`;
+    text(prompt, 8, 150, "#98f4d0");
   } else {
     text(state.phase === "strike" ? state.dodged ? "BOA ESQUIVA!" : "CUIDADO!" : "ATENÇÃO AO CLIENTE", 8, 150);
   }

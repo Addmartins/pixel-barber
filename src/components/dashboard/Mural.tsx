@@ -3,6 +3,7 @@
 import { useId, useRef } from "react";
 import { AvatarSprite } from "@/components/auth/AvatarSprite";
 import { avatars } from "@/lib/avatars";
+import type { GameCode } from "@/lib/games/types";
 import type { RankingEntry } from "@/lib/supabase/browser";
 import styles from "./mural.module.css";
 
@@ -105,6 +106,19 @@ function entryName(entry: RankingEntry) {
   return entry.display_name || avatars.find((avatar) => avatar.id === entry.avatar_skin)?.name || "Avatar";
 }
 
+const masterBadges: Record<GameCode, string> = {
+  NAVALHA_RUSH: "Mestre no Navalha Rush",
+  BARBA_FIGHTER: "Mestre no Barba Fighter II",
+  TORRE_FADE: "Mestre na Torre do Fade",
+};
+
+function MasterBadges({ games }: { games?: GameCode[] }) {
+  if (!games?.length) return null;
+  return <ul className={styles.badges} aria-label="Conquistas no Arcade">
+    {games.map((game) => masterBadges[game] && <li key={game}>{masterBadges[game]}</li>)}
+  </ul>;
+}
+
 const formatPoints = new Intl.NumberFormat("pt-BR");
 
 export function Mural({ ranking, loading = false, error, hasMore = false, loadingMore = false, onLoadMore }: {
@@ -161,6 +175,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                       <span className={styles.position} style={{ color: medal.color }}>{entry.position}º</span>
                       <strong>{entryName(entry)}</strong>
                       <small>{formatPoints.format(entry.points_balance)} pts</small>
+                      <MasterBadges games={entry.mastered_games} />
                     </div>
                   </li>
                 );
@@ -187,7 +202,10 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                 {ranking.map((entry) => (
                   <tr key={entry.position}>
                     <th scope="row">{entry.position}º</th>
-                    <td><span className={styles.tableAvatar}><AvatarSprite id={entry.avatar_skin} />{entryName(entry)}</span></td>
+                    <td>
+                      <span className={styles.tableAvatar}><AvatarSprite id={entry.avatar_skin} />{entryName(entry)}</span>
+                      <MasterBadges games={entry.mastered_games} />
+                    </td>
                     <td>{formatPoints.format(entry.points_balance)}</td>
                   </tr>
                 ))}

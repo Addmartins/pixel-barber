@@ -7,7 +7,21 @@ export const DOWN = 8;
 export const A = 16;
 export const B = 32;
 
-export const gameVersion = 1;
+export const difficulties = ["EASY", "MEDIUM", "HARD"] as const;
+export type Difficulty = (typeof difficulties)[number];
+
+export const multipliers: Record<Difficulty, number> = { EASY: 1, MEDIUM: 1.5, HARD: 2.5 };
+
+export function isDifficulty(value: unknown): value is Difficulty {
+  return difficulties.some((difficulty) => difficulty === value);
+}
+
+export function roundSeconds(game: GameCode, difficulty: Difficulty) {
+  if (game !== "TORRE_FADE") return 60;
+  return difficulty === "HARD" ? 30 : difficulty === "MEDIUM" ? 45 : 60;
+}
+
+export const gameVersion = 2;
 export const ticksPerSecond = 60;
 export const maxTicks = 3600;
 export const canvasWidth = 240;
@@ -16,13 +30,13 @@ export const canvasHeight = 160;
 export type GameState = { score: number; ticks: number; status: "playing" | "won" | "lost" };
 export type State = GameState;
 export type Game<S extends GameState = GameState> = {
-  create(seed: number): S;
+  create(seed: number, difficulty: Difficulty): S;
   step(state: S, input: number): void;
   draw(ctx: CanvasRenderingContext2D, state: S): void;
 };
 
 export type InputChange = [tick: number, mask: number];
-export type Run = { id: string; seed: number; game: GameCode };
+export type Run = { id: string; seed: number; game: GameCode; difficulty: Difficulty };
 export type GameRecord = { game_code: GameCode; high_score: number };
 export type ArcadeStats = { records: GameRecord[]; credited_today: number };
 export type GameResult = {

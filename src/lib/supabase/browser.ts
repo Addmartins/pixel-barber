@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AvatarId } from "../avatars";
 import type { Barber, Service, Slot } from "../booking";
-import type { GameCode, GameRecord, GameResult } from "../games/types";
+import type { Difficulty, GameCode, GameRecord, GameResult } from "../games/types";
 
 type ClientRow = {
   id: string;
@@ -29,7 +29,7 @@ type AppointmentRow = {
   status: AppointmentStatus;
   cancelled_at: string | null;
 };
-export type RankingEntry = { position: number; display_name: string; avatar_skin: AvatarId; points_balance: number };
+export type RankingEntry = { position: number; display_name: string; avatar_skin: AvatarId; points_balance: number; mastered_games?: GameCode[] };
 
 export type Database = {
   public: {
@@ -41,7 +41,7 @@ export type Database = {
         Relationships: [];
       };
       game_sessions: CatalogTable<{
-        id: string; client_id: string; game_code: GameCode; seed: number; engine_version: number; started_at: string;
+        id: string; client_id: string; game_code: GameCode; difficulty: Difficulty; seed: number; engine_version: number; started_at: string;
       }>;
       barbers: CatalogTable<Barber>;
       services: CatalogTable<Service>;
@@ -60,8 +60,8 @@ export type Database = {
       get_available_slots: { Args: { p_barber_id: string; p_service_id: string; p_date: string }; Returns: Slot[] };
       create_appointment: { Args: { p_barber_id: string; p_service_id: string; p_starts_at: string }; Returns: string };
       cancel_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
-      start_arcade_run: { Args: { p_client_id: string; p_game_code: GameCode; p_engine_version: number }; Returns: { id: string; seed: number }[] };
-      finish_arcade_run: { Args: { p_client_id: string; p_session_id: string; p_score: number; p_ticks: number; p_engine_version: number }; Returns: GameResult[] };
+      start_arcade_run: { Args: { p_client_id: string; p_game_code: GameCode; p_engine_version: number; p_difficulty: Difficulty }; Returns: { id: string; seed: number }[] };
+      finish_arcade_run: { Args: { p_client_id: string; p_session_id: string; p_score: number; p_ticks: number; p_engine_version: number; p_won: boolean }; Returns: GameResult[] };
       get_arcade_stats: { Args: Record<PropertyKey, never>; Returns: (GameRecord & { credited_today: number })[] };
       get_leaderboard: { Args: { p_limit?: number; p_offset?: number }; Returns: RankingEntry[] };
     };
