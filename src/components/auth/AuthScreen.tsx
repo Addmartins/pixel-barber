@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Gamepad2, Scissors } from "lucide-react";
 import { avatars, consentVersion, type AvatarId } from "@/lib/avatars";
 import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
 import { AvatarSprite } from "./AvatarSprite";
+import { Dashboard } from "@/components/dashboard/Dashboard";
 
 type Profile = { nome: string; avatar_skin: AvatarId; level: number; points_balance: number };
 const demoProfile: Profile = { nome: "Visitante", avatar_skin: "fade", level: 1, points_balance: 0 };
@@ -23,6 +24,9 @@ export function AuthScreen() {
   const [error, setError] = useState("");
   const [profileError, setProfileError] = useState(false);
   const userId = session?.user.id;
+  const updatePointsBalance = useCallback((points_balance: number) => {
+    setProfile((current) => current && current.id === userId ? { ...current, points_balance } : current);
+  }, [userId]);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -160,7 +164,7 @@ export function AuthScreen() {
 
   return (
     <main className="min-h-screen px-4 py-6 sm:px-8 sm:py-12">
-      <article className="arcade mx-auto w-full max-w-lg">
+      <article className={`arcade mx-auto w-full ${signedIn ? "max-w-4xl" : "max-w-lg"}`}>
         <header className="masthead">
           <div className="brand-icon"><Scissors size={27} aria-hidden="true" /></div>
           <div>
@@ -174,19 +178,23 @@ export function AuthScreen() {
             <section className="space-y-5" aria-label="Perfil">
               {currentProfile ? (
                 <>
-                  <div className="flex items-center gap-4">
+                  <div className="dashboard-profile">
                     <div className="profile-avatar"><AvatarSprite id={currentProfile.avatar_skin} /></div>
-                    <div>
+                    <div className="dashboard-profile-name">
                       <h2>Olá, {currentProfile.nome}!</h2>
                       <p className="muted">Nível {currentProfile.level} · {currentProfile.points_balance} pontos</p>
                     </div>
+                    <button type="button" className="secondary" onClick={() => void leave()} disabled={busy}>Sair</button>
                   </div>
-                  {demo && <p className="muted">Modo demonstração. Os dados desta sessão ficam no navegador.</p>}
+                  {demo && <p className="muted text-sm">Demonstração com dados de exemplo. As reservas duram até você sair ou atualizar a página.</p>}
+                  <Dashboard key={demo ? "demo" : userId} clientId={demo ? undefined : userId} onPointsBalance={updatePointsBalance} />
                 </>
               ) : (
-                <p role="status">{profileError ? "Não foi possível carregar seu perfil. Saia e entre novamente para tentar de novo." : "Carregando seu perfil…"}</p>
+                <>
+                  <p role="status">{profileError ? "Não foi possível carregar seu perfil. Saia e entre novamente para tentar de novo." : "Carregando seu perfil…"}</p>
+                  <button type="button" className="secondary w-full" onClick={() => void leave()} disabled={busy}>Sair</button>
+                </>
               )}
-              <button className="secondary w-full" onClick={() => void leave()} disabled={busy}>Sair</button>
             </section>
           ) : pendingPhone ? (
             <form className="space-y-4" onSubmit={(event) => {

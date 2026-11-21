@@ -1,0 +1,168 @@
+.mural {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.gallery,
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(.35rem, 2vw, .75rem);
+  margin-block: .8rem;
+}
+
+.cut {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 2px solid #765685;
+  box-shadow: 0 3px 0 #120d19;
+}
+
+.portrait,
+.medal {
+  display: grid;
+}
+
+.portrait {
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 10rem;
+  margin-inline: auto;
+  background: radial-gradient(circle at 50% 39%, #ffffff28 24%, transparent 25%);
+}
+
+.cutName,
+.podiumLabel {
+  display: grid;
+  align-content: center;
+  min-height: 3em;
+  padding: .25rem;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.cutName {
+  flex: 1;
+  background: #1b1325;
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.podiumEntry {
+  display: grid;
+  align-content: end;
+  justify-items: center;
+  min-width: 0;
+  padding: .35rem;
+  border: 2px solid #765685;
+  background: #251a33;
+}
+
+.podium {
+  align-items: end;
+}
+
+.podiumEntry:first-child {
+  padding-top: 1.15rem;
+  border-color: #b58a4a;
+  background: #3a2a38;
+}
+
+.podiumEntry:nth-child(2) {
+  padding-top: .75rem;
+}
+
+.podiumEntry > span {
+  max-width: 5rem;
+}
+
+.medal {
+  width: 1.4rem;
+  aspect-ratio: 7 / 5;
+  margin-block: .1rem .35rem;
+}
+
+.podiumLabel {
+  width: 100%;
+  font-size: .875rem;
+}
+
+.position {
+  font-family: ui-monospace, monospace;
+  font-weight: 900;
+}
+
+.podiumLabel small {
+  color: #e9d5ef;
+  font-size: .8125rem;
+}
+
+.dialog {
+  width: min(32rem, calc(100% - 1.5rem));
+  max-height: calc(100dvh - 1.5rem);
+  margin: auto;
+  padding: clamp(.7rem, 3vw, 1.2rem);
+  border: 3px solid #b582ca;
+  border-radius: 8px;
+  background: #251a33;
+  color: #fcf3fc;
+}
+
+.dialog::backdrop {
+  background: #100819c9;
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .55rem;
+  margin-bottom: .75rem;
+}
+
+.tableWrap {
+  overflow: auto;
+  max-height: min(60dvh, 25rem);
+}
+
+.tableWrap:focus-visible {
+  outline: 3px solid #67eed7;
+  outline-offset: -3px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: .875rem;
+}
+
+.table :is(th, td) {
+  padding: .5rem .35rem;
+  border-bottom: 1px solid #694977;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #251a33;
+}
+
+.table :is(th, td):last-child {
+  text-align: right;
+}
+
+.tableAvatar {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  overflow-wrap: anywhere;
+}
+
+.tableAvatar > span {
+  width: 2rem;
+  flex: 0 0 2rem;
+}

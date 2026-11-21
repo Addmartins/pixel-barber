@@ -1,0 +1,48 @@
+.arcade-games { display: grid; gap: .85rem; }
+.arcade-cartridges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.arcade-cartridges button {
+  display: grid; justify-items: center; align-content: center; gap: .45rem;
+  min-height: 72px; padding: .5rem .25rem; border: 2px solid #6f487c;
+  background: #321f3c; font: 700 .875rem ui-monospace, monospace; overflow-wrap: anywhere;
+}
+.arcade-cartridges button[aria-pressed=true] { border-color: #67eed7; background: #24343c; }
+.arcade-cartridges button[data-accent=mint] svg { color: #67eed7; }
+.arcade-cartridges button[data-accent=rose] svg { color: #ff8cb0; }
+.arcade-cartridges button[data-accent=gold] svg { color: #ffd77d; }
+.arcade-cabinet { padding: .55rem; border: 3px solid #694977; background: #342442; }
+.arcade-scoreboard {
+  display: flex; justify-content: space-between; gap: .4rem; padding: .4rem; color: #f3d9fa;
+  font: 700 clamp(.65rem, 2.9vw, 1rem) ui-monospace, monospace;
+}
+.arcade-scoreboard strong { color: #85f4df; font-variant-numeric: tabular-nums; }
+.arcade-display { position: relative; background: #120b1c; border: 3px solid #100a15; }
+.arcade-display canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.arcade-title-screen {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: .65rem;
+  padding: .5rem; font: 800 clamp(1.1rem, 5vw, 2rem) ui-monospace, monospace; color: #86eddb;
+}
+.arcade-controls {
+  display: grid; grid-template-columns: repeat(3, 44px) minmax(0, 1fr) repeat(2, 44px);
+  grid-template-rows: repeat(2, 44px);
+  grid-template-areas: ". up . . . ." "left down right . action-b action-a";
+  gap: .3rem; align-items: stretch; margin-top: .65rem; touch-action: none; user-select: none;
+}
+.arcade-controls button { border: 2px solid #a37ab0; background: #1f182b; color: #fff3fc; touch-action: none; font-weight: 800; }
+.arcade-controls button:active { background: #484465; }
+.arcade-controls button[data-area=up] { grid-area: up; }
+.arcade-controls button[data-area=down] { grid-area: down; }
+.arcade-controls button[data-area=left] { grid-area: left; }
+.arcade-controls button[data-area=right] { grid-area: right; }
+.arcade-controls button[data-area=action-a] { grid-area: action-a; }
+.arcade-controls button[data-area=action-b] { grid-area: action-b; }
+.arcade-controls button[data-area^=action] { border-radius: 50%; color: #261428; background: #ff8cb0; }
+.arcade-controls button[data-area^=action]:active { background: #f8c4db; }
+.arcade-keys { font-size: .875rem; }
+.arcade-result { color: #9cf7e8; font-weight: 700; }
+.arcade-retry { display: flex; flex-wrap: wrap; gap: .5rem; }
+.dashboard-nav.dashboard-with-arcade { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dashboard-with-arcade button { padding-inline: .25rem; font-size: .875rem; }
+@media (max-width: 375px) {
+  .arcade-controls { column-gap: .2rem; grid-template-columns: repeat(3, 40px) minmax(0, 1fr) repeat(2, 40px); }
+  .dashboard-with-arcade button svg { display: none; }
+}
