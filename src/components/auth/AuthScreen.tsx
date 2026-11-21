@@ -12,6 +12,28 @@ import { Dashboard } from "@/components/dashboard/Dashboard";
 type Profile = { nome: string; avatar_skin: AvatarId; level: number; points_balance: number };
 const demoProfile: Profile = { nome: "Visitante", avatar_skin: "fade", level: 1, points_balance: 0 };
 
+function signupError(code: string | undefined) {
+  switch (code) {
+    case "phone_provider_disabled":
+    case "signup_disabled":
+      return "O cadastro por celular está desativado no momento. Você ainda pode experimentar a demonstração.";
+    case "sms_send_failed":
+      return "O serviço de SMS não conseguiu enviar o código. Tente novamente mais tarde.";
+    case "over_sms_send_rate_limit":
+    case "over_request_rate_limit":
+      return "Muitas tentativas em pouco tempo. Aguarde alguns minutos antes de tentar novamente.";
+    case "weak_password":
+      return "A senha não atende aos requisitos de segurança. Use uma senha mais longa e variada.";
+    case "phone_exists":
+    case "user_already_exists":
+      return "Não foi possível criar a conta. Se você já tem cadastro, entre com seu celular e senha.";
+    case "validation_failed":
+      return "Confira se o número do celular e os demais campos estão corretos.";
+    default:
+      return "Não foi possível criar a conta agora. Tente novamente mais tarde.";
+  }
+}
+
 export function AuthScreen() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [avatar, setAvatar] = useState<AvatarId>("fade");
@@ -106,7 +128,7 @@ export function AuthScreen() {
             data: { nome, avatar_skin: avatar, consent_terms: true, consent_version: consentVersion },
           },
         });
-        if (failure) setError("Não foi possível criar a conta. Confira os dados e tente novamente.");
+        if (failure) setError(signupError(failure.code));
         else if (!data.session) setPendingPhone(phone);
       }
     } catch {
