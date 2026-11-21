@@ -178,3 +178,21 @@ h2 { font-size: 1.35rem; overflow-wrap: anywhere; }
 .booking-slots button[aria-label$="indisponível"] { text-decoration: line-through; }
 .booking-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
 .booking-actions .primary { flex: 1 1 10rem; }
+
+.dashboard-nav.dashboard-with-store { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 420px) {
+  .dashboard-with-store button svg { display: none; }
+}
+
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+.device-shell {
+  padding-top: max(16px, env(safe-area-inset-top), var(--safe-area-inset-top, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left), var(--safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right), var(--safe-area-inset-right, 0px));
+}
+.field input { font-size: max(16px, 1rem); }

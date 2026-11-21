@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Gamepad2, Scissors, Timer, TrendingUp } from "lucide-react";
+import { hapticAction, hapticImpact, hapticTap, hapticVictory } from "@/lib/device/haptics";
 import { createGame } from "@/lib/games";
 import { finishRun, getArcadeStats, startRun } from "@/lib/games/client";
 import {
@@ -52,6 +53,12 @@ function playBootChime() {
   } catch {
     // The visual boot screen is also available on devices without audio.
   }
+}
+
+function remainingHealth(state: ReturnType<typeof createGame>["state"]) {
+  if ("lives" in state) return state.lives;
+  if ("hearts" in state) return state.hearts;
+  return undefined;
 }
 
 type FinishedRun = { run: Run; snapshot: GameState; changes: InputChange[] };
@@ -121,6 +128,10 @@ export function Arcade({ demo, visible, onBalance }: {
       if (!bit || event.defaultPrevented) return;
       event.preventDefault();
       onInput(event.code, bit);
+      if (!event.repeat) {
+        if (bit === A || bit === B) hapticAction();
+        else hapticTap();
+      }
     }
     function keyup(event: KeyboardEvent) { onInput(event.code, 0); }
     function reset() { held.current.clear(); justPressed.current = 0; }
@@ -172,6 +183,7 @@ export function Arcade({ demo, visible, onBalance }: {
     let frame = 0;
     let displayedScore = -1;
     let displayedSecond = -1;
+    let health = remainingHealth(engine.state);
 
     function loop(time: number) {
       accumulator += Math.min(100, time - previousTime);
@@ -196,9 +208,14 @@ export function Arcade({ demo, visible, onBalance }: {
         displayedSecond = second;
       }
       if (status === "playing") {
+        const currentHealth = remainingHealth(engine.state);
+        if (currentHealth !== undefined && health !== undefined && currentHealth < health) hapticImpact();
+        health = currentHealth;
         frame = requestAnimationFrame(loop);
         return;
       }
+      if (status === "won") hapticVictory();
+      else hapticImpact();
       setPhase("finished");
       if (demo) setBest((previous) => ({ ...previous, [run!.game]: Math.max(previous[run!.game] ?? 0, Math.round(score * multipliers[run!.difficulty])) }));
       else {
@@ -213,6 +230,7 @@ export function Arcade({ demo, visible, onBalance }: {
 
   const start = useCallback(async () => {
     if (controlsLocked) return;
+    hapticTap();
     setError("");
     setResult(null);
     setPending(null);
@@ -234,6 +252,7 @@ export function Arcade({ demo, visible, onBalance }: {
   }, [controlsLocked, demo, selected, difficulty]);
 
   function select(code: GameCode, button: HTMLButtonElement) {
+    hapticTap();
     opener.current = button;
     dialog.current?.showModal();
     setOpened(true);
@@ -250,6 +269,7 @@ export function Arcade({ demo, visible, onBalance }: {
   function closeGame() {
     if (phase === "starting" || sending) return;
     if ((playing || pending) && !window.confirm("Voltar aos cartuchos e descartar esta partida?")) return;
+    hapticTap();
     dialog.current?.close();
     setOpened(false);
     setRun(null);
@@ -262,6 +282,7 @@ export function Arcade({ demo, visible, onBalance }: {
   }
 
   function selectDifficulty(level: Difficulty) {
+    hapticTap();
     setDifficulty(level);
     setRun(null);
     setSnapshot(null);

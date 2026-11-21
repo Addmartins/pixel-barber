@@ -3,6 +3,8 @@ import type { AvatarId } from "../avatars";
 import type { Barber, Service, Slot } from "../booking";
 import type { Difficulty, GameCode, GameRecord, GameResult } from "../games/types";
 
+import type { CosmeticCode, CosmeticProduct, InventoryItem } from "../store";
+
 type ClientRow = {
   id: string;
   nome: string;
@@ -29,7 +31,7 @@ type AppointmentRow = {
   status: AppointmentStatus;
   cancelled_at: string | null;
 };
-export type RankingEntry = { position: number; display_name: string; avatar_skin: AvatarId; points_balance: number; mastered_games?: GameCode[] };
+export type RankingEntry = { position: number; display_name: string; avatar_skin: AvatarId; points_balance: number; mastered_games?: GameCode[]; equipped_cosmetics?: CosmeticCode[] };
 
 export type Database = {
   public: {
@@ -43,6 +45,11 @@ export type Database = {
       game_sessions: CatalogTable<{
         id: string; client_id: string; game_code: GameCode; difficulty: Difficulty; seed: number; engine_version: number; started_at: string;
       }>;
+      store_products: CatalogTable<Omit<CosmeticProduct, "preco_pontos" | "cosmetic_code" | "cosmetic_slot" | "rarity"> & {
+        categoria: string; preco_pontos: number | null; cosmetic_code: CosmeticCode | null;
+        cosmetic_slot: CosmeticProduct["cosmetic_slot"] | null; rarity: CosmeticProduct["rarity"] | null;
+      }>;
+      client_inventory: CatalogTable<InventoryItem & { id: string; client_id: string; acquired_at: string }>;
       barbers: CatalogTable<Barber>;
       services: CatalogTable<Service>;
       appointments: {
@@ -63,6 +70,8 @@ export type Database = {
       start_arcade_run: { Args: { p_client_id: string; p_game_code: GameCode; p_engine_version: number; p_difficulty: Difficulty }; Returns: { id: string; seed: number }[] };
       finish_arcade_run: { Args: { p_client_id: string; p_session_id: string; p_score: number; p_ticks: number; p_engine_version: number; p_won: boolean }; Returns: GameResult[] };
       get_arcade_stats: { Args: Record<PropertyKey, never>; Returns: (GameRecord & { credited_today: number })[] };
+      buy_avatar_item: { Args: { p_product_id: string }; Returns: { points_balance: number }[] };
+      equip_avatar_item: { Args: { p_product_id: string; p_equipped: boolean }; Returns: boolean };
       get_leaderboard: { Args: { p_limit?: number; p_offset?: number }; Returns: RankingEntry[] };
     };
     Enums: { appointment_status: AppointmentStatus };

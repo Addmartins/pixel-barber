@@ -1,6 +1,7 @@
 "use client";
 
 import { type PointerEvent, type ReactNode } from "react";
+import { hapticAction, hapticTap } from "@/lib/device/haptics";
 import { A, B, DOWN, LEFT, RIGHT, UP } from "@/lib/games/types";
 
 const directions = [
@@ -24,11 +25,17 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
   startDisabled: boolean;
   selectDisabled: boolean;
 }) {
+  function feedback(bit: number) {
+    if (bit === A || bit === B) hapticAction();
+    else hapticTap();
+  }
+
   function press(event: PointerEvent<HTMLButtonElement>, bit: number) {
     if (event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     onInput(event.pointerId, bit);
+    feedback(bit);
   }
 
   function release(event: PointerEvent<HTMLButtonElement>) {
@@ -44,6 +51,7 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
           if (event.key !== " ") return;
           event.preventDefault();
           onInput(-bit, bit);
+          if (!event.repeat) feedback(bit);
         }}
         onKeyUp={(event) => {
           if (event.key === " ") onInput(-bit, 0);

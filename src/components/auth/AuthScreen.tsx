@@ -7,10 +7,11 @@ import { avatars, consentVersion, type AvatarId } from "@/lib/avatars";
 import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
 import { AvatarSprite } from "./AvatarSprite";
+import type { CosmeticCode } from "@/lib/store";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
 type Profile = { nome: string; avatar_skin: AvatarId; level: number; points_balance: number };
-const demoProfile: Profile = { nome: "Visitante", avatar_skin: "fade", level: 1, points_balance: 0 };
+const demoProfile: Profile = { nome: "Visitante", avatar_skin: "fade", level: 1, points_balance: 1000 };
 
 function signupError(code: string | undefined) {
   switch (code) {
@@ -40,15 +41,22 @@ export function AuthScreen() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<(Profile & { id: string }) | null>(null);
   const [demo, setDemo] = useState(false);
+  const [demoBalance, setDemoBalance] = useState(demoProfile.points_balance);
+  const [equipped, setEquipped] = useState<{ owner: string; cosmetics: CosmeticCode[] } | null>(null);
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profileError, setProfileError] = useState(false);
   const userId = session?.user.id;
+  const cosmeticsOwner = demo ? "demo" : userId;
+  const updateCosmetics = useCallback((cosmetics: CosmeticCode[]) => {
+    if (cosmeticsOwner) setEquipped({ owner: cosmeticsOwner, cosmetics });
+  }, [cosmeticsOwner]);
   const updatePointsBalance = useCallback((points_balance: number) => {
+    if (demo) return setDemoBalance(points_balance);
     setProfile((current) => current && current.id === userId ? { ...current, points_balance } : current);
-  }, [userId]);
+  }, [demo, userId]);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -167,6 +175,8 @@ export function AuthScreen() {
     setError("");
     if (demo) {
       setDemo(false);
+      setDemoBalance(demoProfile.points_balance);
+      setEquipped(null);
       return;
     }
     setBusy(true);
@@ -181,11 +191,11 @@ export function AuthScreen() {
     }
   }
 
-  const currentProfile = demo ? demoProfile : profile?.id === userId ? profile : null;
+  const currentProfile = demo ? { ...demoProfile, points_balance: demoBalance } : profile?.id === userId ? profile : null;
   const signedIn = demo || Boolean(session);
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-8 sm:py-12">
+    <main className="device-shell min-h-screen">
       <article className={`arcade mx-auto w-full ${signedIn ? "max-w-4xl" : "max-w-lg"}`}>
         <header className="masthead">
           <div className="brand-icon"><Scissors size={27} aria-hidden="true" /></div>
@@ -201,7 +211,7 @@ export function AuthScreen() {
               {currentProfile ? (
                 <>
                   <div className="dashboard-profile">
-                    <div className="profile-avatar"><AvatarSprite id={currentProfile.avatar_skin} /></div>
+                    <div className="profile-avatar"><AvatarSprite id={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
                     <div className="dashboard-profile-name">
                       <h2>Olá, {currentProfile.nome}!</h2>
                       <p className="muted">Nível {currentProfile.level} · {currentProfile.points_balance} pontos</p>
@@ -209,7 +219,8 @@ export function AuthScreen() {
                     <button type="button" className="secondary" onClick={() => void leave()} disabled={busy}>Sair</button>
                   </div>
                   {demo && <p className="muted text-sm">Demonstração com dados de exemplo. As reservas duram até você sair ou atualizar a página.</p>}
-                  <Dashboard key={demo ? "demo" : userId} clientId={demo ? undefined : userId} onPointsBalance={updatePointsBalance} />
+                  <Dashboard key={demo ? "demo" : userId} clientId={demo ? undefined : userId} avatar={currentProfile.avatar_skin} balance={currentProfile.points_balance}
+                    onPointsBalance={updatePointsBalance} onCosmetics={updateCosmetics} />
                 </>
               ) : (
                 <>

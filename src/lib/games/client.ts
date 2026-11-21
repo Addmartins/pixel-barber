@@ -1,3 +1,4 @@
+import { deviceApi } from "../device/api";
 import { getSupabase } from "../supabase/browser";
 import type { ArcadeStats, Difficulty, GameCode, GameResult, InputChange, Run } from "./types";
 
@@ -7,7 +8,7 @@ async function send<T>(body: { action: "start"; game: GameCode; difficulty: Diff
   const session = await getSupabase()?.auth.getSession();
   const token = session?.data.session?.access_token;
   if (!token) throw new Error("Entre na sua conta para registrar a partida.");
-  const response = await fetch("/api/arcade", {
+  const response = await fetch(deviceApi("/api/arcade"), {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify(body),

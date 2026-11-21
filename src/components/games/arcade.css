@@ -262,3 +262,12 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
 @media (min-width: 720px) {
   .arcade-fullscreen-layout { grid-template-columns: minmax(0, 1fr) minmax(15rem, .75fr); }
 }
+
+/* The full-viewport cabinet wrapper owns the safe area for the frame and controls. */
+.arcade-fullscreen {
+  padding-top: max(16px, env(safe-area-inset-top), var(--safe-area-inset-top, 0px));
+  padding-bottom: max(16px, env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px));
+  padding-left: max(.6rem, env(safe-area-inset-left), var(--safe-area-inset-left, 0px));
+  padding-right: max(.6rem, env(safe-area-inset-right), var(--safe-area-inset-right, 0px));
+}
+.pixel-boy-controls { touch-action: none; user-select: none; }

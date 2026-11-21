@@ -1,19 +1,30 @@
 "use client";
 
-import { CalendarDays, Gamepad2, Images } from "lucide-react";
+import { CalendarDays, Gamepad2, Images, ShoppingBag } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createDemoBookingApi, demoRanking } from "@/lib/demo-booking";
 import { createBookingApi, getRankingPage } from "@/lib/supabase/booking";
 import type { RankingEntry } from "@/lib/supabase/browser";
 import { Arcade } from "@/components/games/Arcade";
+import { AvatarStore } from "@/components/store/AvatarStore";
+import { useAvatarShop } from "@/components/store/useAvatarShop";
+import type { AvatarId } from "@/lib/avatars";
+import type { CosmeticCode } from "@/lib/store";
 import { Booking } from "./Booking";
 import { Mural } from "./Mural";
 
 const pageSize = 50;
 
-export function Dashboard({ clientId, onPointsBalance }: { clientId?: string; onPointsBalance: (balance: number) => void }) {
-  const [section, setSection] = useState<"booking" | "mural" | "arcade">("booking");
+export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmetics }: {
+  clientId?: string;
+  avatar: AvatarId;
+  balance: number;
+  onPointsBalance: (balance: number) => void;
+  onCosmetics: (cosmetics: CosmeticCode[]) => void;
+}) {
+  const [section, setSection] = useState<"booking" | "mural" | "arcade" | "store">("booking");
   const [arcadeOpened, setArcadeOpened] = useState(false);
+  const [storeOpened, setStoreOpened] = useState(false);
   const api = useMemo(() => clientId ? createBookingApi(clientId) : createDemoBookingApi(), [clientId]);
   const [ranking, setRanking] = useState<RankingEntry[]>(clientId ? [] : demoRanking);
   const [rankingOffset, setRankingOffset] = useState(0);
@@ -26,6 +37,13 @@ export function Dashboard({ clientId, onPointsBalance }: { clientId?: string; on
     onPointsBalance(balance);
     setRequest({ offset: 0 });
   }, [onPointsBalance]);
+
+  const shop = useAvatarShop(clientId, balance, updateBalance);
+  useEffect(() => { onCosmetics(shop.equipped); }, [shop.equipped, onCosmetics]);
+
+  const demoLeaderboard = [...demoRanking, {
+    position: 0, display_name: "Visitante", avatar_skin: avatar, points_balance: balance, equipped_cosmetics: shop.equipped,
+  }].sort((a, b) => b.points_balance - a.points_balance).map((entry, index) => ({ ...entry, position: index + 1 }));
 
   useEffect(() => {
     if (!clientId || section !== "mural") return;
@@ -47,7 +65,7 @@ export function Dashboard({ clientId, onPointsBalance }: { clientId?: string; on
 
   return (
     <div className="dashboard">
-      <nav className="dashboard-nav mode-switch dashboard-with-arcade" aria-label="Painel do cliente">
+      <nav className="dashboard-nav mode-switch dashboard-with-arcade dashboard-with-store" aria-label="Painel do cliente">
         <button type="button" aria-pressed={section === "booking"} onClick={() => setSection("booking")}>
           <CalendarDays size={18} aria-hidden="true" /> Agenda
         </button>
@@ -63,14 +81,20 @@ export function Dashboard({ clientId, onPointsBalance }: { clientId?: string; on
         }}>
           <Gamepad2 size={18} aria-hidden="true" /> Arcade
         </button>
+        <button type="button" aria-pressed={section === "store"} onClick={() => { setStoreOpened(true); setSection("store"); }}>
+          <ShoppingBag size={18} aria-hidden="true" /> Loja
+        </button>
       </nav>
+      {storeOpened && <div hidden={section !== "store"}><AvatarStore avatar={avatar} balance={balance} products={shop.products}
+        inventory={shop.inventory} loading={shop.loading} error={shop.error} demo={!clientId}
+        onReload={() => void shop.reload()} onBuy={shop.buy} onEquip={shop.equip} /></div>}
       {arcadeOpened && <div hidden={section !== "arcade"}>
         <Arcade demo={!clientId} visible={section === "arcade"} onBalance={updateBalance} />
       </div>}
       <div hidden={section !== "booking"}><Booking api={api} /></div>
       {section === "mural" && (
         <>
-          <Mural ranking={ranking} loading={rankingBusy && !ranking.length} error={rankingError}
+          <Mural ranking={clientId ? ranking : demoLeaderboard} loading={rankingBusy && !ranking.length} error={rankingError}
             loadingMore={rankingBusy && Boolean(ranking.length)} hasMore={hasMore}
             onLoadMore={() => { if (!rankingBusy) setRequest({ offset: rankingOffset }); }} />
           {rankingError && <button type="button" className="secondary mt-3"

@@ -170,7 +170,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                 return (
                   <li key={entry.position} className={styles.podiumEntry}>
                     <PixelGrid pixels={medal.pixels} colors={{ x: medal.color }} className={styles.medal} />
-                    <AvatarSprite id={entry.avatar_skin} />
+                    <AvatarSprite id={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />
                     <div className={styles.podiumLabel}>
                       <span className={styles.position} style={{ color: medal.color }}>{entry.position}º</span>
                       <strong>{entryName(entry)}</strong>
@@ -203,7 +203,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                   <tr key={entry.position}>
                     <th scope="row">{entry.position}º</th>
                     <td>
-                      <span className={styles.tableAvatar}><AvatarSprite id={entry.avatar_skin} />{entryName(entry)}</span>
+                      <span className={styles.tableAvatar}><AvatarSprite id={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />{entryName(entry)}</span>
                       <MasterBadges games={entry.mastered_games} />
                     </td>
                     <td>{formatPoints.format(entry.points_balance)}</td>

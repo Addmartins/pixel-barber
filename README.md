@@ -78,3 +78,28 @@ Selecione um cartucho e escolha **Iniciante (1,0×)**, **Experiente (1,5×)** ou
 A dificuldade fica vinculada à sessão e o servidor aplica o multiplicador ao placar reconstituído, com arredondamento ao inteiro mais próximo. Uma vitória em Mestre libera uma conquista para o jogo no ranking, inclusive se a cota diária de crédito já tiver sido atingida. Os recordes anteriores continuam válidos, com os registros antigos classificados como Iniciante e sem conquista retroativa.
 
 Aplique `20261121000004_arcade_difficulty.sql` antes de publicar o frontend atualizado. Partidas abertas no motor anterior precisam ser reiniciadas após a atualização.
+
+## Loja do Avatar
+
+A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. O catálogo inicial tem oito acessórios de 100 a 800 PTS. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
+
+Aplique `20261121000005_avatar_store.sql` depois das migrações anteriores. O endpoint `POST /api/store/avatar/buy` aceita apenas `product_id` e usa a sessão do cliente. O banco consulta preço e estoque do catálogo e registra o débito, a aquisição e o equipamento na mesma transação. A demonstração usa 1.000 PTS fictícios e guarda as compras até sair ou atualizar a página.
+
+Para validar as regras da loja em um banco descartável, execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/avatar_store.sql` após aplicar as migrações.
+
+## Instalação e empacotamento mobile
+
+### PWA
+
+Em produção, abra o site HTTPS. No Chrome para Android, use **Instalar aplicativo** no menu. No Safari para iPhone, use **Compartilhar → Adicionar à Tela de Início** e abra pelo novo ícone. O app inicia em modo standalone. O service worker oferece uma tela de reconexão ao abrir offline e não armazena respostas de autenticação, compras ou pontos.
+
+### Android e iOS
+
+1. Rode `npm ci`, configure as variáveis públicas do Supabase em `.env.local` e execute `npm run build:mobile`.
+2. No Android, abra `android/` no Android Studio com JDK 21 e Android SDK Platform 36. Para um APK de teste, rode `./gradlew assembleDebug` dentro de `android/`.
+3. No iOS, abra `ios/App/App.xcodeproj` no Xcode em um Mac, selecione a equipe de assinatura e execute em aparelho ou simulador. O projeto usa Swift Package Manager.
+4. Para apontar o pacote nativo a um ambiente HTTPS diferente da Vercel de produção, defina `NEXT_PUBLIC_BACKEND_ORIGIN` ao executar `npm run build:mobile`. Use a URL e a chave publicável do mesmo projeto Supabase configurado nesse backend.
+
+O build mobile exporta a interface para `out/` e sincroniza as plataformas pelo Capacitor. Os endpoints de pontuação e resgate continuam no servidor Next.js, e a chave secreta do Supabase continua no ambiente do servidor. Antes de distribuir o app, aponte para um backend publicado com as migrações necessárias.
+
+O feedback háptico usa os motores nativos no Android e iOS. No PWA, funciona quando o navegador oferece a API de vibração. No Safari para iOS, esse feedback depende do pacote nativo.

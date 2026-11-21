@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e88b2e">
+  <title>Sem conexão | Pixel Barber</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100dvh;
+      margin: 0;
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      background: #12141a;
+      color: #fbf1ff;
+      font: 1rem/1.5 system-ui, sans-serif;
+    }
+    main {
+      width: min(100%, 25rem);
+      padding: 1.5rem;
+      border: 2px solid #e88b2e;
+      background: #24192f;
+    }
+    h1 { margin: 0; font: bold 1.5rem/1.25 ui-monospace, monospace; }
+    a {
+      display: inline-block;
+      padding: .65rem 1rem;
+      background: #e88b2e;
+      color: #12141a;
+      font-weight: 750;
+    }
+    a:focus-visible { outline: 2px solid #fbf1ff; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pixel Barber sem conexão</h1>
+    <p>Conecte-se à internet para acessar sua conta, a agenda e o saldo de pontos.</p>
+    <a href="/">Tentar novamente</a>
+  </main>
+</body>
+</html>
