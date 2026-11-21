@@ -5,7 +5,6 @@
   min-height: 72px; padding: .5rem .25rem; border: 2px solid #6f487c;
   background: #321f3c; font: 700 .875rem ui-monospace, monospace; overflow-wrap: anywhere;
 }
-.arcade-cartridges button[aria-pressed=true] { border-color: #67eed7; background: #24343c; }
 .arcade-cartridges button[data-accent=mint] svg { color: #67eed7; }
 .arcade-cartridges button[data-accent=rose] svg { color: #ff8cb0; }
 .arcade-cartridges button[data-accent=gold] svg { color: #ffd77d; }
@@ -238,3 +237,28 @@
 .arcade-levels input:focus-visible + span { outline: 3px solid #ff8cb0; }
 .arcade-levels input:disabled + span { cursor: default; opacity: .75; }
 .arcade-lcd-level { font-size: clamp(.68rem, 2.5vw, 1rem); }
+
+.arcade-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: max(.6rem, env(safe-area-inset-top)) max(.6rem, env(safe-area-inset-right))
+    max(.8rem, env(safe-area-inset-bottom)) max(.6rem, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: #fbf1ff;
+  background: #171022;
+}
+body:has(.arcade-fullscreen[open]) { overflow: hidden; }
+.arcade-fullscreen-header, .arcade-fullscreen-layout { max-width: 66rem; margin-inline: auto; }
+.arcade-fullscreen-header { display: flex; align-items: center; gap: .75rem; margin-bottom: .7rem; }
+.arcade-fullscreen-header button { display: flex; align-items: center; gap: .35rem; }
+.arcade-fullscreen-layout, .arcade-game-details { display: grid; gap: .85rem; }
+.arcade-fullscreen-layout { align-items: start; }
+@media (min-width: 720px) {
+  .arcade-fullscreen-layout { grid-template-columns: minmax(0, 1fr) minmax(15rem, .75fr); }
+}

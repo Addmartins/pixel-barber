@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Gamepad2, Scissors, Timer, TrendingUp } from "lucide-react";
+import { ArrowLeft, Gamepad2, Scissors, Timer, TrendingUp } from "lucide-react";
 import { createGame } from "@/lib/games";
 import { finishRun, getArcadeStats, startRun } from "@/lib/games/client";
 import {
@@ -65,6 +65,7 @@ export function Arcade({ demo, visible, onBalance }: {
 }) {
   const [selected, setSelected] = useState<GameCode>("NAVALHA_RUSH");
   const [difficulty, setDifficulty] = useState<Difficulty>("EASY");
+  const [opened, setOpened] = useState(false);
   const [booting, setBooting] = useState(false);
   const [run, setRun] = useState<Run | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -76,6 +77,8 @@ export function Arcade({ demo, visible, onBalance }: {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [statsError, setStatsError] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const opener = useRef<HTMLButtonElement | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const held = useRef(new Map<number | string, number>());
   const justPressed = useRef(0);
@@ -112,7 +115,7 @@ export function Arcade({ demo, visible, onBalance }: {
   }, [demo, visible, phase]);
 
   useEffect(() => {
-    if (!playing || !visible) return;
+    if (!playing || !visible || !opened) return;
     function keydown(event: KeyboardEvent) {
       const bit = keyboard[event.code];
       if (!bit || event.defaultPrevented) return;
@@ -133,7 +136,7 @@ export function Arcade({ demo, visible, onBalance }: {
       window.removeEventListener("blur", reset);
       document.removeEventListener("visibilitychange", visibilityChange);
     };
-  }, [playing, visible, onInput]);
+  }, [playing, visible, opened, onInput]);
 
   const save = useCallback(async (finished: FinishedRun) => {
     setSending(true);
@@ -230,7 +233,10 @@ export function Arcade({ demo, visible, onBalance }: {
     }
   }, [controlsLocked, demo, selected, difficulty]);
 
-  function select(code: GameCode) {
+  function select(code: GameCode, button: HTMLButtonElement) {
+    opener.current = button;
+    dialog.current?.showModal();
+    setOpened(true);
     setSelected(code);
     setBooting(true);
     playBootChime();
@@ -239,6 +245,20 @@ export function Arcade({ demo, visible, onBalance }: {
     setResult(null);
     setError("");
     setPhase("idle");
+  }
+
+  function closeGame() {
+    if (phase === "starting" || sending) return;
+    if ((playing || pending) && !window.confirm("Voltar aos cartuchos e descartar esta partida?")) return;
+    dialog.current?.close();
+    setOpened(false);
+    setRun(null);
+    setPending(null);
+    setPhase("idle");
+    setBooting(false);
+    setSnapshot(null);
+    setResult(null);
+    setError("");
   }
 
   function selectDifficulty(level: Difficulty) {
@@ -256,84 +276,98 @@ export function Arcade({ demo, visible, onBalance }: {
   }, [controlsLocked, difficulty]);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !opened) return;
     function menuKeys(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat) return;
       if (event.key === "Shift" && !controlsLocked) {
         event.preventDefault();
         cycleDifficulty();
       }
-      if (event.key === "Enter" && !controlsLocked && (!(event.target instanceof HTMLButtonElement) || event.target.closest(".arcade-cartridges"))) {
+      if (event.key === "Enter" && !controlsLocked && !(event.target instanceof HTMLButtonElement)) {
         event.preventDefault();
         void start();
       }
     }
     window.addEventListener("keydown", menuKeys);
     return () => window.removeEventListener("keydown", menuKeys);
-  }, [visible, controlsLocked, cycleDifficulty, start]);
+  }, [visible, opened, controlsLocked, cycleDifficulty, start]);
   return (
     <section className="arcade-games" aria-labelledby="arcade-title">
       <h2 id="arcade-title">Fliperama</h2>
       <div className="arcade-cartridges" role="group" aria-label="Escolha um cartucho">
         {cartridges.map(({ code, title, icon: Icon, accent }) => (
-          <button key={code} type="button" data-accent={accent} aria-pressed={selected === code}
-            disabled={controlsLocked} onClick={() => select(code)}>
+          <button key={code} type="button" data-accent={accent} aria-haspopup="dialog"
+            disabled={controlsLocked} onClick={(event) => select(code, event.currentTarget)}>
             <Icon size={20} aria-hidden="true" /> {title}
           </button>
         ))}
       </div>
-      <p className="muted">{cartridge.instructions}</p>
       {demo ? <p className="muted">Demonstração com recordes nesta sessão.</p>
         : <p className="muted">{credited === null ? "Até três partidas com pontos por dia." : `${credited}/3 partidas creditadas hoje, no horário de Brasília.`}</p>}
       {statsError && <p className="error">Os recordes salvos estão indisponíveis no momento.</p>}
 
-      <GameBoyFrame playing={playing} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
-        startDisabled={controlsLocked} selectDisabled={controlsLocked}>
-        <div className="arcade-scoreboard">
-          <span>PLACAR <strong>{points}</strong></span>
-          <span>RECORDE <strong>{best[selected] ?? 0}</strong></span>
-          <span>TEMPO <strong>{remaining}s</strong></span>
+      <dialog ref={dialog} className="arcade-fullscreen" aria-labelledby="arcade-game-title"
+        onCancel={(event) => { event.preventDefault(); closeGame(); }}
+        onClose={() => opener.current?.focus()}>
+        <div className="arcade-fullscreen-header">
+          <button type="button" className="secondary" disabled={phase === "starting" || sending} onClick={closeGame}>
+            <ArrowLeft size={18} aria-hidden="true" /> Voltar
+          </button>
+          <h2 id="arcade-game-title">{cartridge.title}</h2>
         </div>
-        <div className="arcade-display">
-          <canvas ref={canvas} width={canvasWidth} height={canvasHeight} role="img"
-            aria-label={`Tela de ${cartridge.title}`} />
-          {booting ? <div className="arcade-boot" role="status"><strong>PIXEL BARBER</strong></div> :
-            !run && <div className="arcade-title-screen">
-              <Gamepad2 size={28} aria-hidden="true" />
-              <strong>{cartridge.title}</strong>
-              <span className="arcade-lcd-level">{levels[difficulty].subtitle} · {String(multipliers[difficulty]).replace(".", ",")}×</span>
-            </div>}
+        <div className="arcade-fullscreen-layout">
+          <GameBoyFrame playing={playing} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
+            startDisabled={controlsLocked} selectDisabled={controlsLocked}>
+            <div className="arcade-scoreboard">
+              <span>PLACAR <strong>{points}</strong></span>
+              <span>RECORDE <strong>{best[selected] ?? 0}</strong></span>
+              <span>TEMPO <strong>{remaining}s</strong></span>
+            </div>
+            <div className="arcade-display">
+              <canvas ref={canvas} width={canvasWidth} height={canvasHeight} role="img"
+                aria-label={`Tela de ${cartridge.title}`} />
+              {booting ? <div className="arcade-boot" role="status"><strong>PIXEL BARBER</strong></div> :
+                !run && <div className="arcade-title-screen">
+                  <Gamepad2 size={28} aria-hidden="true" />
+                  <strong>{cartridge.title}</strong>
+                  <span className="arcade-lcd-level">{levels[difficulty].subtitle} · {String(multipliers[difficulty]).replace(".", ",")}×</span>
+                </div>}
+            </div>
+          </GameBoyFrame>
+          <div className="arcade-game-details">
+            <fieldset className="arcade-difficulty" disabled={controlsLocked}>
+              <legend>Dificuldade</legend>
+              <div className="arcade-levels">
+                {difficulties.map((level) => (
+                  <label key={level}>
+                    <input type="radio" className="sr-only" name="arcade-difficulty" checked={difficulty === level}
+                      onChange={() => selectDifficulty(level)} />
+                    <span>{levels[level].title} <strong>{multipliers[level].toFixed(1).replace(".", ",")}×</strong></span>
+                  </label>
+                ))}
+              </div>
+              <p className="muted">{levels[difficulty].description}</p>
+            </fieldset>
+            <p className="muted">{cartridge.instructions}</p>
+            <p className="muted arcade-keys">Teclado: setas, Z = B, X ou Espaço = A, Enter = START, Shift = SELECT.</p>
+            {phase === "finished" && snapshot && <p role="status" className="arcade-result">
+              {snapshot.status === "won" ? "Você venceu!" : "Fim de jogo."} {points} pontos de placar.
+              {result && (result.points_awarded > 0 ? ` +${result.points_awarded} pontos no seu saldo.` :
+                result.score > 0 ? " Limite diário atingido. A partida contou para o recorde." : " Nenhum ponto creditado.")}
+            </p>}
+            {error && <p role="alert" className="error">{error}</p>}
+            {pending && !sending && (
+              <div className="arcade-retry">
+                <button type="button" className="primary" onClick={() => void save(pending)}>Reenviar resultado</button>
+                <button type="button" className="secondary" onClick={() => { setPending(null); setError(""); }}>Fechar resultado</button>
+              </div>
+            )}
+            {!playing && !pending && <button type="button" className="primary w-full" disabled={controlsLocked}
+              onClick={() => void start()}>{phase === "starting" ? "Carregando cartucho…" : phase === "finished" ? "Jogar novamente" : "Iniciar partida"}</button>}
+            {sending && <p role="status">Validando partida…</p>}
+          </div>
         </div>
-      </GameBoyFrame>
-      <fieldset className="arcade-difficulty" disabled={controlsLocked}>
-        <legend>Dificuldade</legend>
-        <div className="arcade-levels">
-          {difficulties.map((level) => (
-            <label key={level}>
-              <input type="radio" className="sr-only" name="arcade-difficulty" checked={difficulty === level}
-                onChange={() => selectDifficulty(level)} />
-              <span>{levels[level].title} <strong>{multipliers[level].toFixed(1).replace(".", ",")}×</strong></span>
-            </label>
-          ))}
-        </div>
-        <p className="muted">{levels[difficulty].description}</p>
-      </fieldset>
-      <p className="muted arcade-keys">Teclado: setas, Z = B, X ou Espaço = A, Enter = START, Shift = SELECT.</p>
-      {phase === "finished" && snapshot && <p role="status" className="arcade-result">
-        {snapshot.status === "won" ? "Você venceu!" : "Fim de jogo."} {points} pontos de placar.
-        {result && (result.points_awarded > 0 ? ` +${result.points_awarded} pontos no seu saldo.` :
-          result.score > 0 ? " Limite diário atingido. A partida contou para o recorde." : " Nenhum ponto creditado.")}
-      </p>}
-      {error && <p role="alert" className="error">{error}</p>}
-      {pending && !sending && (
-        <div className="arcade-retry">
-          <button type="button" className="primary" onClick={() => void save(pending)}>Reenviar resultado</button>
-          <button type="button" className="secondary" onClick={() => { setPending(null); setError(""); }}>Fechar resultado</button>
-        </div>
-      )}
-      {!playing && !pending && <button type="button" className="primary w-full" disabled={controlsLocked}
-        onClick={() => void start()}>{phase === "starting" ? "Carregando cartucho…" : phase === "finished" ? "Jogar novamente" : "Iniciar partida"}</button>}
-      {sending && <p role="status">Validando partida…</p>}
+      </dialog>
     </section>
   );
 }
