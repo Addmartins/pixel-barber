@@ -8,7 +8,7 @@ const palettes = {
   trancas: { light: "#b47659", base: "#8b513e", shade: "#623749", deep: "#462a38", hair: "#29233b", hairLight: "#5a4963", shirt: "#7858a8", shirtLight: "#b793db", shirtShade: "#4f3d7d" },
 };
 
-export function BodyArt({ skinId }: { skinId: AvatarId }) {
+export function BodyArt({ skinId, showShirt }: { skinId: AvatarId; showShirt: boolean }) {
   const p = palettes[skinId];
   return <>
     {/* Head, neck and hands. Horizontal steps form the turned cheek and ear. */}
@@ -19,12 +19,18 @@ export function BodyArt({ skinId }: { skinId: AvatarId }) {
     <path fill={p.deep} d="M17 19H21V20H17Z M23 18H25V19H23Z M9 16H10V17H9Z"/>
     <path fill={ink} d="M13 13H16V14H13Z M21 12H23V13H21Z M15 15H16V17H15Z M22 14H23V16H22Z"/>
     <path fill="#fff0cc" d="M14 15H15V16H14Z M21 14H22V15H21Z"/>
-    {/* Shirt and sleeves, with a left shoulder highlight and shaded far side. */}
+    {showShirt ? <>
     <path fill={ink} d="M9 24H13V25H19V24H22V25H24V27H26V30H28V35H27V37H24V36H23V42H9V40H8V36H4V34H3V31H5V27H7V26H9Z"/>
     <path fill={p.shirt} d="M9 25H13V27H18V26H20V25H22V26H24V28H25V31H27V35H24V33H22V41H10V39H9V34H8V35H5V33H4V32H6V28H8V27H9Z"/>
     <path fill={p.shirtLight} d="M9 26H12V28H9V30H7V32H5V30H6V28H8V27H9Z M12 29H13V36H12Z M10 37H12V39H10Z"/>
     <path fill={p.shirtShade} d="M18 27H20V26H22V27H23V31H25V35H24V33H22V40H19V41H13V39H19V37H20V30H18Z M6 34H9V36H5V35H6Z"/>
     <path fill="#e7cda0" d="M13 26H18V27H17V28H14V27H13Z M18 26H20V27H18Z"/>
+    </> : <>
+      <path fill={ink} d="M8 27H11V33H9V38H4V34H5V31H6V29H8Z M21 27H24V29H25V31H26V34H28V38H23V35H22V32H21Z" />
+      <path fill={p.base} d="M8 28H10V32H8V37H5V35H6V32H7V30H8Z M22 28H23V30H24V32H25V35H27V37H24V34H23V31H22Z" />
+      <path fill={p.light} d="M7 32H8V35H6V34H7Z" />
+      <path fill={p.shade} d="M24 33H25V35H26V37H24Z" />
+    </>}
   </>;
 }
 
@@ -46,11 +52,11 @@ export function BareLegs({ skinId, seated }: { skinId: AvatarId; seated: boolean
   const { base, shade } = palettes[skinId];
   return <>
     <path fill={ink} d={seated
-      ? "M8 49H24V53H22V59H17V55H15V59H9V54H8Z"
-      : "M8 47H24V52H23V58H18V52H15V58H8Z"} />
+      ? "M9 52H15V59H9Z M18 52H23V55H22V59H17V56H18Z"
+      : "M9 50H15V58H8V54H9Z M18 50H23V58H18Z"} />
     <path fill={base} d={seated
-      ? "M9 50H23V52H21V58H18V54H14V58H10V53H9Z"
-      : "M9 48H23V51H22V57H19V51H14V57H9Z"} />
+      ? "M10 53H14V58H10Z M19 53H22V55H21V58H18V56H19Z"
+      : "M10 51H14V57H9V54H10Z M19 51H22V57H19Z"} />
     <path fill={shade} d={seated ? "M12 55H14V58H12Z M19 55H21V58H19Z" : "M12 53H14V57H12Z M20 53H22V57H20Z"} />
   </>;
 }

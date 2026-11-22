@@ -102,8 +102,8 @@ export function FashionArt({ code, shirtNumber = defaultShirtNumber }: { code: k
   let outline: string;
   let fabric: string;
   if (slot === "legs") {
-    outline = "M9 41H23V44H24V51H17V49H16V51H8V44H9Z";
-    fabric = "M10 42H22V45H23V50H18V48H15V50H9V45H10Z";
+    outline = "M9 41H23V44H24V51H18V50H15V51H8V44H9Z";
+    fabric = "M10 42H22V45H23V50H19V49H14V50H9V45H10Z";
   } else if (slot === "feet") {
     const high = art === "highTop";
     outline = high

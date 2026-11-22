@@ -68,8 +68,9 @@ export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }:
   const launchAura = cosmetics.includes("aura_letreiro");
   const seated = launchChair || cosmetics.includes("cadeira_barbear");
   const aura = launchAura || cosmetics.includes("aura_laminas");
-  const dress = cosmetics.find(code => isFashionCode(code) && code.startsWith("vestido_"));
-  const shorts = outfit("legs");
+  const fashionTop = accessories.find(({ code }) => isFashionCode(code) && cosmeticSlot(code) === "body");
+  const dress = fashionTop?.code.startsWith("vestido_");
+  const shorts = dress ? [] : outfit("legs");
   const shoes = outfit("feet");
   const denim = seated ? <SeatedDenim /> : <DenimArt />;
   const lower = (
@@ -86,7 +87,7 @@ export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }:
   const beard = outfit("beard");
   const upper = (
     <g className="layer layer-avatar-upper" transform={seated ? "translate(0 7)" : undefined}>
-      <BodyArt skinId={skin.id} />
+      <BodyArt skinId={skin.id} showShirt={!fashionTop} />
       {outfit("body")}
       {hair.length ? hair : <HairArt skinId={skin.id} />}
       {beard.length ? beard : skin.id === "bigode" && <BaseMoustache />}
