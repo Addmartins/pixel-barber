@@ -198,34 +198,36 @@ export function AuthScreen() {
     <main className={signedIn && currentProfile ? "device-shell has-bottom-nav" : "device-shell"}>
       <div className="shell-content">
         <header className="masthead">
-          <div className="brand-icon"><Scissors size={20} aria-hidden="true" /></div>
-          <div>
-            <h1>PIXEL<span> BARBER</span></h1>
-            <p>Clube de Fidelidade</p>
-          </div>
-          {signedIn && currentProfile && (
-            <div className="masthead-account">
-              <div className="profile-avatar"><AvatarRenderer skinId={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
+          <div className="masthead-brand">
+            <div className="brand-icon"><Scissors size={20} aria-hidden="true" /></div>
+            <div>
+              <h1>PIXEL<span> BARBER</span></h1>
+              <p>Clube de Fidelidade</p>
+            </div>
+            {signedIn && currentProfile && (
               <div className="wallet-badge" aria-label={`${currentProfile.points_balance} pontos`}>
                 <Coins size={16} aria-hidden="true" />
                 <strong>{currentProfile.points_balance} pts</strong>
               </div>
+            )}
+          </div>
+          {signedIn && currentProfile && (
+            <div className="masthead-account">
+              <div className="profile-avatar"><AvatarRenderer skinId={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
+              <div className="masthead-profile">
+                <h2>Olá, {currentProfile.nome}!</h2>
+                <p>Nível {currentProfile.level}</p>
+              </div>
+              <button type="button" className="masthead-signout" onClick={() => void leave()} disabled={busy}>Sair</button>
             </div>
           )}
         </header>
 
         <div className={signedIn ? "min-w-0" : "card-modern auth-card"}>
           {signedIn ? (
-            <section className="space-y-5" aria-label="Perfil">
+            <section className="space-y-4" aria-label="Painel do cliente">
               {currentProfile ? (
                 <>
-                  <div className="dashboard-profile card-modern">
-                    <div className="dashboard-profile-name">
-                      <h2>Olá, {currentProfile.nome}!</h2>
-                      <p className="muted">Nível {currentProfile.level}</p>
-                    </div>
-                    <button type="button" className="secondary" onClick={() => void leave()} disabled={busy}>Sair</button>
-                  </div>
                   {demo && <p className="muted text-sm">Demonstração com dados de exemplo. As reservas duram até você sair ou atualizar a página.</p>}
                   <Dashboard key={demo ? "demo" : userId} clientId={demo ? undefined : userId} avatar={currentProfile.avatar_skin} balance={currentProfile.points_balance}
                     onPointsBalance={updatePointsBalance} onCosmetics={updateCosmetics} />
