@@ -1,4 +1,5 @@
 import { avatarCollection, type CollectionCode } from "@/lib/avatar-collection";
+import type { avatarFashion } from "@/lib/avatar-fashion";
 import { ink } from "./AvatarBaseArt";
 
 const silhouettes = {
@@ -61,7 +62,7 @@ const details = {
   signAura: "M8 2H16V3H8Z M20 6H21V10H20Z M21 14H22V17H21Z M8 21H16V22H8Z M2 14H3V17H2Z M3 6H4V10H3Z",
 } as const;
 
-export function CollectionArt({ code, mounted }: { code: CollectionCode; mounted?: boolean }) {
+export function CollectionArt({ code, mounted }: { code: Exclude<CollectionCode, keyof typeof avatarFashion>; mounted?: boolean }) {
   const { art, rarity, base, light } = avatarCollection[code];
   const legendary = rarity === "LENDARIO";
   const exclusive = rarity === "EXCLUSIVO";

@@ -1,19 +1,21 @@
 import type { CSSProperties } from "react";
 import { avatars, type AvatarId } from "@/lib/avatars";
 import { avatarCollection, isCollectionCode } from "@/lib/avatar-collection";
-import { cosmeticSlot, type CosmeticCode, type CosmeticSlot } from "@/lib/store";
+import { isFashionCode } from "@/lib/avatar-fashion";
+import { cosmeticSlot, splitCosmetic, type CosmeticCode, type CosmeticSlot, type EquippedCosmetic } from "@/lib/store";
 import { BarberChairArms, BarberChairBack, BladeAura, SeatedDenim } from "./AvatarEffects";
-import { BaseMoustache, BodyArt, DenimArt, HairArt } from "./AvatarBaseArt";
+import { BareLegs, BaseMoustache, BodyArt, DenimArt, HairArt } from "./AvatarBaseArt";
 import { CosmeticArt } from "./CosmeticArt";
 
 interface AvatarProps {
   skinId: AvatarId;
-  cosmetics?: readonly CosmeticCode[];
+  cosmetics?: readonly EquippedCosmetic[];
   size?: number;
   className?: string;
 }
 
 const placement: Record<CosmeticSlot, [number, number, number, number]> = {
+  legs: [0, 0, 32, 64], feet: [0, 0, 32, 64],
   scene: [0, 30, 32, 34], body: [6, 23, 20, 25], hair: [5, 0, 23, 19],
   beard: [8, 16, 17, 13], neck: [9, 24, 14, 13], face: [8, 8, 19, 16],
   head: [4, 0, 24, 17], tool: [19, 24, 13, 18], effect: [0, 11, 32, 32],
@@ -41,7 +43,8 @@ const beardAnchors: Partial<Record<CosmeticCode, {
   barba_viking: { frame: [8.75, 15.75, 18, 13], viewBox: "1 2 22 21" },
 };
 
-function Accessory({ code }: { code: CosmeticCode }) {
+function Accessory({ code, shirtNumber }: { code: CosmeticCode; shirtNumber?: number }) {
+  if (isFashionCode(code)) return <g data-cosmetic={code}><CosmeticArt code={code} shirtNumber={shirtNumber} mounted /></g>;
   if (!isCollectionCode(code)) return <CosmeticArt code={code} />;
   const item = avatarCollection[code];
   const beard = beardAnchors[code];
@@ -57,13 +60,28 @@ function Accessory({ code }: { code: CosmeticCode }) {
 export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }: AvatarProps) {
   const skin = avatars.find(({ id }) => id === skinId) ?? avatars[0];
   const style = { "--avatar-size": `${size}px`, "--avatar-backdrop": skin.backdrop } as CSSProperties;
-  const outfit = (slot: CosmeticSlot) => cosmetics.filter(code => cosmeticSlot(code) === slot)
-    .map(code => <Accessory key={code} code={code} />);
+  const accessories = cosmetics.map(splitCosmetic);
+  const outfit = (slot: CosmeticSlot) => accessories.filter(({ code }) => cosmeticSlot(code) === slot)
+    .map(item => <Accessory key={item.code} {...item} />);
 
   const launchChair = cosmetics.includes("trono_inauguracao");
   const launchAura = cosmetics.includes("aura_letreiro");
   const seated = launchChair || cosmetics.includes("cadeira_barbear");
   const aura = launchAura || cosmetics.includes("aura_laminas");
+  const dress = cosmetics.find(code => isFashionCode(code) && code.startsWith("vestido_"));
+  const shorts = outfit("legs");
+  const shoes = outfit("feet");
+  const denim = seated ? <SeatedDenim /> : <DenimArt />;
+  const lower = (
+    <>
+      {dress || shorts.length ? <>
+        <BareLegs skinId={skin.id} seated={seated} />
+        {!shoes.length && <svg y="58" width="32" height="6" viewBox="0 58 32 6" overflow="hidden">{denim}</svg>}
+        <g transform={seated ? "translate(0 17) scale(1 .72)" : undefined}>{shorts}</g>
+      </> : denim}
+      <g transform={seated ? "translate(0 -1)" : undefined}>{shoes}</g>
+    </>
+  );
   const hair = outfit("hair");
   const beard = outfit("beard");
   const upper = (
@@ -83,9 +101,10 @@ export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }:
       <svg className="pixel-avatar-art" viewBox="0 0 32 64" shapeRendering="crispEdges" focusable="false"
         data-pose={seated ? "seated" : "standing"}>
         {aura && <BladeAura launch={launchAura} />}
-        {seated ? <BarberChairBack launch={launchChair} /> : <DenimArt />}
-        {seated ? <svg width="32" height="49" viewBox="0 0 32 49" overflow="hidden">{upper}</svg> : upper}
-        {seated && <SeatedDenim />}
+        {seated && <BarberChairBack launch={launchChair} />}
+        {(!seated || dress) && lower}
+        {seated ? <svg width="32" height={dress ? 55 : 49} viewBox={dress ? "0 0 32 55" : "0 0 32 49"} overflow="hidden">{upper}</svg> : upper}
+        {seated && !dress && lower}
         {seated && <BarberChairArms launch={launchChair} />}
         <g transform={seated ? "translate(0 7)" : undefined}>{outfit("tool")}</g>
       </svg>

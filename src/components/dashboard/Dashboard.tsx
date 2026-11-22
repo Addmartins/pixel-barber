@@ -9,7 +9,7 @@ import { Arcade } from "@/components/games/Arcade";
 import { AvatarStore } from "@/components/store/AvatarStore";
 import { useAvatarShop } from "@/components/store/useAvatarShop";
 import type { AvatarId } from "@/lib/avatars";
-import type { CosmeticCode } from "@/lib/store";
+import { splitCosmetic, type EquippedCosmetic } from "@/lib/store";
 import { Booking } from "./Booking";
 import { Mural } from "./Mural";
 
@@ -20,7 +20,7 @@ export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmet
   avatar: AvatarId;
   balance: number;
   onPointsBalance: (balance: number) => void;
-  onCosmetics: (cosmetics: CosmeticCode[]) => void;
+  onCosmetics: (cosmetics: EquippedCosmetic[]) => void;
 }) {
   const [section, setSection] = useState<"booking" | "mural" | "arcade" | "store">("booking");
   const [arcadeOpened, setArcadeOpened] = useState(false);
@@ -41,8 +41,9 @@ export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmet
   const shop = useAvatarShop(clientId, balance, updateBalance);
   useEffect(() => { onCosmetics(shop.equipped); }, [shop.equipped, onCosmetics]);
 
+  const outfit = shop.equipped.map(splitCosmetic);
   const demoLeaderboard = [...demoRanking, {
-    position: 0, display_name: "Visitante", avatar_skin: avatar, points_balance: balance, equipped_cosmetics: shop.equipped,
+    position: 0, display_name: "Visitante", avatar_skin: avatar, points_balance: balance, equipped_cosmetics: outfit.map(item => item.code), shirt_number: outfit.find(item => item.shirtNumber !== undefined)?.shirtNumber,
   }].sort((a, b) => b.points_balance - a.points_balance).map((entry, index) => ({ ...entry, position: index + 1 }));
 
   useEffect(() => {
@@ -87,7 +88,7 @@ export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmet
       </nav>
       {storeOpened && <div hidden={section !== "store"}><AvatarStore avatar={avatar} balance={balance} products={shop.products}
         inventory={shop.inventory} loading={shop.loading} error={shop.error} demo={!clientId}
-        onReload={() => void shop.reload()} onBuy={shop.buy} onEquip={shop.equip} /></div>}
+        onReload={() => void shop.reload()} onBuy={shop.buy} onEquip={shop.equip} onSaveShirtNumber={shop.saveShirtNumber} /></div>}
       {arcadeOpened && <div hidden={section !== "arcade"}>
         <Arcade clientId={clientId} avatar={avatar} cosmetics={shop.equipped} demo={!clientId} visible={section === "arcade"} onBalance={updateBalance} />
       </div>}

@@ -7,7 +7,7 @@ import { avatars, consentVersion, type AvatarId } from "@/lib/avatars";
 import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
-import type { CosmeticCode } from "@/lib/store";
+import type { EquippedCosmetic } from "@/lib/store";
 import { WalletDialogs } from "./WalletDialogs";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
@@ -43,7 +43,7 @@ export function AuthScreen() {
   const [profile, setProfile] = useState<(Profile & { id: string }) | null>(null);
   const [demo, setDemo] = useState(false);
   const [demoBalance, setDemoBalance] = useState(demoProfile.points_balance);
-  const [equipped, setEquipped] = useState<{ owner: string; cosmetics: CosmeticCode[] } | null>(null);
+  const [equipped, setEquipped] = useState<{ owner: string; cosmetics: EquippedCosmetic[] } | null>(null);
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -51,7 +51,7 @@ export function AuthScreen() {
   const [profileError, setProfileError] = useState(false);
   const userId = session?.user.id;
   const cosmeticsOwner = demo ? "demo" : userId;
-  const updateCosmetics = useCallback((cosmetics: CosmeticCode[]) => {
+  const updateCosmetics = useCallback((cosmetics: EquippedCosmetic[]) => {
     if (cosmeticsOwner) setEquipped({ owner: cosmeticsOwner, cosmetics });
   }, [cosmeticsOwner]);
   const updatePointsBalance = useCallback((points_balance: number) => {

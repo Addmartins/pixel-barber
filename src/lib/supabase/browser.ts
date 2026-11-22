@@ -35,7 +35,7 @@ export type PointType = "LOGIN" | "JOGO" | "CORTE" | "COMPRA" | "FALTA_NO_SHOW" 
 export type PointEntry = {
   id: string; client_id: string; quantidade: number; tipo: PointType; descricao: string; event_key: string; created_at: string;
 };
-export type RankingEntry = { position: number; display_name: string; avatar_skin: AvatarId; points_balance: number; mastered_games?: GameCode[]; equipped_cosmetics?: CosmeticCode[] };
+export type RankingEntry = { position: number; display_name: string; avatar_skin: AvatarId; points_balance: number; mastered_games?: GameCode[]; equipped_cosmetics?: CosmeticCode[]; shirt_number?: number | null };
 
 export type Database = {
   public: {
@@ -77,6 +77,7 @@ export type Database = {
       get_arcade_stats: { Args: Record<PropertyKey, never>; Returns: (GameRecord & { credited_today: number })[] };
       buy_avatar_item: { Args: { p_product_id: string }; Returns: { points_balance: number }[] };
       equip_avatar_item: { Args: { p_product_id: string; p_equipped: boolean }; Returns: boolean };
+      set_avatar_shirt_number: { Args: { p_number: number }; Returns: number };
       get_leaderboard: { Args: { p_limit?: number; p_offset?: number }; Returns: RankingEntry[] };
     };
     Enums: { appointment_status: AppointmentStatus };

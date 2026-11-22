@@ -42,6 +42,19 @@ export function DenimArt() {
   </>;
 }
 
+export function BareLegs({ skinId, seated }: { skinId: AvatarId; seated: boolean }) {
+  const { base, shade } = palettes[skinId];
+  return <>
+    <path fill={ink} d={seated
+      ? "M8 49H24V53H22V59H17V55H15V59H9V54H8Z"
+      : "M8 47H24V52H23V58H18V52H15V58H8Z"} />
+    <path fill={base} d={seated
+      ? "M9 50H23V52H21V58H18V54H14V58H10V53H9Z"
+      : "M9 48H23V51H22V57H19V51H14V57H9Z"} />
+    <path fill={shade} d={seated ? "M12 55H14V58H12Z M19 55H21V58H19Z" : "M12 53H14V57H12Z M20 53H22V57H20Z"} />
+  </>;
+}
+
 export function BaseMoustache() {
   const p = palettes.bigode;
   return <>

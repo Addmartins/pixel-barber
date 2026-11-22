@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import { Check, Gamepad2, Rocket, Scissors, Timer, TrendingUp } from "lucide-react";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { AvatarId } from "@/lib/avatars";
-import type { CosmeticCode } from "@/lib/store";
+import type { EquippedCosmetic } from "@/lib/store";
 import { landscapeForArcade } from "@/lib/device/arcade-orientation";
 import { hapticImpact, hapticVictory } from "@/lib/device/haptics";
 import { playHitSound, playJumpSound, playScoreSound, playVictoryJingle, unlockGameAudio } from "@/lib/games/audio";
@@ -87,7 +87,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
   clientId?: string;
   visible: boolean;
   avatar: AvatarId;
-  cosmetics: CosmeticCode[];
+  cosmetics: EquippedCosmetic[];
   onBalance: (balance: number) => void;
 }) {
   const [completed, setCompleted] = useState<GameCode[]>([]);

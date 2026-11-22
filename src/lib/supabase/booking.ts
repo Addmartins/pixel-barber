@@ -1,3 +1,4 @@
+import { isCosmeticCode } from "../store";
 import { BookingConflict, type BookingApi } from "../booking";
 import { getSupabase } from "./browser";
 
@@ -56,5 +57,8 @@ export function createBookingApi(clientId: string): BookingApi {
 export async function getRankingPage(limit: number, offset: number) {
   const { data, error } = await requireSupabase().rpc("get_leaderboard", { p_limit: limit, p_offset: offset });
   if (error) throw error;
-  return data;
+  return data.map(entry => ({
+    ...entry,
+    equipped_cosmetics: entry.equipped_cosmetics?.filter(isCosmeticCode),
+  }));
 }

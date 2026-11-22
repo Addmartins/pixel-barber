@@ -1,4 +1,7 @@
+import { avatarFashion } from "./avatar-fashion";
+
 export const avatarCollection = {
+  ...avatarFashion,
   pente_preto: { name: "Pente preto clássico", slot: "tool", rarity: "COMUM", price: 80, art: "comb", base: "#383b44", light: "#787b86" },
   tesoura_simples: { name: "Tesoura simples", slot: "tool", rarity: "COMUM", price: 100, art: "scissors", base: "#a8abb0", light: "#e3e5e7" },
   navalha_tradicional: { name: "Navalha tradicional", slot: "tool", rarity: "COMUM", price: 120, art: "razor", base: "#63544f", light: "#bdc6d0" },

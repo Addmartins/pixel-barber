@@ -1,3 +1,5 @@
+import { isFashionCode } from "@/lib/avatar-fashion";
+import { FashionArt, fashionViewBox } from "./FashionArt";
 import { isCollectionCode } from "@/lib/avatar-collection";
 import { CollectionArt } from "./CollectionArt";
 import type { CosmeticCode } from "@/lib/store";
@@ -10,10 +12,11 @@ const legacyViewBoxes = {
 };
 
 export function cosmeticViewBox(code: CosmeticCode) {
-  return isCollectionCode(code) ? "0 0 24 24" : legacyViewBoxes[code];
+  return fashionViewBox(code) ?? (isCollectionCode(code) ? "0 0 24 24" : legacyViewBoxes[code]);
 }
 
-export function CosmeticArt({ code, mounted }: { code: CosmeticCode; mounted?: boolean }) {
+export function CosmeticArt({ code, mounted, shirtNumber }: { code: CosmeticCode; mounted?: boolean; shirtNumber?: number }) {
+  if (isFashionCode(code)) return <FashionArt code={code} shirtNumber={shirtNumber} />;
   if (isCollectionCode(code)) return <CollectionArt code={code} mounted={mounted} />;
   switch (code) {
     case "snapback": return <>

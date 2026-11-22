@@ -14,12 +14,12 @@ export async function loadAvatarShop(clientId: string) {
     supabase.from("store_products")
       .select("id,nome,preco_pontos,estoque,cosmetic_code,cosmetic_slot,rarity")
       .eq("categoria", "ACESSORIO_AVATAR").order("preco_pontos"),
-    supabase.from("client_inventory").select("product_id,is_equipped").eq("client_id", clientId),
+    supabase.from("client_inventory").select("*").eq("client_id", clientId),
   ]);
   if (catalog.error || inventory.error) throw new Error("Não foi possível carregar a loja e o guarda-roupa.");
   const products = catalog.data.filter((row): row is CosmeticProduct =>
     isCosmeticCode(row.cosmetic_code) && row.preco_pontos !== null && row.cosmetic_slot !== null && row.rarity !== null);
-  return { products, inventory: inventory.data satisfies InventoryItem[] };
+  return { products, inventory: inventory.data.map(({ product_id, is_equipped, shirt_number }): InventoryItem => ({ product_id, is_equipped, shirt_number })) };
 }
 
 export async function buyAvatarItem(productId: string) {
@@ -40,4 +40,9 @@ export async function buyAvatarItem(productId: string) {
 export async function equipAvatarItem(productId: string, equipped: boolean) {
   const { data, error } = await database().rpc("equip_avatar_item", { p_product_id: productId, p_equipped: equipped });
   if (error || data !== equipped) throw new Error("Não foi possível atualizar o acessório equipado.");
+}
+
+export async function saveAvatarShirtNumber(number: number) {
+  const { data, error } = await database().rpc("set_avatar_shirt_number", { p_number: number });
+  if (error || data !== number) throw new Error("Não foi possível salvar o número da camisa.");
 }

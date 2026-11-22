@@ -3,6 +3,7 @@
 import { useId, useRef } from "react";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import { avatars } from "@/lib/avatars";
+import { withShirtNumber } from "@/lib/store";
 import type { GameCode } from "@/lib/games/types";
 import type { RankingEntry } from "@/lib/supabase/browser";
 import styles from "./mural.module.css";
@@ -93,7 +94,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                 return (
                   <li key={entry.position} className={styles.podiumEntry}>
                     <PixelGrid pixels={medal.pixels} colors={{ x: medal.color }} className={styles.medal} />
-                    <AvatarRenderer skinId={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />
+                    <AvatarRenderer skinId={entry.avatar_skin} cosmetics={entry.equipped_cosmetics?.map(code => withShirtNumber(code, entry.shirt_number))} />
                     <div className={styles.podiumLabel}>
                       <span className={styles.position} style={{ color: medal.color }}>{entry.position}º</span>
                       <strong>{entryName(entry)}</strong>
@@ -126,7 +127,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                   <tr key={entry.position}>
                     <th scope="row">{entry.position}º</th>
                     <td>
-                      <span className={styles.tableAvatar}><AvatarRenderer size={32} skinId={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />{entryName(entry)}</span>
+                      <span className={styles.tableAvatar}><AvatarRenderer size={32} skinId={entry.avatar_skin} cosmetics={entry.equipped_cosmetics?.map(code => withShirtNumber(code, entry.shirt_number))} />{entryName(entry)}</span>
                       <MasterBadges games={entry.mastered_games} />
                     </td>
                     <td>{formatPoints.format(entry.points_balance)}</td>

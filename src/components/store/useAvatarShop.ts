@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { demoCatalog, type CosmeticProduct, type InventoryItem } from "@/lib/store";
-import { buyAvatarItem, equipAvatarItem, loadAvatarShop } from "@/lib/supabase/store";
+import { customizableShirt, demoCatalog, withShirtNumber, type CosmeticProduct, type InventoryItem } from "@/lib/store";
+import { buyAvatarItem, equipAvatarItem, loadAvatarShop, saveAvatarShirtNumber } from "@/lib/supabase/store";
 
 export function useAvatarShop(clientId: string | undefined, balance: number, onBalance: (balance: number) => void) {
   const [products, setProducts] = useState<CosmeticProduct[]>(clientId ? [] : demoCatalog);
@@ -67,9 +67,17 @@ export function useAvatarShop(clientId: string | undefined, balance: number, onB
     previewEquip(productId, equipped, false);
   }
 
-  const equipped = useMemo(() => products
-    .filter(({ id }) => inventory.some(({ product_id, is_equipped }) => product_id === id && is_equipped))
-    .map(({ cosmetic_code }) => cosmetic_code), [products, inventory]);
+  async function saveShirtNumber(number: number) {
+    if (clientId) await saveAvatarShirtNumber(number);
+    const shirt = products.find(({ cosmetic_code }) => cosmetic_code === customizableShirt);
+    setInventory(previous => previous.map(item => item.product_id === shirt?.id ? { ...item, shirt_number: number } : item));
+  }
 
-  return { products, inventory, equipped, loading, error, reload, buy, equip };
+  const equipped = useMemo(() => {
+    const byId = new Map(inventory.filter(item => item.is_equipped).map(item => [item.product_id, item]));
+    return products.filter(({ id }) => byId.has(id))
+      .map(({ id, cosmetic_code }) => withShirtNumber(cosmetic_code, byId.get(id)?.shirt_number));
+  }, [products, inventory]);
+
+  return { products, inventory, equipped, loading, error, reload, buy, equip, saveShirtNumber };
 }

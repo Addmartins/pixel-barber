@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { AvatarId } from "@/lib/avatars";
 import { isCollectionCode } from "@/lib/avatar-collection";
-import type { CosmeticProduct, CosmeticSlot, InventoryItem, Rarity } from "@/lib/store";
+import { customizableShirt, defaultShirtNumber, isShirtNumber, withShirtNumber, type CosmeticProduct, type CosmeticSlot, type InventoryItem, type Rarity } from "@/lib/store";
 import { CosmeticSprite } from "./CosmeticSprite";
 import styles from "./avatar-store.module.css";
 
@@ -12,8 +12,10 @@ const rarities = [
   ["COMUM", "Comuns"], ["RARO", "Raros"], ["LENDARIO", "Lendários"], ["EXCLUSIVO", "Exclusivos de lançamento"],
 ] as const;
 const filters = [["all", "Todos"], ...rarities, ["wardrobe", "Meu Guarda-Roupa"]] as const;
-const slots: [CosmeticSlot, string][] = [
-  ["head", "Cabeça"], ["body", "Roupas"], ["face", "Rosto"], ["tool", "Ferramentas"],
+type Category = CosmeticSlot | "football" | "tshirts" | "dresses";
+
+const slots: [Category, string][] = [
+  ["head", "Cabeça"], ["body", "Roupas de tronco"], ["football", "Camisas de futebol"], ["tshirts", "Camisetas"], ["dresses", "Vestidos"], ["legs", "Shorts e bermudas"], ["feet", "Tênis"], ["face", "Rosto"], ["tool", "Ferramentas"],
   ["hair", "Cabelo"], ["beard", "Barba e bigode"], ["neck", "Colares"], ["scene", "Cenário"], ["effect", "Efeitos"],
 ];
 const rarityLabels = { COMUM: "Comum", RARO: "Raro", LENDARIO: "Lendário", EXCLUSIVO: "Exclusivo de lançamento" };
@@ -31,8 +33,19 @@ type StoreProps = {
   demo: boolean;
   onReload: () => void;
   onBuy: (id: string) => Promise<void>;
+  onSaveShirtNumber: (number: number) => Promise<void>;
   onEquip: (id: string, equipped: boolean) => Promise<void>;
 };
+
+function matchesCategory(product: CosmeticProduct, category: Category | "all") {
+  switch (category) {
+    case "all": return true;
+    case "football": return product.cosmetic_code.startsWith("camisa_");
+    case "tshirts": return product.cosmetic_code.startsWith("camiseta_");
+    case "dresses": return product.cosmetic_code.startsWith("vestido_");
+    default: return product.cosmetic_slot === category;
+  }
+}
 
 function beginSound() {
   if (typeof AudioContext === "undefined") return;
@@ -70,21 +83,45 @@ function endSound(context: AudioContext | undefined, action?: Action) {
   }
 }
 
-export function AvatarStore({ avatar, balance, products, inventory, loading, error, demo, onReload, onBuy, onEquip }: StoreProps) {
+export function AvatarStore({ avatar, balance, products, inventory, loading, error, demo, onReload, onBuy, onEquip, onSaveShirtNumber }: StoreProps) {
   const [filter, setFilter] = useState<Filter>("all");
-  const [slot, setSlot] = useState<CosmeticSlot | "all">("all");
+  const [slot, setSlot] = useState<Category | "all">("all");
   const [previewId, setPreviewId] = useState<string>();
+  const [shirtNumberInput, setShirtNumberInput] = useState<string>();
   const [pendingId, setPendingId] = useState<string>();
   const [feedback, setFeedback] = useState<{ text: string; error?: boolean }>();
   const owned = new Map(inventory.map((item) => [item.product_id, item]));
   const preview = products.find((product) => product.id === previewId);
+  const previewIsShirt = preview?.cosmetic_code === customizableShirt;
+  const shirtOwned = Boolean(preview && owned.has(preview.id));
+  const savedNumber = (preview && owned.get(preview.id)?.shirt_number) ?? defaultShirtNumber;
+  const shirtNumber = shirtNumberInput === undefined ? savedNumber : shirtNumberInput === "" ? NaN : Number(shirtNumberInput);
   const equipped = products.filter((product) => owned.get(product.id)?.is_equipped);
   const fitting = equipped.filter((product) => product.cosmetic_slot !== preview?.cosmetic_slot)
-    .map((product) => product.cosmetic_code);
-  if (preview) fitting.push(preview.cosmetic_code);
+    .map(product => withShirtNumber(product.cosmetic_code, owned.get(product.id)?.shirt_number));
+  if (preview) fitting.push(withShirtNumber(preview.cosmetic_code, isShirtNumber(shirtNumber) ? shirtNumber : savedNumber));
+
+  function selectPreview(id?: string) {
+    setPreviewId(id);
+    setShirtNumberInput(undefined);
+  }
+
+  async function personalize(number: number) {
+    if (!preview || !shirtOwned || pendingId) return;
+    setPendingId(preview.id);
+    setFeedback(undefined);
+    try {
+      await onSaveShirtNumber(number);
+      setFeedback({ text: "Número da camisa salvo." });
+    } catch (failure) {
+      setFeedback({ text: failure instanceof Error ? failure.message : "Não foi possível salvar o número da camisa.", error: true });
+    } finally {
+      setPendingId(undefined);
+    }
+  }
   const collectionAvailable = products.some(product => product.cosmetic_code !== "tesoura" && isCollectionCode(product.cosmetic_code));
   const visibleProducts = products.filter(product => {
-    if (slot !== "all" && product.cosmetic_slot !== slot) return false;
+    if (!matchesCategory(product, slot)) return false;
     if (filter === "wardrobe") return owned.has(product.id);
     if (collectionAvailable && !isCollectionCode(product.cosmetic_code)) return false;
     return filter === "all" || product.rarity === filter;
@@ -98,7 +135,10 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
     try {
       if (action === "buy") await onBuy(product.id);
       else await onEquip(product.id, action === "equip");
-      setPreviewId(undefined);
+      if (product.cosmetic_code === customizableShirt && action === "buy") {
+        if (previewId !== product.id) selectPreview(product.id);
+      }
+      else selectPreview();
       const text = action === "buy" ? "Resgate concluído."
         : action === "equip" ? "Acessório equipado." : "Acessório removido do avatar.";
       setFeedback({ text });
@@ -128,7 +168,20 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
         <div className={styles.fittingDetails}>
           <h3 id="fitting-title">Provador</h3>
           <p aria-live="polite">{preview ? preview.nome : "Escolha um acessório para experimentar."}</p>
-          {preview && <button type="button" className={styles.clear} onClick={() => setPreviewId(undefined)}>Limpar prévia</button>}
+          {previewIsShirt && <form className={styles.shirtNumber} onSubmit={event => {
+            event.preventDefault();
+            if (isShirtNumber(shirtNumber)) void personalize(shirtNumber);
+          }}>
+            <label>Número da camisa
+              <input type="number" inputMode="numeric" min={0} max={99} step={1} required
+                value={shirtNumberInput ?? savedNumber} disabled={Boolean(pendingId)}
+                onChange={event => setShirtNumberInput(event.target.value)} />
+            </label>
+            {shirtOwned && <button type="submit" className={styles.clear}
+              disabled={Boolean(pendingId) || !isShirtNumber(shirtNumber) || shirtNumber === savedNumber}>Salvar número</button>}
+            {!shirtOwned && <p>Resgate a camisa para salvar o número.</p>}
+          </form>}
+          {preview && <button type="button" className={styles.clear} onClick={() => selectPreview()}>Limpar prévia</button>}
         </div>
       </section>
 
@@ -140,7 +193,7 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
 
       <label className={styles.slotFilter}>
         Categoria
-        <select value={slot} onChange={event => setSlot(event.target.value as CosmeticSlot | "all")}>
+        <select value={slot} onChange={event => setSlot(event.target.value as Category | "all")}>
           <option value="all">Todas</option>
           {slots.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
@@ -175,8 +228,8 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
               return (
                 <li key={product.id} className={styles.item} data-rarity={product.rarity}>
                   <button type="button" className={styles.preview} aria-pressed={previewId === product.id}
-                    aria-label={`Experimentar ${product.nome}`} onClick={() => setPreviewId(product.id)}>
-                    <span className={styles.art}><CosmeticSprite code={product.cosmetic_code} /></span>
+                    aria-label={`Experimentar ${product.nome}`} onClick={() => selectPreview(product.id)}>
+                    <span className={styles.art}><CosmeticSprite code={product.cosmetic_code} shirtNumber={status?.shirt_number ?? undefined} /></span>
                     <span className={styles.rarity}>{rarityLabels[product.rarity]}</span>
                     <span className={styles.itemName}>{product.nome}</span>
                   </button>

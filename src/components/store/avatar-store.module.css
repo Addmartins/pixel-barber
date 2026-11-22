@@ -71,12 +71,12 @@
 .fittingDetails { min-width: 0; }
 .fittingDetails h3 { font: 800 1rem ui-monospace, monospace; }
 .fittingDetails p { margin-block: .3rem; overflow-wrap: anywhere; }
-.clear { padding: .4rem .55rem; color: #96fae5; font-size: .875rem; text-decoration: underline; text-underline-offset: .2em; }
+.clear { min-height: 44px; min-width: 44px; padding: .4rem .55rem; color: #96fae5; font-size: .875rem; text-decoration: underline; text-underline-offset: .2em; }
 
 .filters { display: flex; flex-wrap: wrap; gap: .35rem; }
 .filters button {
   flex: 1 0 auto;
-  min-height: 40px;
+  min-height: 44px;
   padding: .35rem .65rem;
   border: 1px solid var(--border);
   border-radius: .75rem;
@@ -200,3 +200,15 @@
 .item[data-rarity=EXCLUSIVO] .art {
   background: radial-gradient(ellipse at 55% 40%, #4d463c, #19363d 48%, #1e2330);
 }
+
+.shirtNumber label { display: grid; gap: .25rem; font-size: .875rem; }
+.shirtNumber input {
+  width: 5rem;
+  min-height: 44px;
+  border: 1px solid var(--control-line);
+  border-radius: .5rem;
+  background: var(--surface-raised);
+  color: inherit;
+  padding: .3rem .5rem;
+}
+.shirtNumber button:disabled { opacity: .55; }

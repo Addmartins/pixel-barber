@@ -73,9 +73,9 @@ O servidor reconstitui a partida para validar o placar. Os registros antigos e a
 
 ## Loja do Avatar
 
-A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 35 acessórios, com dez comuns, dez raros, dez lendários e cinco exclusivos de lançamento. Os exclusivos custam de 1.100 a 1.850 PTS. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
+A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 65 itens, incluindo 30 peças de moda. Camisas e vestidos, shorts e bermudas, bonés e tênis podem ser combinados no provador. A camisa do River Plate permite escolher um número de 0 a 99 e salvá-lo após o resgate. Os exclusivos custam de 1.100 a 1.850 PTS. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
 
-Aplique `20261121000005_avatar_store.sql`, `20261122000007_avatar_collection.sql` e `20261122000008_launch_collection.sql` na ordem das migrações. O endpoint `POST /api/store/avatar/buy` aceita apenas `product_id` e usa a sessão do cliente. O banco consulta preço e estoque do catálogo e registra o débito, a aquisição e o equipamento na mesma transação. A demonstração usa 1.000 PTS fictícios e guarda as compras até sair ou atualizar a página.
+Aplique `20261121000005_avatar_store.sql`, `20261122000007_avatar_collection.sql`, `20261122000008_launch_collection.sql`, `20261122000009_avatar_fashion.sql` e `20261122000010_avatar_shirt_number.sql` na ordem das migrações. O endpoint `POST /api/store/avatar/buy` aceita apenas `product_id` e usa a sessão do cliente. O banco consulta preço e estoque do catálogo e registra o débito, a aquisição e o equipamento na mesma transação. A demonstração usa 1.000 PTS fictícios e guarda as compras até sair ou atualizar a página.
 
 Para validar as regras da loja em um banco descartável, execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/avatar_store.sql` após aplicar as migrações.
 
@@ -93,6 +93,14 @@ Em produção, abra o site HTTPS. No Chrome para Android, use **Instalar aplicat
 4. Para apontar o pacote nativo a um ambiente HTTPS diferente da Vercel de produção, defina `NEXT_PUBLIC_BACKEND_ORIGIN` ao executar `npm run build:mobile`. Use a URL e a chave publicável do mesmo projeto Supabase configurado nesse backend.
 
 O build mobile exporta a interface para `out/` e sincroniza as plataformas pelo Capacitor. Os endpoints de pontuação e resgate continuam no servidor Next.js, e a chave secreta do Supabase continua no ambiente do servidor. Antes de distribuir o app, aponte para um backend publicado com as migrações necessárias.
+
+### Builds automáticos para iOS
+
+A cada envio à branch `main`, o workflow **Build iOS** exporta a interface atual, sincroniza o Capacitor e compila o app para o simulador. A compilação também pode ser iniciada manualmente na aba **Actions**. Baixe o artefato `pixel-barber-ios-simulator` na execução correspondente. Para atualizar apenas o projeto iOS local, use `npm run build:ios`.
+
+Nas variáveis do repositório em **Settings → Secrets and variables → Actions → Variables**, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` para habilitar as contas reais no build. Sem essas variáveis, a demonstração continua disponível. `NEXT_PUBLIC_BACKEND_ORIGIN` é opcional e usa a origem de produção padrão quando omitida. O catálogo para contas reais depende das migrações aplicadas no Supabase.
+
+A distribuição para iPhones pelo TestFlight ou pela App Store exige um build assinado com uma equipe Apple e envio ao App Store Connect. O artefato automático é para o simulador.
 
 O feedback háptico usa os motores nativos no Android e iOS. No PWA, funciona quando o navegador oferece a API de vibração. No Safari para iOS, esse feedback depende do pacote nativo.
 

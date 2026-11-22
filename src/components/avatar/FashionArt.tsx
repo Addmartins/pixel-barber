@@ -1,0 +1,141 @@
+import { avatarFashion, type FashionItem, isFashionCode } from "@/lib/avatar-fashion";
+import { defaultShirtNumber, type CosmeticCode } from "@/lib/store";
+import { ink } from "./AvatarBaseArt";
+
+export function fashionViewBox(code: CosmeticCode) {
+  if (!isFashionCode(code)) return undefined;
+  switch (avatarFashion[code].slot) {
+    case "head": return "3 1 26 16";
+    case "legs": return "6 39 20 17";
+    case "feet": return "4 53 25 11";
+    case "body": return code.startsWith("vestido_") ? "2 23 27 32" : "2 23 27 22";
+  }
+}
+
+const shirtPrints = {
+  vasco: "M8 27H11V29H13V31H15V33H17V35H19V37H22V40H19V38H17V36H15V34H13V32H11V30H8Z",
+  flamengo: "M4 32H9V30H23V32H27V34H22V33H10V34H5V33H4Z M10 36H22V39H10Z",
+  boca: "M9 32H23V36H10V34H9Z",
+  gremio: "M10 26H12V41H10Z M15 28H17V41H15Z M20 26H22V41H20Z",
+  brasil: "M9 25H13V27H18V26H20V25H22V27H19V29H13V28H11V27H9Z M5 32H9V35H5Z M24 33H27V35H24Z M19 30H21V33H19Z",
+  river: "M21 26H23V29H21V31H19V33H17V35H15V37H13V39H10V36H12V34H14V32H16V30H18V28H21Z",
+  basic: "M9 27H12V29H9V31H7V33H5V31H7V29H9Z M11 39H19V40H11Z",
+  oversized: "M6 32H10V34H6Z M23 33H26V35H23Z M11 40H21V42H11Z",
+  joker: "M12 31H14V30H20V32H21V34H19V33H13V35H11V32H12Z",
+  batman: "M11 32H14V31H19V32H22V36H19V37H14V36H11Z",
+  tropicalShirt: "M10 29H11V30H14V31H12V32H14V33H11V36H10V33H8V32H9V30H10Z M19 33H20V34H22V35H20V38H19V36H16V35H18V34H19Z",
+  graffiti: "M4 32H7V30H9V28H12V29H11V31H9V34H5V33H4Z M10 36H12V34H14V32H16V30H18V28H20V30H18V32H16V34H14V36H12V38H10Z M17 40H19V37H21V35H24V33H26V35H23V37H21V40Z",
+} as const;
+
+type Shirt = Extract<FashionItem, { art: keyof typeof shirtPrints }>;
+
+const numberGlyphs = [
+  "111101101101111", "010110010010111", "111001111100111", "111001111001111",
+  "101101111001001", "111100111001111", "111100111101111", "111001010010010",
+  "111101111101111", "111101111001111",
+];
+
+function ShirtNumber({ number }: { number: number }) {
+  const digits = String(number);
+  return <g fill={ink} data-shirt-number={number}>
+    {[...digits].map((digit, column) =>
+      [...numberGlyphs[Number(digit)]].map((pixel, index) => pixel === "1" &&
+        <rect key={column * 15 + index} x={16 - (digits.length === 2 ? 3 : 1) + 4 * column + index % 3}
+          y={35 + Math.floor(index / 3)} width="1" height="1" />))}
+  </g>;
+}
+
+function ShirtArt({ item, shirtNumber }: { item: Shirt; shirtNumber: number }) {
+  const { art, base, light } = item;
+  const oversized = art === "oversized" || art === "joker";
+  return <>
+    <path fill={ink} d={oversized
+      ? "M8 24H13V25H19V24H23V26H25V28H27V31H29V36H27V38H23V43H9V42H8V38H4V36H2V32H4V28H6V26H8Z"
+      : "M9 24H13V25H19V24H22V25H24V27H26V30H28V35H27V37H24V36H23V42H9V40H8V36H4V34H3V31H5V27H7V26H9Z"} />
+    <path fill={base} d={oversized
+      ? "M8 25H12V27H19V25H23V27H25V29H27V32H28V36H26V37H23V35H22V42H9V37H8V37H5V35H3V33H5V29H7V27H8Z"
+      : "M9 25H13V27H18V26H20V25H22V26H24V28H25V31H27V35H24V34H22V41H10V39H9V34H8V35H5V33H4V32H6V28H8V27H9Z"} />
+    <path fill="#000" fillOpacity=".16" d="M21 29H22V33H25V34H22V40H18V39H21Z M10 38H12V40H10Z" />
+    <path fill={light} d={shirtPrints[art]} />
+    {art === "vasco" && <path fill="#d74553" d="M20 28H21V29H22V30H21V31H20V30H19V29H20Z" />}
+    {art === "gremio" && <path fill={ink} d="M12 27H14V41H12Z M17 27H19V41H17Z" />}
+    {art === "brasil" && <path fill="#28529c" d="M19 30H21V32H19Z" />}
+    {art === "river" && <ShirtNumber number={shirtNumber} />}
+    {art === "batman" && <path fill={ink} d="M12 33H14V34H15V32H16V33H17V32H18V34H19V33H21V35H19V36H18V35H17V36H16V35H15V36H14V35H12Z" />}
+    {art === "joker" && <>
+      <path fill="#eee7d8" d="M13 33H20V37H19V39H15V38H13Z" />
+      <path fill={ink} d="M14 34H15V35H14Z M18 34H19V35H18Z" />
+      <path fill="#c83b64" d="M13 36H15V37H18V36H20V37H19V38H15V37H13Z" />
+    </>}
+    {art === "tropicalShirt" && <path fill="#ffb376" d="M12 37H14V39H12Z M18 29H20V31H18Z" />}
+    {art === "graffiti" && <path fill="#a3f9ed" d="M11 34H13V37H15V33H17V35H18V32H21V34H19V38H16V39H13V38H11Z" />}
+  </>;
+}
+
+type OtherArt = Exclude<FashionItem["art"], Shirt["art"]>;
+
+const details: Record<OtherArt, string> = {
+  sportShorts: "M9 43H11V49H9Z M21 43H23V49H21Z",
+  denim: "M10 43H14V44H12V46H10Z M19 43H22V45H20V44H19Z M9 49H15V50H9Z M18 49H23V50H18Z",
+  cargo: "M8 45H12V48H8Z M20 45H24V48H20Z M14 42H18V43H14Z",
+  tropicalShorts: "M10 44H12V46H14V47H12V49H10V47H9V46H10Z M19 43H21V45H23V46H21V48H19V46H18V45H19Z",
+  streetShorts: "M8 44H10V46H12V48H14V50H11V49H9V47H8Z M20 45H24V47H20Z",
+  casual: "M9 58H13V59H9Z M20 58H24V59H20Z M6 61H16V62H6Z M19 61H27V62H19Z",
+  streetShoe: "M8 59H12V60H8Z M20 58H23V60H20Z M6 61H16V62H6Z M19 61H27V62H19Z",
+  retroShoe: "M8 58H11V60H8Z M13 59H15V61H13Z M19 58H22V60H19Z M24 59H26V61H24Z",
+  runner: "M6 60H9V59H11V58H14V59H12V60H10V61H6Z M19 59H22V58H24V59H23V60H26V61H19Z",
+  highTop: "M9 55H13V56H9Z M9 57H13V58H9Z M19 55H22V56H19Z M19 57H23V58H19Z M6 61H16V62H6Z M18 61H27V62H18Z",
+  curved: "M10 6H14V5H19V6H14V7H11V9H9V8H10Z M21 10H26V11H21Z",
+  snap: "M12 6H15V8H12Z M17 6H19V8H17Z M21 10H28V11H21Z",
+  trucker: "M9 6H14V5H17V9H8V8H9Z M19 6H20V7H19Z M21 7H22V8H21Z",
+  bucket: "M10 6H12V8H10Z M16 7H18V9H16Z M20 10H22V12H20Z M6 12H8V13H6Z M11 11H13V13H11Z",
+  blackDress: "M10 28H12V33H11V35H10Z M11 41H12V47H11V51H9V47H10V43H11Z M10 51H22V52H10Z",
+  floral: "M12 31H14V33H16V35H14V37H12V35H10V33H12Z M19 39H21V41H23V43H21V45H19V43H17V41H19Z M12 44H14V46H16V48H14V50H12V48H10V46H12Z",
+  streetDress: "M4 32H8V34H4Z M24 32H28V34H24Z M11 34H15V32H20V34H17V36H14V38H11Z M9 47H23V49H9Z",
+  elegant: "M10 27H12V29H14V31H18V29H20V27H22V29H20V31H18V33H14V31H12V29H10Z M10 37H22V39H10Z M13 42H14V47H13V51H11V48H12V44H13Z",
+};
+
+export function FashionArt({ code, shirtNumber = defaultShirtNumber }: { code: keyof typeof avatarFashion; shirtNumber?: number }) {
+  const item = avatarFashion[code];
+  if (isShirt(item)) return <ShirtArt item={item} shirtNumber={shirtNumber} />;
+  const { art, slot, base, light } = item;
+  let outline: string;
+  let fabric: string;
+  if (slot === "legs") {
+    outline = "M9 41H23V44H24V51H17V49H16V51H8V44H9Z";
+    fabric = "M10 42H22V45H23V50H18V48H15V50H9V45H10Z";
+  } else if (slot === "feet") {
+    const high = art === "highTop";
+    outline = high
+      ? "M8 54H15V58H17V63H5V59H8Z M18 54H24V57H25V58H27V59H28V63H17V59H18Z"
+      : "M7 57H15V59H17V63H5V59H7Z M18 57H24V58H27V59H28V63H18Z";
+    fabric = high
+      ? "M9 55H14V59H16V62H6V60H9Z M19 55H23V58H24V59H26V60H27V62H18V60H19Z"
+      : "M8 58H14V60H16V62H6V60H8Z M19 58H23V59H26V60H27V62H19Z";
+  } else if (slot === "head") {
+    const hat = art === "bucket";
+    const flat = art === "snap";
+    outline = hat ? "M9 4H21V6H23V10H25V12H27V15H5V12H7V9H8V6H9Z"
+      : "M9 4H14V3H19V4H22V5H24V8H26V9H29V12H27V13H20V12H7V8H8V6H9Z";
+    fabric = hat ? "M10 5H20V7H22V10H24V12H26V14H6V12H8V10H9V7H10Z"
+      : flat ? "M10 5H14V4H19V5H22V6H23V9H28V11H20V10H8V8H9V6H10Z"
+      : "M10 5H14V4H19V5H22V6H23V8H25V10H28V11H26V12H21V11H8V8H9V6H10Z";
+  } else {
+    const street = art === "streetDress";
+    outline = street
+      ? "M8 24H13V25H19V24H23V26H25V28H27V31H29V36H26V37H23V50H24V53H7V48H8V37H4V36H2V32H4V28H6V26H8Z"
+      : "M9 24H13V25H19V24H22V25H24V29H23V36H22V41H23V45H24V49H25V53H7V49H8V45H9V40H10V35H9V32H7V28H8V26H9Z";
+    fabric = street
+      ? "M8 25H12V27H19V25H23V27H25V29H27V32H28V35H25V36H22V50H23V52H8V48H9V36H5V35H3V33H5V29H7V27H8Z"
+      : "M10 25H13V27H19V26H22V28H23V29H22V35H21V41H22V45H23V49H24V52H8V49H9V45H10V40H11V35H10V31H8V29H9V27H10Z";
+  }
+  return <>
+    <path fill={ink} d={outline} />
+    <path fill={base} d={fabric} />
+    <path fill={light} d={details[art]} />
+  </>;
+}
+
+function isShirt(item: FashionItem): item is Shirt {
+  return Object.hasOwn(shirtPrints, item.art);
+}
