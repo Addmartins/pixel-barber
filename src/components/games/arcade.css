@@ -1,4 +1,5 @@
 .arcade-games { display: grid; gap: .85rem; }
+.arcade-sections button { min-width: 44px; min-height: 44px; }
 .arcade-cartridges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
 .arcade-cartridges button {
   display: grid; justify-items: center; align-content: center; gap: .45rem;

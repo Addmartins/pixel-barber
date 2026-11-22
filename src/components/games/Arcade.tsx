@@ -15,6 +15,7 @@ import {
   A, canvasHeight, canvasWidth, difficulties, DOWN, gameVersion, LEFT, multipliers, orbitVersion, RIGHT, roundSeconds, ticksPerSecond, UP,
   isGameCode, type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
 } from "@/lib/games/types";
+import { WaitingRoom } from "./WaitingRoom";
 import { GameBoyFrame } from "./GameBoyFrame";
 import { SummitArt, WhiskerArt, SproutArt } from "./RetroCartArt";
 import "./arcade.css";
@@ -90,6 +91,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
   cosmetics: EquippedCosmetic[];
   onBalance: (balance: number) => void;
 }) {
+  const [roomOpen, setRoomOpen] = useState(false);
   const [completed, setCompleted] = useState<GameCode[]>([]);
   const [selected, setSelected] = useState<GameCode>("NAVALHA_RUSH");
   const [difficulty, setDifficulty] = useState<Difficulty>("EASY");
@@ -438,6 +440,11 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
   }, [visible, opened, controlsLocked, cycleDifficulty, start]);
   return (
     <section className="arcade-games" aria-labelledby="arcade-title">
+      <div className="mode-switch arcade-sections" role="group" aria-label="Seções do Pixel Boy">
+        <button type="button" aria-pressed={!roomOpen} onClick={() => setRoomOpen(false)}>Cartuchos</button>
+        <button type="button" aria-pressed={roomOpen} onClick={() => setRoomOpen(true)}>Sala de Espera</button>
+      </div>
+      {roomOpen ? <WaitingRoom visible={visible} /> : <>
       <header className="arcade-adventure">
         <div className="arcade-adventure-avatar"><AvatarRenderer skinId={avatar} cosmetics={cosmetics} size={36} /></div>
         <div className="arcade-adventure-copy">
@@ -546,6 +553,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
           </section>
         )}
       </dialog>
+      </>}
     </section>
   );
 }
