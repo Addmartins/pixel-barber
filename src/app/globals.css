@@ -335,3 +335,27 @@ html, body {
   text-decoration: underline;
   min-height: 36px;
 }
+
+.wallet-dialog {
+  inset: max(.75rem, var(--safe-top)) max(.75rem, var(--safe-right))
+    max(.75rem, var(--safe-bottom)) max(.75rem, var(--safe-left));
+  width: min(28rem, calc(100% - max(.75rem, var(--safe-left)) - max(.75rem, var(--safe-right))));
+  max-height: calc(100dvh - max(.75rem, var(--safe-top)) - max(.75rem, var(--safe-bottom)));
+  margin: auto;
+  padding: 1rem;
+  border: 1px solid var(--control-line);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: #f1f5f9;
+}
+.wallet-dialog[open] { display: grid; gap: .85rem; }
+.wallet-dialog::backdrop { background: #080b14cc; }
+.wallet-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.wallet-entries { display: grid; }
+.wallet-entries li { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .65rem 0; border-top: 1px solid var(--line); }
+.wallet-entries li > strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+.wallet-entries li > strong[data-debit="true"] { color: #ffadc3; }
+.wallet-entries time { display: block; color: var(--muted); font-size: .8rem; }
+.daily-login-dialog { text-align: center; }
+.daily-login-dialog > svg { margin-inline: auto; color: #ffd587; }
+.daily-login-multiplier { color: #ffd587; font: 800 2.4rem ui-monospace, monospace; }

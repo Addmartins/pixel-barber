@@ -31,6 +31,10 @@ type AppointmentRow = {
   status: AppointmentStatus;
   cancelled_at: string | null;
 };
+export type PointType = "LOGIN" | "JOGO" | "CORTE" | "COMPRA" | "FALTA_NO_SHOW" | "RESGATE_AVATAR";
+export type PointEntry = {
+  id: string; client_id: string; quantidade: number; tipo: PointType; descricao: string; event_key: string; created_at: string;
+};
 export type RankingEntry = { position: number; display_name: string; avatar_skin: AvatarId; points_balance: number; mastered_games?: GameCode[]; equipped_cosmetics?: CosmeticCode[] };
 
 export type Database = {
@@ -42,6 +46,7 @@ export type Database = {
         Update: Partial<Pick<ClientRow, "nome" | "avatar_skin">>;
         Relationships: [];
       };
+      point_ledger: CatalogTable<PointEntry>;
       game_sessions: CatalogTable<{
         id: string; client_id: string; game_code: GameCode; difficulty: Difficulty; seed: number; engine_version: number; started_at: string;
       }>;

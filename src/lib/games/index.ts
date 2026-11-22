@@ -5,7 +5,7 @@ import { kong } from "./kong";
 import { snake } from "./snake";
 import { valley } from "./valley";
 import { tower } from "./tower";
-import { gameVersion, orbitVersion, maxTicks, type EngineVersion, type Difficulty, type Game, type GameCode, type GameState, type InputChange } from "./types";
+import { gameVersion, isOrbitVersion, maxTicks, type EngineVersion, type Difficulty, type Game, type GameCode, type GameState, type InputChange } from "./types";
 
 function instantiate<S extends GameState>(game: Game<S>, seed: number, difficulty: Difficulty, version: EngineVersion) {
   const state = game.create(seed, difficulty, version);
@@ -21,10 +21,10 @@ function instantiate<S extends GameState>(game: Game<S>, seed: number, difficult
 }
 
 export function createGame(code: GameCode, seed: number, difficulty: Difficulty = "EASY", version: EngineVersion = gameVersion) {
-  if (code === "ORBITA_PIXEL" || (code === "NAVALHA_RUSH" && version === orbitVersion)) {
-    return instantiate(pixel16.ORBITA_PIXEL, seed, difficulty, orbitVersion);
+  if (code === "ORBITA_PIXEL" || (code === "NAVALHA_RUSH" && isOrbitVersion(version))) {
+    return instantiate(pixel16.ORBITA_PIXEL, seed, difficulty, version);
   }
-  if (version === gameVersion && code !== "BIGODE_SNAKE") return instantiate(pixel16[code], seed, difficulty, version);
+  if ((version === 4 || version === gameVersion) && code !== "BIGODE_SNAKE") return instantiate(pixel16[code], seed, difficulty, version);
   switch (code) {
     case "NAVALHA_RUSH": return instantiate(maze, seed, difficulty, version);
     case "BARBA_FIGHTER": return instantiate(fighter, seed, difficulty, version);

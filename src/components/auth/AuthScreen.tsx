@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Coins, Gamepad2, Scissors } from "lucide-react";
+import { Gamepad2, Scissors } from "lucide-react";
 import { avatars, consentVersion, type AvatarId } from "@/lib/avatars";
 import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { CosmeticCode } from "@/lib/store";
+import { WalletDialogs } from "./WalletDialogs";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
 type Profile = { nome: string; avatar_skin: AvatarId; level: number; points_balance: number };
@@ -205,10 +206,7 @@ export function AuthScreen() {
               <p>Clube de Fidelidade</p>
             </div>
             {signedIn && currentProfile && (
-              <div className="wallet-badge" aria-label={`${currentProfile.points_balance} pontos`}>
-                <Coins size={16} aria-hidden="true" />
-                <strong>{currentProfile.points_balance} pts</strong>
-              </div>
+              <WalletDialogs key={demo ? "demo" : userId} userId={demo ? undefined : userId} balance={currentProfile.points_balance} />
             )}
           </div>
           {signedIn && currentProfile && (

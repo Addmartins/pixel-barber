@@ -1,37 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Gamepad2, Rocket, Scissors, Timer, TrendingUp } from "lucide-react";
+import { Check, Gamepad2, Rocket, Scissors, Timer, TrendingUp } from "lucide-react";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { AvatarId } from "@/lib/avatars";
 import type { CosmeticCode } from "@/lib/store";
 import { hapticImpact, hapticVictory } from "@/lib/device/haptics";
 import { playHitSound, playJumpSound, playScoreSound, playVictoryJingle, unlockGameAudio } from "@/lib/games/audio";
+import { boardWidth, boardHeight, cellInputShift } from "@/lib/games/salon-match";
 import { createGame } from "@/lib/games";
 import { finishRun, getArcadeStats, startRun } from "@/lib/games/client";
 import {
   A, canvasHeight, canvasWidth, difficulties, DOWN, gameVersion, LEFT, multipliers, orbitVersion, RIGHT, roundSeconds, ticksPerSecond, UP,
-  type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
+  isGameCode, type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
 } from "@/lib/games/types";
 import { GameBoyFrame } from "./GameBoyFrame";
 import { SummitArt, WhiskerArt, SproutArt } from "./RetroCartArt";
 import "./arcade.css";
 
 const cartridges = [
-  { code: "NAVALHA_RUSH", title: "Patrulha Neon", icon: Scissors, accent: "mint", action: "Rajada", directions: "all",
+  { code: "NAVALHA_RUSH", station: "Bancada de corte", goal: 30, mission: "Desative os drones da bancada.", title: "Patrulha Neon", icon: Scissors, accent: "mint", action: "Rajada", directions: "all",
     instructions: "Mova-se em quatro direções. Toque ou segure Rajada para disparar três feixes e desativar os drones." },
-  { code: "ESCALADA_KONG", title: "Salto de Pomada", icon: SummitArt, accent: "amber", action: "Impulso", directions: "horizontal",
-    instructions: "Guie o ricochete com esquerda e direita. Use Impulso durante a queda para alcançar cristais e evitar as placas de espinhos." },
-  { code: "ORBITA_PIXEL", title: "Órbita Pixel", icon: Rocket, accent: "sky", action: "Laser", directions: "all",
+  { code: "ESCALADA_KONG", station: "Estante de pomadas", goal: 30, mission: "Recolha dois cristais.", title: "Salto de Pomada", icon: SummitArt, accent: "amber", action: "Impulso", directions: "horizontal",
+    instructions: "Guie o ricochete com esquerda e direita. Segure Impulso para saltar mais alto ao chegar perto do chão. Recolha os cristais e evite os espinhos." },
+  { code: "ORBITA_PIXEL", station: "Estação de limpeza", goal: 30, mission: "Pilote a cápsula e limpe o corredor.", title: "Órbita Pixel", icon: Rocket, accent: "sky", action: "Laser", directions: "all",
     instructions: "Pilote entre os invasores. Segure Laser para disparar continuamente. O recorde é compartilhado com Patrulha Neon." },
-  { code: "BARBA_FIGHTER", title: "Ruínas da Navalha", icon: TrendingUp, accent: "rose", action: "Abrir", directions: "all",
-    instructions: "Explore as passagens e colete as pedras preciosas. Use Abrir perto de uma parede para abrir um atalho." },
-  { code: "BARBER_VALLEY", title: "Joias do Salão", icon: SproutArt, accent: "lime", action: "Lapidar", directions: "all",
-    instructions: "Selecione uma joia com o direcional. Lapidar muda a cor ou coleta grupos de três ou mais joias iguais ligadas pelos lados." },
-  { code: "TORRE_FADE", title: "Torre de Neon", icon: Timer, accent: "gold", action: "Soltar", directions: "none",
+  { code: "BARBA_FIGHTER", station: "Depósito", goal: 250, mission: "Recupere as quatro chaves e abra o portão.", title: "Ruínas da Navalha", icon: TrendingUp, accent: "rose", action: undefined, directions: "all",
+    instructions: "Pegue as quatro chaves e atravesse o portão. Use o direcional e contorne o sentinela vermelho." },
+  { code: "BARBER_VALLEY", station: "Organização do balcão", goal: 24, mission: "Reúna pelo menos três itens em uma troca.", title: "Itens do Salão", icon: SproutArt, accent: "lime", action: "Selecionar", directions: "all",
+    instructions: "Toque em um item e depois em um vizinho. A troca só acontece se formar três ou mais itens iguais em linha. No teclado, use as setas e Selecionar." },
+  { code: "TORRE_FADE", station: "Vitrine", goal: 45, mission: "Empilhe os expositores sem perder a base.", title: "Torre de Neon", icon: Timer, accent: "gold", action: "Soltar", directions: "none",
     instructions: "Solte o bloco quando ele se alinhar à torre. Encaixes precisos rendem mais pontos e preservam a largura." },
-  { code: "BIGODE_SNAKE", title: "Bigode Snake", icon: WhiskerArt, accent: "lime", action: undefined, directions: "all",
-    instructions: "Guie o avatar com o direcional. Pegue óleos e loções douradas sem tocar na cauda, nas bordas ou nas navalhas." },
+  { code: "BIGODE_SNAKE", station: "Prateleira de óleos", goal: 30, mission: "Alimente a cobrinha com três óleos.", title: "Bigode Snake", icon: WhiskerArt, accent: "lime", action: undefined, directions: "all",
+    instructions: "Guie a cobrinha com o direcional. Pegue óleos e loções douradas sem tocar na cauda, nas bordas ou nas navalhas." },
 ] as const;
 
 const keyboard: Partial<Record<string, number>> = {
@@ -80,13 +81,15 @@ type FinishedRun = { run: Run; snapshot: GameState; changes: InputChange[] };
 type Phase = "idle" | "starting" | "playing" | "finished";
 const tickMs = 1000 / ticksPerSecond;
 
-export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
+export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }: {
   demo: boolean;
+  clientId?: string;
   visible: boolean;
   avatar: AvatarId;
   cosmetics: CosmeticCode[];
   onBalance: (balance: number) => void;
 }) {
+  const [completed, setCompleted] = useState<GameCode[]>([]);
   const [selected, setSelected] = useState<GameCode>("NAVALHA_RUSH");
   const [difficulty, setDifficulty] = useState<Difficulty>("EASY");
   const [opened, setOpened] = useState(false);
@@ -105,16 +108,41 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const paused = useRef(false);
   const sprite = useRef<HTMLDivElement>(null);
+  const taps = useRef<number[]>([]);
   const held = useRef(new Map<number | string, number>());
   const justPressed = useRef(new Map<number | string, number>());
   const cartridge = cartridges.find(({ code }) => code === selected) ?? cartridges[0];
+  const nextStation = cartridges.find(({ code }) => !completed.includes(code));
+  const storageKey = clientId ? "pixel-barber:adventure:" + clientId : undefined;
   const playing = phase === "playing";
   const controlsLocked = playing || phase === "starting" || sending || Boolean(pending) || booting;
   const activeDifficulty = run?.difficulty ?? difficulty;
   const recordCode = !demo && selected === "ORBITA_PIXEL" ? "NAVALHA_RUSH" : selected;
   const points = result?.score ?? Math.round((snapshot?.score ?? 0) * multipliers[activeDifficulty]);
   const remaining = Math.max(0, roundSeconds(selected, activeDifficulty) - Math.floor((snapshot?.ticks ?? 0) / ticksPerSecond));
+
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "[]");
+      if (Array.isArray(saved)) setCompleted([...new Set(saved.filter(isGameCode))]);
+    } catch { /* The adventure still works within the current session. */ }
+  }, [storageKey]);
+
+  const completeMission = useCallback((game: GameCode, score: number) => {
+    const station = cartridges.find(({ code }) => code === game);
+    if (!station || score < station.goal) return;
+    setCompleted(previous => previous.includes(game) ? previous : [...previous, game]);
+  }, []);
+
+  useEffect(() => {
+    if (!storageKey || !completed.length) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(completed)); } catch { /* Optional device storage. */ }
+  }, [storageKey, completed]);
+
+  useEffect(() => { paused.current = menuOpen; }, [menuOpen]);
 
   useEffect(() => {
     if (!booting) return;
@@ -195,7 +223,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
     const engine = createGame(run.game, run.seed, run.difficulty, run.engineVersion ?? 2);
     const avatarArt = sprite.current?.querySelector("svg");
     const image = new Image();
-    if (avatarArt) {
+    if (avatarArt && (run.game === "NAVALHA_RUSH" || run.game === "BARBA_FIGHTER")) {
       const source = avatarArt.cloneNode(true) as SVGElement;
       source.setAttribute("width", "32");
       source.setAttribute("height", "64");
@@ -215,6 +243,12 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
     const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     function loop(time: number) {
+      if (paused.current) {
+        previousTime = time;
+        accumulator = 0;
+        frame = requestAnimationFrame(loop);
+        return;
+      }
       accumulator += Math.min(100, time - previousTime);
       previousTime = time;
       while (accumulator >= tickMs && engine.state.status === "playing") {
@@ -222,6 +256,8 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
         for (const bit of justPressed.current.values()) mask |= bit;
         justPressed.current.clear();
         for (const bit of held.current.values()) mask |= bit;
+        // A blank tick between touch selections keeps repeated cells distinct in replay.
+        if (!(previousMask >> cellInputShift) && taps.current.length) mask |= taps.current.shift()!;
         if (mask !== previousMask) {
           changes.push([engine.state.ticks, mask]);
           previousMask = mask;
@@ -273,6 +309,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
         hapticImpact();
         playHitSound();
       }
+      completeMission(run!.game, score);
       setMenuOpen(true);
       setPhase("finished");
       if (demo) setBest((previous) => ({ ...previous, [run!.game]: Math.max(previous[run!.game] ?? 0, Math.round(score * multipliers[run!.difficulty])) }));
@@ -284,7 +321,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
     }
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [run, demo, save]);
+  }, [run, demo, save, completeMission]);
 
   const start = useCallback(async () => {
     if (controlsLocked) return;
@@ -297,6 +334,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
     setRun(null);
     held.current.clear();
     justPressed.current.clear();
+    taps.current.length = 0;
     setPhase("starting");
     try {
       const next: Run = demo
@@ -373,17 +411,29 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
   }, [visible, opened, controlsLocked, cycleDifficulty, start]);
   return (
     <section className="arcade-games" aria-labelledby="arcade-title">
-      <h2 id="arcade-title">Fliperama</h2>
-      <div className="arcade-cartridges" role="group" aria-label="Escolha um cartucho">
-        {cartridges.map(({ code, title, icon: Icon, accent }) => (
-          <button key={code} type="button" data-accent={accent} aria-haspopup="dialog"
-            disabled={controlsLocked} onClick={(event) => select(code, event.currentTarget)}>
-            <Icon size={20} aria-hidden="true" /> {title}
+      <header className="arcade-adventure">
+        <div className="arcade-adventure-avatar"><AvatarRenderer skinId={avatar} cosmetics={cosmetics} size={36} /></div>
+        <div className="arcade-adventure-copy">
+          <h2 id="arcade-title">Aventura na barbearia</h2>
+          <p>{nextStation ? "Prepare o salão para a abertura. Escolha uma estação e cumpra a missão." : "Salão pronto para abrir. Volte às estações para melhorar seu placar."}</p>
+          <label className="arcade-progress">
+            <span>{completed.length} de {cartridges.length} estações prontas</span>
+            <progress value={completed.length} max={cartridges.length} />
+          </label>
+        </div>
+      </header>
+      <div className="arcade-cartridges" role="group" aria-label="Estações da barbearia">
+        {cartridges.map(({ code, title, station, icon: Icon, accent }) => (
+          <button key={code} type="button" data-accent={accent} data-next={nextStation?.code === code}
+            aria-haspopup="dialog" disabled={controlsLocked} onClick={(event) => select(code, event.currentTarget)}>
+            <span className="arcade-station-icon"><Icon size={21} aria-hidden="true" /></span>
+            <span className="arcade-station-copy"><span>{station}</span><strong>{title}</strong></span>
+            {completed.includes(code) && <span className="arcade-station-done" aria-label="Missão concluída"><Check size={19} aria-hidden="true" /></span>}
           </button>
         ))}
       </div>
       {demo ? <p className="muted">Demonstração com recordes nesta sessão.</p>
-        : <p className="muted">{credited === null ? "Até três partidas com pontos por dia." : `${credited}/3 partidas creditadas hoje, no horário de Brasília.`}</p>}
+        : <p className="muted">{credited === null ? "Até três partidas com crédito por dia, com teto de 20 pts por partida." : `${credited}/3 partidas creditadas hoje, no horário de Brasília.`}</p>}
       {statsError && <p className="error">Os recordes salvos estão indisponíveis no momento.</p>}
 
       <div ref={sprite} hidden><AvatarRenderer skinId={avatar} cosmetics={cosmetics} /></div>
@@ -391,28 +441,41 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
         onCancel={(event) => { event.preventDefault(); if (menuOpen) setMenuOpen(false); else closeGame(); }}
         onClose={() => opener.current?.focus()}>
         <h2 id="arcade-game-title" className="sr-only">{cartridge.title}</h2>
-        <GameBoyFrame playing={playing} action={cartridge.action} directionsMode={cartridge.directions} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
+        <GameBoyFrame playing={playing} directionPriority={selected === "ESCALADA_KONG"} action={cartridge.action} directionsMode={cartridge.directions} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
           startDisabled={controlsLocked} selectDisabled={controlsLocked} onExit={closeGame}
           exitDisabled={phase === "starting" || sending} onMenu={() => setMenuOpen((open) => !open)} menuOpen={menuOpen}>
             <div className="arcade-scoreboard">
               <span>PLACAR <strong>{points}</strong></span>
-              <span>RECORDE <strong>{best[recordCode] ?? 0}</strong></span>
+              <span>MISSÃO <strong>{Math.min(snapshot?.score ?? 0, cartridge.goal)}/{cartridge.goal}</strong></span>
               <span>TEMPO <strong>{remaining}s</strong></span>
             </div>
             <div className="arcade-lcd-viewport"><div className="arcade-display">
               <canvas ref={canvas} width={canvasWidth} height={canvasHeight} role="img"
-                aria-label={`Tela de ${cartridge.title}`} />
+                data-interactive={selected === "BARBER_VALLEY"}
+                aria-label={`Tela de ${cartridge.title}`}
+                onPointerDown={(event) => {
+                  if (!playing || selected !== "BARBER_VALLEY" || taps.current.length >= 4) return;
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  const x = (event.clientX - bounds.left) * canvasWidth / bounds.width - 13;
+                  const y = (event.clientY - bounds.top) * canvasHeight / bounds.height - 22;
+                  const column = Math.floor(x / 18);
+                  const row = Math.floor(y / 18);
+                  if (column >= 0 && column < boardWidth && row >= 0 && row < boardHeight) {
+                    taps.current.push((row * boardWidth + column + 1) << cellInputShift);
+                  }
+                }} />
               {booting ? <div className="arcade-boot" role="status"><strong>PIXEL BARBER</strong></div> :
                 !run && <div className="arcade-title-screen">
                   <Gamepad2 size={28} aria-hidden="true" />
                   <strong>{cartridge.title}</strong>
                   <span className="arcade-lcd-level">{levels[difficulty].subtitle} · {String(multipliers[difficulty]).replace(".", ",")}×</span>
+                  <p className="arcade-title-instructions">{cartridge.mission} {cartridge.instructions}</p>
                 </div>}
             </div></div>
         </GameBoyFrame>
         {menuOpen && (
           <section className="arcade-game-details" aria-label="Opções e resultado">
-            <button type="button" className="secondary arcade-close-options" onClick={() => setMenuOpen(false)}>Fechar opções</button>
+            <button type="button" className="secondary arcade-close-options" onClick={() => setMenuOpen(false)}>{playing ? "Continuar partida" : "Fechar opções"}</button>
             <fieldset className="arcade-difficulty" disabled={controlsLocked}>
               <legend>Dificuldade</legend>
               <div className="arcade-levels">
@@ -427,11 +490,15 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
               <p className="muted">{levels[difficulty].description}</p>
             </fieldset>
             <p className="muted">{cartridge.instructions}</p>
+            <p className="muted">{demo ? "Recorde" : "Recorde histórico"} {best[recordCode] ?? 0}</p>
             <p className="muted arcade-keys">Teclado: setas para dirigir, X ou Espaço para a ação, Enter para iniciar e Shift para mudar a dificuldade.</p>
             {phase === "finished" && snapshot && <p role="status" className="arcade-result">
               {snapshot.status === "won" ? "Você venceu!" : "Fim de jogo."} {points} pontos de placar.
               {result && (result.points_awarded > 0 ? ` +${result.points_awarded} pontos no seu saldo.` :
                 result.score > 0 ? " Limite diário atingido. A partida contou para o recorde." : " Nenhum ponto creditado.")}
+            </p>}
+            {phase === "finished" && snapshot && <p role="status" className="arcade-mission-result">
+              {snapshot.score >= cartridge.goal ? "Missão concluída · " + cartridge.station : "Meta da missão " + snapshot.score + "/" + cartridge.goal}
             </p>}
             {error && <p role="alert" className="error">{error}</p>}
             {pending && !sending && (

@@ -46,7 +46,7 @@ supabase/tests/
 - A consulta `get_available_slots` devolve horários de início em blocos de 30 minutos a partir das 09h, com fechamento às 19h no horário de Brasília. A RPC `create_appointment` valida o início e calcula o fim pela duração do serviço. O banco impede sobreposições tanto para o barbeiro quanto para o cliente. A RPC `cancel_appointment` exige titularidade e aceita cancelamentos com pelo menos 15 minutos de antecedência.
 - A RPC paginada `get_leaderboard` mostra posição, primeiro nome, avatar e pontos aos clientes autenticados. A agenda só mostra ao cliente os próprios agendamentos.
 - A RPC `post_points` é restrita ao backend. Ela serializa alterações por cliente e usa uma chave de evento para evitar créditos ou débitos duplicados. A penalidade de falta usa até o saldo disponível. As regras que autorizam cada ganho, perda ou resgate pertencem aos futuros fluxos de negócio.
-- Produtos físicos têm preço em reais e cosméticos têm preço em pontos. Os carrinhos, o checkout, a edição de perfil, as regras de streak, os minijogos, os avisos e o suporte ficam para as próximas entregas.
+- Produtos físicos têm preço em reais e cosméticos têm preço em pontos. Os carrinhos, o checkout, a edição de perfil, os avisos e o suporte ficam para as próximas entregas.
 - O texto de consentimento acompanha a versão de testes. Para disponibilizar a aplicação ao público, substitua-o pelos documentos da barbearia e atualize a versão no código e no gatilho.
 
 ## Validação da Sprint 2
@@ -57,7 +57,7 @@ Antes de publicar uma compilação da Sprint 2 na Vercel, aplique a migração d
 
 ## Sprint Arcade
 
-O painel **Pixel Boy** reúne sete cartuchos. A demonstração roda sem Supabase e mantém os recordes durante a sessão local.
+O painel **Pixel Boy** reúne sete estações de uma aventura na barbearia. Cada missão tem uma meta própria e a conclusão é salva no aparelho para contas cadastradas. As estações podem ser jogadas em qualquer ordem. A demonstração roda sem Supabase e mantém os recordes durante a sessão local.
 
 O servidor inicia cada partida com uma semente e associa a sessão à conta autenticada. Ao fim, a API recebe os comandos e reproduz a partida a 60 passos por segundo para calcular o placar. O PostgreSQL compara a duração simulada ao tempo decorrido, salva a melhor marca e credita até três partidas com placar positivo por dia no horário de Brasília. O crédito e o lançamento no ledger são atômicos e o reenvio da mesma partida não duplica pontos. A reprodução verifica a coerência dos comandos, mas um bot ainda pode jogar seguindo as regras.
 
@@ -69,7 +69,7 @@ Execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/arcade.sql` em um banco de te
 
 Selecione um cartucho e escolha **Iniciante (1,0×)**, **Experiente (1,5×)** ou **Mestre (2,5×)**. Use **SELECT** ou **Shift** para alternar e **START** ou **Enter** para começar. As setas movem o personagem nos cartuchos direcionais. **X** ou **Espaço** acionam o botão específico do cartucho.
 
-O servidor reconstitui a partida para validar o placar. Os registros antigos e as conquistas foram preservados. Patrulha Neon e Órbita Pixel compartilham o recorde online da categoria de ação. Todos os cartuchos compartilham o limite diário de três partidas creditadas.
+O servidor reconstitui a partida para validar o placar. Os registros antigos e as conquistas foram preservados. Patrulha Neon e Órbita Pixel compartilham o recorde online da categoria de ação. Todos os cartuchos compartilham o limite diário de três partidas creditadas. A base de crédito é um ponto a cada 50 no placar, arredondada para cima e limitada a 15. Com o bônus de login, o crédito final fica limitado a 20 pontos por partida. Os recordes históricos exibem os valores já registrados.
 
 ## Loja do Avatar
 
@@ -98,9 +98,13 @@ O feedback háptico usa os motores nativos no Android e iOS. No PWA, funciona qu
 
 ### Sete cartuchos em estilo 16-bit
 
-Patrulha Neon, Salto de Pomada, Órbita Pixel, Ruínas da Navalha, Joias do Salão e Torre de Neon têm mecânicas e controles próprios. Bigode Snake mantém o crescimento da cauda e as loções douradas, com nova arte e mais tempo para a primeira direção. Os jogos usam o avatar e os cosméticos equipados.
+Patrulha Neon, Salto de Pomada, Órbita Pixel, Ruínas da Navalha, Itens do Salão e Torre de Neon têm mecânicas e controles próprios. Bigode Snake mantém o crescimento da cauda e as loções douradas, com nova arte e mais tempo para a primeira direção. Patrulha Neon e Ruínas da Navalha usam o avatar e os cosméticos equipados. Em Itens do Salão, só são aceitas trocas entre vizinhos que formem uma linha de três ou mais itens iguais.
 
 A migração `20261121000006_new_retro_games.sql` deve estar aplicada. Os motores antigos continuam disponíveis para validar partidas iniciadas por versões anteriores do app.
+
+### Login diário e extrato
+
+A primeira abertura autenticada do dia conta para a sequência, pelo horário de Recife. O bônus começa em 1× e aumenta 0,1× a cada dia consecutivo até 1,5×. Um dia sem acesso reinicia a sequência. O servidor guarda o progresso no Supabase Auth e aplica o multiplicador somente ao crédito do Pixel Boy do dia. Toque no saldo do cabeçalho para consultar os créditos e débitos da conta.
 
 ### Atualizações do app
 

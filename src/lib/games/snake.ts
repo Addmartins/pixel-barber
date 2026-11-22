@@ -43,7 +43,7 @@ function pace(state: SnakeState) {
 export const snake: Game<SnakeState> = {
   create(seed, difficulty, version) {
     const state: SnakeState = {
-      score: 0, ticks: 0, status: "playing", seed, difficulty, modern: version === 4,
+      score: 0, ticks: 0, status: "playing", seed, difficulty, modern: version === 4 || version === 6,
       segments: [128, 127, 126], obstacles: difficulty === "HARD" ? [...obstacles] : [],
       direction: 1, wanted: 1, nextMove: 0, oils: 0, oil: -1, golden: -1, goldenUntil: 0,
     };
@@ -116,7 +116,15 @@ export const snake: Game<SnakeState> = {
       if (avatar) {
         const head = state.segments[0];
         ctx.drawImage(avatar, 20 + head % width * 10, 16 + Math.floor(head / width) * 10, 10, 18);
-      } else cell(state.segments[0], "#20384a", 3);
+      } else {
+        const head = state.segments[0];
+        const x = 20 + head % width * 10;
+        const y = 20 + Math.floor(head / width) * 10;
+        ctx.fillStyle = "#20384a";
+        const horizontal = state.direction % 2 === 1;
+        const front = state.direction === 1 || state.direction === 2 ? 7 : 1;
+        for (const side of [2, 6]) ctx.fillRect(x + (horizontal ? front : side), y + (horizontal ? side : front), 2, 2);
+      }
       ctx.fillStyle = "#9cf3d4"; ctx.font = "bold 8px monospace"; ctx.textAlign = "left";
       ctx.fillText(`ÓLEOS ${state.oils} / 15  ·  CAUDA ${state.segments.length}`, 20, 12);
       return;

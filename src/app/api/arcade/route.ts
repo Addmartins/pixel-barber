@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { replay } from "@/lib/games";
-import { isEngineVersion, orbitVersion, isDifficulty, isGameCode, maxTicks, multipliers, type InputChange } from "@/lib/games/types";
+import { isEngineVersion, isOrbitVersion, gameCredit, isDifficulty, isGameCode, maxTicks, multipliers, type InputChange } from "@/lib/games/types";
+import { boardSize, cellInputShift } from "@/lib/games/salon-match";
+import { dailyMultiplier, loginDay, parseDailyLogin } from "@/lib/daily-login";
 import type { Database } from "@/lib/supabase/browser";
 
 export const runtime = "nodejs";
@@ -48,7 +50,7 @@ function readReplay(ticks: unknown, changes: unknown): { ticks: number; changes:
     if (!Array.isArray(item) || item.length !== 2) return null;
     const [tick, mask] = item;
     if (!Number.isInteger(tick) || tick <= lastTick || tick >= ticks ||
-        !Number.isInteger(mask) || mask < 0 || mask > 63 || mask === lastMask) return null;
+        !Number.isInteger(mask) || mask < 0 || mask > (boardSize << cellInputShift) + 63 || mask === lastMask) return null;
     inputs.push([tick, mask]);
     lastTick = tick;
     lastMask = mask;
@@ -81,7 +83,7 @@ export async function POST(request: Request) {
     }
     // The two action cartridges share the same persisted score category.
     const orbit = body.game === "ORBITA_PIXEL";
-    if (orbit !== (version === orbitVersion)) return failure("Versão do cartucho inválida.", 400);
+    if (orbit !== (isOrbitVersion(version))) return failure("Versão do cartucho inválida.", 400);
     const { data, error } = await supabase.rpc("start_arcade_run", {
       p_client_id: client, p_game_code: orbit ? "NAVALHA_RUSH" : body.game, p_engine_version: version, p_difficulty: body.difficulty,
     }).single();
@@ -99,14 +101,19 @@ export async function POST(request: Request) {
   if (lookupError) return failure("Não foi possível consultar a partida.", 503);
   if (!run || !isEngineVersion(run.engine_version) || !isDifficulty(run.difficulty)) return failure("Partida indisponível. Abra um novo cartucho.", 404);
 
+  const cellInputs = run.game_code === "BARBER_VALLEY" && run.engine_version >= 6;
+  if (!cellInputs && input.changes.some(([, mask]) => mask > 63)) {
+    return failure("Comandos incompatíveis com o cartucho.", 400);
+  }
   const result = replay(run.game_code, run.seed, input.ticks, input.changes, run.difficulty, run.engine_version);
   if (!result) return failure("A partida enviada está incompleta ou inconsistente.", 422);
 
+  const bonus = dailyMultiplier(parseDailyLogin(auth.user.app_metadata.pixel_daily_login), loginDay());
   const { data, error } = await supabase.rpc("finish_arcade_run", {
-    p_client_id: client, p_session_id: sessionId, p_score: Math.round(result.score * multipliers[run.difficulty]),
+    p_client_id: client, p_session_id: sessionId, p_score: gameCredit(result.score, run.difficulty, bonus),
     p_ticks: input.ticks, p_engine_version: run.engine_version, p_won: result.status === "won",
   }).single();
   if (error?.code === "22023") return failure("A duração da partida não pôde ser validada ou a sessão expirou.", 422);
   if (error || !data) return failure("Não foi possível salvar. Tente enviar o resultado novamente.", 503);
-  return Response.json(data);
+  return Response.json({ ...data, score: Math.round(result.score * multipliers[run.difficulty]) });
 }

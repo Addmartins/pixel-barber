@@ -19,9 +19,10 @@ export function radialDirection(dx: number, dy: number) {
 }
 
 export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, startDisabled, selectDisabled,
-  onExit, exitDisabled, onMenu, menuOpen, action, directionsMode }: {
+  onExit, exitDisabled, onMenu, menuOpen, action, directionsMode, directionPriority }: {
   children: ReactNode;
   action?: string;
+  directionPriority?: boolean;
   directionsMode: "all" | "horizontal" | "none";
   playing: boolean;
   onInput: (pointer: number, bit: number, sweeping?: boolean) => void;
@@ -56,7 +57,7 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
   }
 
   return (
-    <div className="pixel-boy" data-playing={playing}>
+    <div className="pixel-boy" data-playing={playing} data-direction-priority={directionPriority}>
       <div className="pixel-boy-top">
         <button type="button" className="pixel-boy-power" onClick={onExit} disabled={exitDisabled} aria-label="Power: sair do jogo">POWER</button>
         <div className="pixel-boy-brand" aria-label="Pixel Boy">PIXEL<span>BOY</span></div>
@@ -68,7 +69,25 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
         <div className="pixel-boy-screen">{children}</div>
       </div>
       <div className="pixel-boy-controls" role="group" aria-label="Controles do Pixel Boy">
-        {directionsMode !== "none" && <div className="pixel-boy-dpad" data-layout={directionsMode} role="group" aria-label="Direcional"
+        {directionsMode === "horizontal" && directionPriority ? (
+          <div className="pixel-boy-steering" role="group" aria-label="Mover a pomada">
+            {directions.filter(({ bit }) => bit === LEFT || bit === RIGHT).map(({ bit, label, face }) => (
+              <button key={bit} type="button" aria-label={label} disabled={!playing}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.preventDefault();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  onInput(event.pointerId, bit);
+                }}
+                onPointerUp={(event) => onInput(event.pointerId, 0)}
+                onPointerCancel={(event) => onInput(event.pointerId, 0)}
+                onLostPointerCapture={(event) => onInput(event.pointerId, 0)}
+                onKeyDown={(event) => { if (event.key === " ") { event.preventDefault(); onInput(-bit, bit); } }}
+                onKeyUp={(event) => { if (event.key === " ") onInput(-bit, 0); }}
+                onBlur={() => onInput(-bit, 0)}>{face}</button>
+            ))}
+          </div>
+        ) : directionsMode !== "none" && <div className="pixel-boy-dpad" data-layout={directionsMode} role="group" aria-label="Direcional"
           onPointerDown={(event) => {
             if (!playing || event.button !== 0 || padPointer.current !== null) return;
             event.preventDefault();
