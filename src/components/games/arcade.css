@@ -214,7 +214,7 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
 .pixel-boy-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .pixel-boy-power, .pixel-boy-options {
   display: flex; align-items: center; justify-content: center;
-  min-width: 40px; min-height: 36px; padding: .3rem;
+  min-width: 46px; min-height: 42px; padding: .3rem;
   color: #202232; font: 800 .65rem ui-monospace, monospace;
 }
 .pixel-boy-power { gap: .2rem; }
@@ -293,8 +293,8 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
 .pixel-boy-actions { display: flex; align-items: center; justify-content: center; padding: 0; transform: none; background: transparent; }
 .pixel-boy-actions button {
   width: auto;
-  min-width: 5rem;
-  height: 3rem;
+  min-width: 5.75rem;
+  height: 3.45rem;
   padding-inline: .7rem;
   border: 1px solid #5ab8af;
   border-radius: .75rem;
@@ -335,7 +335,7 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
   padding-inline: .25rem;
 }
 .pixel-boy-steering button {
-  min-height: 3.65rem;
+  min-height: 4.2rem;
   border: 1px solid #53677f;
   border-radius: .7rem;
   background: #263951;
@@ -344,7 +344,7 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
 }
 .pixel-boy-steering button:active { background: #396889; }
 .pixel-boy[data-direction-priority=true] .pixel-boy-actions { justify-self: stretch; }
-.pixel-boy[data-direction-priority=true] .pixel-boy-actions button { width: 100%; height: 3.65rem; }
+.pixel-boy[data-direction-priority=true] .pixel-boy-actions button { width: 100%; height: 4.2rem; }
 @media (max-width: 520px) and (orientation: portrait) {
   .arcade-lcd-viewport { place-items: end center; padding-bottom: .25rem; }
   .pixel-boy-controls { margin-bottom: max(.25rem, min(2dvh, .75rem)); }
@@ -413,7 +413,7 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
 .pixel-boy {
   --game-width: min(100dvw, 34rem);
   width: min(100%, var(--game-width));
-  height: min(100%, calc(var(--game-width) * 2 / 3 + 15.75rem));
+  height: min(100%, calc(var(--game-width) * 2 / 3 + 17.75rem));
   padding: .375rem;
   background: #151e2b;
 }
@@ -425,12 +425,12 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
   padding-inline: .5rem;
   margin: .25rem 0 0;
 }
-.pixel-boy-dpad { --pad-key: clamp(40px, 11vw, 49px); }
+.pixel-boy-dpad { --pad-key: clamp(46px, 12.65vw, 56px); }
 .pixel-boy-top { min-height: 2.25rem; }
-.pixel-boy-footer .pixel-boy-menu button { min-height: 38px; }
+.pixel-boy-footer .pixel-boy-menu button { min-width: 51px; min-height: 44px; }
 @media (orientation: portrait) {
   .pixel-boy[data-direction-priority=true], .pixel-boy:has(.pixel-boy-controls > .pixel-boy-actions:only-child) {
-    height: min(100%, calc(var(--game-width) * 2 / 3 + 11rem));
+    height: min(100%, calc(var(--game-width) * 2 / 3 + 12.25rem));
   }
 }
 @media (orientation: landscape) {
@@ -447,12 +447,13 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
   .pixel-boy-controls > * { justify-self: center; }
   .pixel-boy-footer { grid-column: 2; }
   .pixel-boy-dpad { --pad-key: clamp(34px, 12dvh, 50px); }
-  .pixel-boy-actions button { height: 2.5rem; min-height: 40px; }
+  .pixel-boy-actions button { height: 2.875rem; min-height: 46px; }
 }
 
 @media (orientation: landscape) {
   .pixel-boy {
-    --side-controls: clamp(6.5rem, 18vw, 11rem);
+    --landscape-pad-key: clamp(36.8px, min(6.44vw, 12.65dvh), 55.2px);
+    --side-controls: max(7rem, calc(3 * var(--landscape-pad-key)));
     grid-template-columns: var(--side-controls) minmax(0, 1fr) var(--side-controls);
   }
   .pixel-boy-bezel { grid-column: 2; grid-row: 2 / 4; }
@@ -463,7 +464,7 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
     align-self: center;
     justify-self: center;
   }
-  .pixel-boy-dpad { --pad-key: clamp(32px, min(5.6vw, 11dvh), 48px); }
+  .pixel-boy-dpad { --pad-key: var(--landscape-pad-key); }
   .pixel-boy-steering { width: 100%; }
   .pixel-boy-controls > .pixel-boy-actions {
     grid-column: 3;

@@ -182,7 +182,12 @@ export function Booking({ api }: { api: BookingApi }) {
       <section className="dashboard-card" aria-labelledby="booking-title">
         <h2 id="booking-title" className="dashboard-title"><CalendarDays aria-hidden="true" /> Marcar horário</h2>
         <ol className="booking-steps" aria-label="Etapas do agendamento">
-          {steps.map((label, index) => <li key={label} aria-current={index === step ? "step" : undefined}>{index + 1}. {label}</li>)}
+          {steps.map((label, index) => (
+            <li key={label} aria-current={index === step ? "step" : undefined}>
+              <span className="booking-step-number" aria-hidden="true">{index + 1}</span>
+              <span>{label}</span>
+            </li>
+          ))}
         </ol>
 
         {catalogError && (
