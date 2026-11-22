@@ -22,22 +22,26 @@ export function roundSeconds(game: GameCode, difficulty: Difficulty) {
   return difficulty === "HARD" ? 30 : difficulty === "MEDIUM" ? 45 : 60;
 }
 
-export const gameVersion = 2;
+export const gameVersion = 3;
+export type EngineVersion = 2 | typeof gameVersion;
+export function isEngineVersion(value: unknown): value is EngineVersion {
+  return value === 2 || value === gameVersion;
+}
 export const ticksPerSecond = 60;
 export const maxTicks = 3600;
 export const canvasWidth = 240;
 export const canvasHeight = 160;
 
-export type GameState = { score: number; ticks: number; status: "playing" | "won" | "lost" };
+export type GameState = { score: number; ticks: number; status: "playing" | "won" | "lost"; jumps?: number };
 export type State = GameState;
 export type Game<S extends GameState = GameState> = {
-  create(seed: number, difficulty: Difficulty): S;
+  create(seed: number, difficulty: Difficulty, engineVersion?: EngineVersion): S;
   step(state: S, input: number): void;
   draw(ctx: CanvasRenderingContext2D, state: S): void;
 };
 
 export type InputChange = [tick: number, mask: number];
-export type Run = { id: string; seed: number; game: GameCode; difficulty: Difficulty };
+export type Run = { id: string; seed: number; game: GameCode; difficulty: Difficulty; engineVersion?: EngineVersion };
 export type GameRecord = { game_code: GameCode; high_score: number };
 export type ArcadeStats = { records: GameRecord[]; credited_today: number };
 export type GameResult = {

@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Gamepad2, Scissors, Timer, TrendingUp } from "lucide-react";
-import { hapticAction, hapticImpact, hapticTap, hapticVictory } from "@/lib/device/haptics";
+import { Gamepad2, Scissors, Timer, TrendingUp } from "lucide-react";
+import { hapticImpact, hapticVictory } from "@/lib/device/haptics";
+import { playHitSound, playJumpSound, playScoreSound, playVictoryJingle, unlockGameAudio } from "@/lib/games/audio";
 import { createGame } from "@/lib/games";
 import { finishRun, getArcadeStats, startRun } from "@/lib/games/client";
 import {
-  A, B, canvasHeight, canvasWidth, difficulties, DOWN, LEFT, multipliers, RIGHT, roundSeconds, ticksPerSecond, UP,
+  A, B, canvasHeight, canvasWidth, difficulties, DOWN, gameVersion, LEFT, multipliers, RIGHT, roundSeconds, ticksPerSecond, UP,
   type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
 } from "@/lib/games/types";
 import { GameBoyFrame } from "./GameBoyFrame";
@@ -62,6 +63,8 @@ function playBootChime() {
   }
 }
 
+function currentStatus(state: GameState) { return state.status; }
+
 function remainingHealth(state: ReturnType<typeof createGame>["state"]) {
   if ("lives" in state) return state.lives;
   if ("hearts" in state) return state.hearts;
@@ -80,6 +83,7 @@ export function Arcade({ demo, visible, onBalance }: {
   const [selected, setSelected] = useState<GameCode>("NAVALHA_RUSH");
   const [difficulty, setDifficulty] = useState<Difficulty>("EASY");
   const [opened, setOpened] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [booting, setBooting] = useState(false);
   const [run, setRun] = useState<Run | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -95,7 +99,7 @@ export function Arcade({ demo, visible, onBalance }: {
   const opener = useRef<HTMLButtonElement | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const held = useRef(new Map<number | string, number>());
-  const justPressed = useRef(0);
+  const justPressed = useRef(new Map<number | string, number>());
   const cartridge = cartridges.find(({ code }) => code === selected) ?? cartridges[0];
   const playing = phase === "playing";
   const controlsLocked = playing || phase === "starting" || sending || Boolean(pending) || booting;
@@ -109,9 +113,10 @@ export function Arcade({ demo, visible, onBalance }: {
     return () => window.clearTimeout(timer);
   }, [booting]);
 
-  const onInput = useCallback((key: number | string, bit: number) => {
+  const onInput = useCallback((key: number | string, bit: number, sweeping = false) => {
+    if (sweeping) justPressed.current.delete(key);
     if (bit) {
-      if (!held.current.has(key)) justPressed.current |= bit;
+      if (!held.current.has(key) && !sweeping) justPressed.current.set(key, bit);
       held.current.set(key, bit);
     } else held.current.delete(key);
   }, []);
@@ -135,13 +140,9 @@ export function Arcade({ demo, visible, onBalance }: {
       if (!bit || event.defaultPrevented) return;
       event.preventDefault();
       onInput(event.code, bit);
-      if (!event.repeat) {
-        if (bit === A || bit === B) hapticAction();
-        else hapticTap();
-      }
     }
     function keyup(event: KeyboardEvent) { onInput(event.code, 0); }
-    function reset() { held.current.clear(); justPressed.current = 0; }
+    function reset() { held.current.clear(); justPressed.current.clear(); }
     function visibilityChange() { if (document.hidden) reset(); }
     window.addEventListener("keydown", keydown);
     window.addEventListener("keyup", keyup);
@@ -182,7 +183,7 @@ export function Arcade({ demo, visible, onBalance }: {
       return;
     }
     context.imageSmoothingEnabled = false;
-    const engine = createGame(run.game, run.seed, run.difficulty);
+    const engine = createGame(run.game, run.seed, run.difficulty, run.engineVersion ?? 2);
     const changes: InputChange[] = [];
     let previousMask = 0;
     let previousTime = performance.now();
@@ -191,22 +192,51 @@ export function Arcade({ demo, visible, onBalance }: {
     let displayedScore = -1;
     let displayedSecond = -1;
     let health = remainingHealth(engine.state);
+    let shake = 0;
+    let terminalHit = false;
+    const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     function loop(time: number) {
       accumulator += Math.min(100, time - previousTime);
       previousTime = time;
       while (accumulator >= tickMs && engine.state.status === "playing") {
-        let mask = justPressed.current;
-        justPressed.current = 0;
+        let mask = 0;
+        for (const bit of justPressed.current.values()) mask |= bit;
+        justPressed.current.clear();
         for (const bit of held.current.values()) mask |= bit;
         if (mask !== previousMask) {
           changes.push([engine.state.ticks, mask]);
           previousMask = mask;
         }
+        const beforeScore = engine.state.score;
+        const beforeJumps = engine.state.jumps ?? 0;
         engine.step(mask);
+        const currentHealth = remainingHealth(engine.state);
+        const stepStatus = currentStatus(engine.state);
+        const damaged = health !== undefined && currentHealth !== undefined && currentHealth < health;
+        health = currentHealth;
+        if (damaged || (run?.game === "BARBA_FIGHTER" && stepStatus === "lost")) {
+          terminalHit = stepStatus === "lost";
+          if (motion) shake = 4;
+          hapticImpact();
+          playHitSound();
+        }
+        if ((engine.state.jumps ?? 0) > beforeJumps) playJumpSound();
+        if (engine.state.score > beforeScore && stepStatus === "playing") playScoreSound();
         accumulator -= tickMs;
       }
-      engine.draw(context!);
+      const shook = shake > 0;
+      if (shook) {
+        context!.fillStyle = "#12141a";
+        context!.fillRect(0, 0, canvasWidth, canvasHeight);
+        context!.save();
+        context!.translate(shake % 2 ? -2 : 3, shake % 2 ? 2 : -2);
+        engine.draw(context!);
+        context!.restore();
+        shake--;
+      } else {
+        engine.draw(context!);
+      }
       const { score, status, ticks } = engine.state;
       const second = Math.floor(ticks / ticksPerSecond);
       if (score !== displayedScore || second !== displayedSecond || status !== "playing") {
@@ -214,15 +244,18 @@ export function Arcade({ demo, visible, onBalance }: {
         displayedScore = score;
         displayedSecond = second;
       }
-      if (status === "playing") {
-        const currentHealth = remainingHealth(engine.state);
-        if (currentHealth !== undefined && health !== undefined && currentHealth < health) hapticImpact();
-        health = currentHealth;
+      if (status === "playing" || shook) {
         frame = requestAnimationFrame(loop);
         return;
       }
-      if (status === "won") hapticVictory();
-      else hapticImpact();
+      if (status === "won") {
+        hapticVictory();
+        playVictoryJingle();
+      } else if (!terminalHit) {
+        hapticImpact();
+        playHitSound();
+      }
+      setMenuOpen(true);
       setPhase("finished");
       if (demo) setBest((previous) => ({ ...previous, [run!.game]: Math.max(previous[run!.game] ?? 0, Math.round(score * multipliers[run!.difficulty])) }));
       else {
@@ -237,32 +270,34 @@ export function Arcade({ demo, visible, onBalance }: {
 
   const start = useCallback(async () => {
     if (controlsLocked) return;
-    hapticTap();
+    unlockGameAudio();
+    setMenuOpen(false);
     setError("");
     setResult(null);
     setPending(null);
     setSnapshot(null);
     setRun(null);
     held.current.clear();
-    justPressed.current = 0;
+    justPressed.current.clear();
     setPhase("starting");
     try {
-      const next = demo
-        ? { id: "demo", seed: 1 + Math.floor(Math.random() * 2147483646), game: selected, difficulty }
+      const next: Run = demo
+        ? { id: "demo", seed: 1 + Math.floor(Math.random() * 2147483646), game: selected, difficulty, engineVersion: gameVersion }
         : await startRun(selected, difficulty);
       setRun(next);
       setPhase("playing");
     } catch (failure) {
       setPhase("idle");
       setError(failure instanceof Error ? failure.message : "Não foi possível iniciar.");
+      setMenuOpen(true);
     }
   }, [controlsLocked, demo, selected, difficulty]);
 
   function select(code: GameCode, button: HTMLButtonElement) {
-    hapticTap();
     opener.current = button;
     dialog.current?.showModal();
     setOpened(true);
+    setMenuOpen(false);
     setSelected(code);
     setBooting(true);
     playBootChime();
@@ -276,9 +311,9 @@ export function Arcade({ demo, visible, onBalance }: {
   function closeGame() {
     if (phase === "starting" || sending) return;
     if ((playing || pending) && !window.confirm("Voltar aos cartuchos e descartar esta partida?")) return;
-    hapticTap();
     dialog.current?.close();
     setOpened(false);
+    setMenuOpen(false);
     setRun(null);
     setPending(null);
     setPhase("idle");
@@ -289,7 +324,6 @@ export function Arcade({ demo, visible, onBalance }: {
   }
 
   function selectDifficulty(level: Difficulty) {
-    hapticTap();
     setDifficulty(level);
     setRun(null);
     setSnapshot(null);
@@ -335,23 +369,18 @@ export function Arcade({ demo, visible, onBalance }: {
       {statsError && <p className="error">Os recordes salvos estão indisponíveis no momento.</p>}
 
       <dialog ref={dialog} className="arcade-fullscreen" aria-labelledby="arcade-game-title"
-        onCancel={(event) => { event.preventDefault(); closeGame(); }}
+        onCancel={(event) => { event.preventDefault(); if (menuOpen) setMenuOpen(false); else closeGame(); }}
         onClose={() => opener.current?.focus()}>
-        <div className="arcade-fullscreen-header">
-          <button type="button" className="secondary" disabled={phase === "starting" || sending} onClick={closeGame}>
-            <ArrowLeft size={18} aria-hidden="true" /> Voltar
-          </button>
-          <h2 id="arcade-game-title">{cartridge.title}</h2>
-        </div>
-        <div className="arcade-fullscreen-layout">
-          <GameBoyFrame playing={playing} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
-            startDisabled={controlsLocked} selectDisabled={controlsLocked}>
+        <h2 id="arcade-game-title" className="sr-only">{cartridge.title}</h2>
+        <GameBoyFrame playing={playing} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
+          startDisabled={controlsLocked} selectDisabled={controlsLocked} onExit={closeGame}
+          exitDisabled={phase === "starting" || sending} onMenu={() => setMenuOpen((open) => !open)} menuOpen={menuOpen}>
             <div className="arcade-scoreboard">
               <span>PLACAR <strong>{points}</strong></span>
               <span>RECORDE <strong>{best[selected] ?? 0}</strong></span>
               <span>TEMPO <strong>{remaining}s</strong></span>
             </div>
-            <div className="arcade-display">
+            <div className="arcade-lcd-viewport"><div className="arcade-display">
               <canvas ref={canvas} width={canvasWidth} height={canvasHeight} role="img"
                 aria-label={`Tela de ${cartridge.title}`} />
               {booting ? <div className="arcade-boot" role="status"><strong>PIXEL BARBER</strong></div> :
@@ -360,9 +389,11 @@ export function Arcade({ demo, visible, onBalance }: {
                   <strong>{cartridge.title}</strong>
                   <span className="arcade-lcd-level">{levels[difficulty].subtitle} · {String(multipliers[difficulty]).replace(".", ",")}×</span>
                 </div>}
-            </div>
-          </GameBoyFrame>
-          <div className="arcade-game-details">
+            </div></div>
+        </GameBoyFrame>
+        {menuOpen && (
+          <section className="arcade-game-details" aria-label="Opções e resultado">
+            <button type="button" className="secondary arcade-close-options" onClick={() => setMenuOpen(false)}>Fechar opções</button>
             <fieldset className="arcade-difficulty" disabled={controlsLocked}>
               <legend>Dificuldade</legend>
               <div className="arcade-levels">
@@ -393,8 +424,8 @@ export function Arcade({ demo, visible, onBalance }: {
             {!playing && !pending && <button type="button" className="primary w-full" disabled={controlsLocked}
               onClick={() => void start()}>{phase === "starting" ? "Carregando cartucho…" : phase === "finished" ? "Jogar novamente" : "Iniciar partida"}</button>}
             {sending && <p role="status">Validando partida…</p>}
-          </div>
-        </div>
+          </section>
+        )}
       </dialog>
     </section>
   );

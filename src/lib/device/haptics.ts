@@ -1,5 +1,5 @@
 import { Capacitor } from "@capacitor/core";
-import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
+import { Haptics, NotificationType } from "@capacitor/haptics";
 
 function vibrate(pattern: number | number[]) {
   if (typeof navigator === "undefined") return;
@@ -16,14 +16,6 @@ function feedback(pattern: number | number[], nativeFeedback: () => Promise<void
     return;
   }
   vibrate(pattern);
-}
-
-export function hapticTap() {
-  feedback(10, () => Haptics.impact({ style: ImpactStyle.Light }));
-}
-
-export function hapticAction() {
-  feedback(25, () => Haptics.impact({ style: ImpactStyle.Medium }));
 }
 
 export function hapticImpact() {

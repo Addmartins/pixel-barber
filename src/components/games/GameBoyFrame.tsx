@@ -1,7 +1,7 @@
 "use client";
 
-import { type PointerEvent, type ReactNode } from "react";
-import { hapticAction, hapticTap } from "@/lib/device/haptics";
+import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { Settings2 } from "lucide-react";
 import { A, B, DOWN, LEFT, RIGHT, UP } from "@/lib/games/types";
 
 const directions = [
@@ -10,80 +10,114 @@ const directions = [
   { bit: RIGHT, label: "Direita", face: "▶", area: "right" },
   { bit: DOWN, label: "Baixo", face: "▼", area: "down" },
 ];
+const actions = [{ bit: B, label: "Ação B", face: "B" }, { bit: A, label: "Ação A", face: "A" }];
 
-const actions = [
-  { bit: B, label: "Ação B", face: "B", area: "action-b" },
-  { bit: A, label: "Ação A", face: "A", area: "action-a" },
-];
+export function radialDirection(dx: number, dy: number) {
+  if (dx * dx + dy * dy <= 144) return 0;
+  const sector = Math.floor((Math.atan2(dy, dx) * 180 / Math.PI + 405) / 90) % 4;
+  return [RIGHT, DOWN, LEFT, UP][sector];
+}
 
-export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, startDisabled, selectDisabled }: {
+export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, startDisabled, selectDisabled,
+  onExit, exitDisabled, onMenu, menuOpen }: {
   children: ReactNode;
   playing: boolean;
-  onInput: (pointer: number, bit: number) => void;
+  onInput: (pointer: number, bit: number, sweeping?: boolean) => void;
   onStart: () => void;
   onSelect: () => void;
   startDisabled: boolean;
   selectDisabled: boolean;
+  onExit: () => void;
+  exitDisabled: boolean;
+  onMenu: () => void;
+  menuOpen: boolean;
 }) {
-  function feedback(bit: number) {
-    if (bit === A || bit === B) hapticAction();
-    else hapticTap();
+  const padPointer = useRef<number | null>(null);
+  const [active, setActive] = useState(0);
+
+  function sweep(event: PointerEvent<HTMLDivElement>) {
+    if (padPointer.current !== event.pointerId) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const direction = playing ? radialDirection(event.clientX - bounds.left - bounds.width / 2,
+      event.clientY - bounds.top - bounds.height / 2) : 0;
+    setActive(direction);
+    onInput(event.pointerId, direction, event.type === "pointermove");
   }
 
-  function press(event: PointerEvent<HTMLButtonElement>, bit: number) {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    onInput(event.pointerId, bit);
-    feedback(bit);
-  }
-
-  function release(event: PointerEvent<HTMLButtonElement>) {
+  function releasePad(event: PointerEvent<HTMLDivElement>) {
+    if (padPointer.current !== event.pointerId) return;
+    padPointer.current = null;
+    setActive(0);
     onInput(event.pointerId, 0);
   }
 
-  function renderButton({ bit, label, face, area }: (typeof directions)[number]) {
-    return (
-      <button key={bit} type="button" data-area={area} aria-label={label} disabled={!playing}
-        onPointerDown={(event) => press(event, bit)} onPointerUp={release}
-        onPointerCancel={release} onLostPointerCapture={release}
-        onKeyDown={(event) => {
-          if (event.key !== " ") return;
-          event.preventDefault();
-          onInput(-bit, bit);
-          if (!event.repeat) feedback(bit);
-        }}
-        onKeyUp={(event) => {
-          if (event.key === " ") onInput(-bit, 0);
-        }}
-        onBlur={() => onInput(-bit, 0)}>
-        {face}
-      </button>
-    );
-  }
-
   return (
-    <div className="pixel-boy">
-      <div className="pixel-boy-bezel">
-        <div className="pixel-boy-bezel-caption">DOT MATRIX WITH STEREO SOUND</div>
-        <div className="pixel-boy-screen">
-          <div className="pixel-boy-battery" aria-hidden="true"><span />BATTERY</div>
-          {children}
-        </div>
+    <div className="pixel-boy" data-playing={playing}>
+      <div className="pixel-boy-top">
+        <button type="button" className="pixel-boy-power" onClick={onExit} disabled={exitDisabled} aria-label="Power: sair do jogo">POWER</button>
+        <div className="pixel-boy-brand" aria-label="Pixel Boy">PIXEL<span>BOY</span></div>
+        <button type="button" className="pixel-boy-options" aria-label="Opções do jogo" aria-expanded={menuOpen} onClick={onMenu}>
+          <Settings2 size={20} aria-hidden="true" />
+        </button>
       </div>
-      <div className="pixel-boy-brand" aria-label="Pixel Boy">PIXEL<span>BOY</span></div>
+      <div className="pixel-boy-bezel">
+        <div className="pixel-boy-bezel-caption">
+          <span className="pixel-boy-battery" aria-hidden="true"><i />BATTERY</span>
+          <span>DOT MATRIX WITH STEREO SOUND</span>
+        </div>
+        <div className="pixel-boy-screen">{children}</div>
+      </div>
       <div className="pixel-boy-controls" role="group" aria-label="Controles do Pixel Boy">
-        <div className="pixel-boy-dpad">{directions.map(renderButton)}</div>
-        <div className="pixel-boy-actions">{actions.map(renderButton)}</div>
+        <div className="pixel-boy-dpad" role="group" aria-label="Direcional"
+          onPointerDown={(event) => {
+            if (!playing || event.button !== 0 || padPointer.current !== null) return;
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            padPointer.current = event.pointerId;
+            sweep(event);
+          }}
+          onPointerMove={sweep} onPointerUp={releasePad}
+          onPointerCancel={releasePad} onLostPointerCapture={releasePad}>
+          {directions.map(({ bit, label, face, area }) => (
+            <button key={bit} type="button" data-area={area} data-active={playing && active === bit}
+              aria-label={label} disabled={!playing}
+              onKeyDown={(event) => {
+                if (event.key !== " ") return;
+                event.preventDefault();
+                onInput(-bit, bit);
+              }}
+              onKeyUp={(event) => { if (event.key === " ") onInput(-bit, 0); }}
+              onBlur={() => onInput(-bit, 0)}>{face}</button>
+          ))}
+        </div>
+        <div className="pixel-boy-actions">
+          {actions.map(({ bit, label, face }) => (
+            <button key={bit} type="button" aria-label={label} disabled={!playing}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                onInput(event.pointerId, bit);
+              }}
+              onPointerUp={(event) => onInput(event.pointerId, 0)}
+              onPointerCancel={(event) => onInput(event.pointerId, 0)}
+              onLostPointerCapture={(event) => onInput(event.pointerId, 0)}
+              onKeyDown={(event) => {
+                if (event.key !== " ") return;
+                event.preventDefault();
+                onInput(-bit, bit);
+              }}
+              onKeyUp={(event) => { if (event.key === " ") onInput(-bit, 0); }}
+              onBlur={() => onInput(-bit, 0)}>{face}</button>
+          ))}
+        </div>
       </div>
       <div className="pixel-boy-footer">
         <div className="pixel-boy-menu">
           <button type="button" aria-keyshortcuts="Shift" onClick={onSelect} disabled={selectDisabled}>SELECT</button>
           <button type="button" aria-keyshortcuts="Enter" onClick={onStart} disabled={startDisabled}>START</button>
         </div>
-        <div className="pixel-boy-speaker" aria-hidden="true">
-          <span /><span /><span /><span /><span />
-        </div>
+        <div className="pixel-boy-speaker" aria-hidden="true"><span /><span /><span /><span /><span /></div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { replay } from "@/lib/games";
-import { gameVersion, isDifficulty, isGameCode, maxTicks, multipliers, type InputChange } from "@/lib/games/types";
+import { isEngineVersion, isDifficulty, isGameCode, maxTicks, multipliers, type InputChange } from "@/lib/games/types";
 import type { Database } from "@/lib/supabase/browser";
 
 export const runtime = "nodejs";
@@ -74,15 +74,17 @@ export async function POST(request: Request) {
   const client = auth.user.id;
 
   if (body.action === "start") {
+    const version = body.engineVersion ?? 2;
+    if (!isEngineVersion(version)) return failure("Atualize o aplicativo para iniciar o jogo.", 400);
     if (!isGameCode(body.game) || !isDifficulty(body.difficulty)) {
       return failure("Escolha um cartucho e uma dificuldade válidos. Se a opção não aparecer, atualize a página.", 400);
     }
     const { data, error } = await supabase.rpc("start_arcade_run", {
-      p_client_id: client, p_game_code: body.game, p_engine_version: gameVersion, p_difficulty: body.difficulty,
+      p_client_id: client, p_game_code: body.game, p_engine_version: version, p_difficulty: body.difficulty,
     }).single();
     if (error?.code === "P0001") return failure("Aguarde dois segundos antes de começar outra partida.", 429);
     if (error || !data) return failure("Não foi possível iniciar a partida.", 503);
-    return Response.json({ id: data.id, seed: data.seed, game: body.game, difficulty: body.difficulty });
+    return Response.json({ id: data.id, seed: data.seed, game: body.game, difficulty: body.difficulty, engineVersion: version });
   }
 
   const sessionId = body.id;
@@ -92,14 +94,14 @@ export async function POST(request: Request) {
   const { data: run, error: lookupError } = await supabase.from("game_sessions")
     .select("game_code,seed,engine_version,difficulty").eq("id", sessionId).eq("client_id", client).maybeSingle();
   if (lookupError) return failure("Não foi possível consultar a partida.", 503);
-  if (!run || run.engine_version !== gameVersion || !isDifficulty(run.difficulty)) return failure("Partida indisponível. Abra um novo cartucho.", 404);
+  if (!run || !isEngineVersion(run.engine_version) || !isDifficulty(run.difficulty)) return failure("Partida indisponível. Abra um novo cartucho.", 404);
 
-  const result = replay(run.game_code, run.seed, input.ticks, input.changes, run.difficulty);
+  const result = replay(run.game_code, run.seed, input.ticks, input.changes, run.difficulty, run.engine_version);
   if (!result) return failure("A partida enviada está incompleta ou inconsistente.", 422);
 
   const { data, error } = await supabase.rpc("finish_arcade_run", {
     p_client_id: client, p_session_id: sessionId, p_score: Math.round(result.score * multipliers[run.difficulty]),
-    p_ticks: input.ticks, p_engine_version: gameVersion, p_won: result.status === "won",
+    p_ticks: input.ticks, p_engine_version: run.engine_version, p_won: result.status === "won",
   }).single();
   if (error?.code === "22023") return failure("A duração da partida não pôde ser validada ou a sessão expirou.", 422);
   if (error || !data) return failure("Não foi possível salvar. Tente enviar o resultado novamente.", 503);

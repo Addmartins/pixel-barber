@@ -1,10 +1,10 @@
 import { deviceApi } from "../device/api";
 import { getSupabase } from "../supabase/browser";
-import type { ArcadeStats, Difficulty, GameCode, GameResult, InputChange, Run } from "./types";
+import { gameVersion, type ArcadeStats, type Difficulty, type GameCode, type GameResult, type InputChange, type Run } from "./types";
 
 type Finish = { action: "finish"; id: string; ticks: number; changes: InputChange[] };
 
-async function send<T>(body: { action: "start"; game: GameCode; difficulty: Difficulty } | Finish): Promise<T> {
+async function send<T>(body: { action: "start"; game: GameCode; difficulty: Difficulty; engineVersion: number } | Finish): Promise<T> {
   const session = await getSupabase()?.auth.getSession();
   const token = session?.data.session?.access_token;
   if (!token) throw new Error("Entre na sua conta para registrar a partida.");
@@ -19,7 +19,7 @@ async function send<T>(body: { action: "start"; game: GameCode; difficulty: Diff
 }
 
 export function startRun(game: GameCode, difficulty: Difficulty) {
-  return send<Run>({ action: "start", game, difficulty });
+  return send<Run>({ action: "start", game, difficulty, engineVersion: gameVersion });
 }
 
 export function finishRun(id: string, ticks: number, changes: InputChange[]) {

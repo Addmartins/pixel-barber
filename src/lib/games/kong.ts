@@ -1,5 +1,5 @@
 import { nextSeed } from "./random";
-import { A, B, DOWN, LEFT, RIGHT, UP, roundSeconds, type Difficulty, type Game, type GameState } from "./types";
+import { A, B, DOWN, LEFT, RIGHT, UP, gameVersion, roundSeconds, type EngineVersion, type Difficulty, type Game, type GameState } from "./types";
 
 const floors = [142, 114, 86, 58, 30];
 const ladders = [188, 60, 172, 82];
@@ -12,10 +12,12 @@ type Hazard = { x: number; row: number; direction: number; kind: "jar" | "lotion
 type KongState = GameState & {
   seed: number; difficulty: Difficulty; x: number; row: number;
   climb: number; climbTo: number; jump: number; previous: number; lives: number;
+  version: EngineVersion; airY: number | null; vy: number; coyoteUntil: number; bufferUntil: number;
   invincibleUntil: number; combUntil: number; combUsed: boolean; hazards: Hazard[];
 };
 
 function heightAt(state: KongState) {
+  if (state.airY !== null) return state.airY;
   if (state.climb) {
     const direction = state.climbTo > state.row ? -1 : 1;
     return floors[state.row] + direction * state.climb;
@@ -49,7 +51,7 @@ function stepHazards(state: KongState) {
     if (hazard.x < left - 8 || hazard.x > right + 8) continue;
 
     const bounce = state.difficulty === "HARD" && hazard.kind === "jar" && Math.floor((state.ticks + hazard.row * 6) / 7) % 4 === 1 ? 4 : 0;
-    const near = state.row === hazard.row && Math.abs(state.x - hazard.x) < 8 && !state.climb;
+    const near = state.row === hazard.row && Math.abs(state.x - hazard.x) < 8 && !state.climb && (state.version === 2 || heightAt(state) <= floors[hazard.row] + 4);
     if (near && heightAt(state) >= floors[hazard.row] - 9 - bounce) {
       if (powered) {
         state.score = Math.min(350, state.score + 20);
@@ -60,7 +62,7 @@ function stepHazards(state: KongState) {
         state.invincibleUntil = state.ticks + 90;
         if (!state.lives) state.status = "lost";
       }
-    } else if (near && state.jump && !hazard.hit && hazard.kind === "jar") {
+    } else if (near && (state.jump || (state.airY !== null && state.airY < floors[state.row])) && !hazard.hit && hazard.kind === "jar") {
       hazard.hit = true;
       state.score = Math.min(350, state.score + 10);
     }
@@ -69,11 +71,88 @@ function stepHazards(state: KongState) {
   state.hazards = remaining;
 }
 
+function moveOnLadder(state: KongState, vertical: number) {
+  if (!vertical) return;
+  state.climb += (vertical === Math.sign(state.climbTo - state.row) ? 1 : -1) * 1.25;
+  if (state.climb >= 28) {
+    state.row = state.climbTo;
+    state.climb = 0;
+  } else if (state.climb <= 0) state.climb = 0;
+}
+
+function enterLadder(state: KongState, vertical: number) {
+  const target = state.row + vertical;
+  const ladder = ladders[Math.min(state.row, target)];
+  if (!vertical || target < 0 || target >= floors.length || Math.abs(state.x - ladder) >= 7) return false;
+  state.x = ladder;
+  state.climbTo = target;
+  state.climb = 1;
+  return true;
+}
+
+function legacyMovement(state: KongState, pressed: number, horizontal: number, vertical: number) {
+  if (state.climb) return moveOnLadder(state, vertical);
+  state.x = Math.min(right, Math.max(left, state.x + horizontal * 1.45));
+  if (state.jump) state.jump = state.jump < 30 ? state.jump + 1 : 0;
+  else if (!enterLadder(state, vertical) && pressed & A) state.jump = 1;
+}
+
+function overBeam(x: number, row: number) {
+  return row === 0 || (x + 3 >= 16 + row * 2 && x - 3 < 223 - row * 2);
+}
+
+function polishedMovement(state: KongState, pressed: number, horizontal: number, vertical: number) {
+  if (pressed & A) state.bufferUntil = state.ticks + 6;
+
+  function launch() {
+    state.airY ??= floors[state.row];
+    state.vy = -3.35;
+    state.coyoteUntil = -1;
+    state.bufferUntil = -1;
+    state.jumps = (state.jumps ?? 0) + 1;
+  }
+
+  if (state.climb) {
+    moveOnLadder(state, vertical);
+    if (!state.climb && state.bufferUntil >= state.ticks) launch();
+    return;
+  }
+
+  if (state.bufferUntil >= state.ticks && (state.airY === null || state.coyoteUntil >= state.ticks)) launch();
+  state.x = Math.min(232, Math.max(8, state.x + horizontal * 1.45));
+
+  if (state.airY === null) {
+    if (!overBeam(state.x, state.row)) {
+      state.airY = floors[state.row];
+      state.vy = 0;
+      state.coyoteUntil = state.ticks + 5;
+    } else {
+      enterLadder(state, vertical);
+      return;
+    }
+  }
+
+  const previous = state.airY;
+  state.vy += .22;
+  state.airY += state.vy;
+  if (state.vy <= 0) return;
+  for (let row = floors.length - 1; row >= 0; row--) {
+    if (previous <= floors[row] && state.airY >= floors[row] && overBeam(state.x, row)) {
+      state.row = row;
+      state.airY = null;
+      state.vy = 0;
+      state.coyoteUntil = -1;
+      if (state.bufferUntil >= state.ticks) launch();
+      break;
+    }
+  }
+}
+
 export const kong: Game<KongState> = {
-  create(seed, difficulty) {
+  create(seed, difficulty, version = gameVersion) {
     return {
       score: 0, ticks: 0, status: "playing", seed, difficulty,
-      x: 39, row: 0, climb: 0, climbTo: 0, jump: 0, previous: 0,
+      x: 39, row: 0, version, airY: null, vy: 0, coyoteUntil: -1, bufferUntil: -1, jumps: 0, climb: 0, climbTo: 0, jump: 0, previous: 0,
       lives: difficulty === "HARD" ? 2 : 3, invincibleUntil: 0, combUntil: 0, combUsed: false, hazards: [],
     };
   },
@@ -84,27 +163,8 @@ export const kong: Game<KongState> = {
     state.previous = input;
     const horizontal = Number(Boolean(input & RIGHT)) - Number(Boolean(input & LEFT));
     const vertical = Number(Boolean(input & UP)) - Number(Boolean(input & DOWN));
-    if (state.climb) {
-      if (vertical) {
-        state.climb += (vertical === Math.sign(state.climbTo - state.row) ? 1 : -1) * 1.25;
-        if (state.climb >= 28) {
-          state.row = state.climbTo;
-          state.climb = 0;
-        } else if (state.climb <= 0) state.climb = 0;
-      }
-    } else {
-      state.x = Math.min(right, Math.max(left, state.x + horizontal * 1.45));
-      if (state.jump) state.jump = state.jump < 30 ? state.jump + 1 : 0;
-      else {
-        const target = state.row + vertical;
-        const ladder = ladders[Math.min(state.row, target)];
-        if (vertical && target >= 0 && target < floors.length && Math.abs(state.x - ladder) < 7) {
-          state.x = ladder;
-          state.climbTo = target;
-          state.climb = 1;
-        } else if (pressed & A) state.jump = 1;
-      }
-    }
+    if (state.version === 2) legacyMovement(state, pressed, horizontal, vertical);
+    else polishedMovement(state, pressed, horizontal, vertical);
     if ((pressed & B) && !state.combUsed && !state.climb && state.row === comb.row && Math.abs(state.x - comb.x) < 12) {
       state.combUntil = state.ticks + 300;
       state.combUsed = true;
@@ -114,7 +174,7 @@ export const kong: Game<KongState> = {
     if (state.difficulty === "HARD" && state.ticks % 151 === 45) addHazard(state, true);
     stepHazards(state);
     if (state.status !== "playing") return;
-    if (state.row === 4 && !state.climb && Math.abs(state.x - goal) < 10) {
+    if (state.row === 4 && state.airY === null && !state.climb && Math.abs(state.x - goal) < 10) {
       state.status = "won";
       state.score = Math.min(350, state.score + 150);
     } else if (state.ticks >= roundSeconds("ESCALADA_KONG", state.difficulty) * 60) state.status = "lost";

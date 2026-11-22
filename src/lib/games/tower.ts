@@ -1,6 +1,6 @@
 import {
   A, LEFT, RIGHT, UP, canvasHeight as HEIGHT, canvasWidth as WIDTH,
-  ticksPerSecond, type Difficulty, type Game, type GameState,
+  gameVersion, ticksPerSecond, type EngineVersion, type Difficulty, type Game, type GameState,
 } from "./types";
 
 const SCALE = 16;
@@ -28,6 +28,9 @@ type TowerState = GameState & {
   vy: number;
   resting: Platform | null;
   jumpHeld: boolean;
+  version: EngineVersion;
+  coyoteUntil: number;
+  bufferUntil: number;
   camera: number;
   limit: number;
   moving: boolean;
@@ -110,7 +113,7 @@ function drawPlatform(ctx: CanvasRenderingContext2D, platform: Platform, y: numb
 }
 
 export const tower: Game<TowerState> = {
-  create(seed, difficulty: Difficulty = "EASY") {
+  create(seed, difficulty: Difficulty = "EASY", version = gameVersion) {
     const platforms = buildTower(seed, difficulty);
     return {
       score: 0,
@@ -122,7 +125,7 @@ export const tower: Game<TowerState> = {
       vx: 0,
       vy: 0,
       resting: platforms[0],
-      jumpHeld: false,
+      jumpHeld: false, version, coyoteUntil: -1, bufferUntil: -1, jumps: 0,
       camera: FLOOR + 18 - HEIGHT,
       limit: timeLimits[difficulty] * ticksPerSecond,
       moving: difficulty === "MEDIUM",
@@ -156,15 +159,29 @@ export const tower: Game<TowerState> = {
     const target = direction * speed;
     state.vx += Math.max(-acceleration, Math.min(acceleration, target - state.vx));
 
-    if (jump && !state.jumpHeld && ground) {
+    function launch() {
       state.vy = -104;
       state.resting = null;
+      state.coyoteUntil = -1;
+      state.bufferUntil = -1;
+      state.jumps = (state.jumps ?? 0) + 1;
+    }
+
+    const pressed = jump && !state.jumpHeld;
+    if (state.version === 2) {
+      if (pressed && ground) launch();
+    } else {
+      if (pressed) state.bufferUntil = state.ticks + 6;
+      if (state.bufferUntil >= state.ticks && (ground || state.coyoteUntil >= state.ticks)) launch();
     }
     state.jumpHeld = jump;
 
     const carried = state.resting?.belt ?? 0;
     state.x = Math.max(PLAYER_HALF * SCALE, Math.min((WIDTH - PLAYER_HALF) * SCALE, state.x + state.vx + carried));
-    if (state.resting && !overPlatform(state.x, state.resting)) state.resting = null;
+    if (state.resting && !overPlatform(state.x, state.resting)) {
+      state.resting = null;
+      if (state.version !== 2) state.coyoteUntil = state.ticks + 5;
+    }
     if (!state.resting) {
       const previousY = state.y;
       state.vy += 5;
@@ -180,6 +197,8 @@ export const tower: Game<TowerState> = {
             if (platform.kind === "goal") {
               state.status = "won";
               state.score = 100 + Math.floor((state.limit - state.ticks) * 150 / state.limit);
+            } else if (state.version !== 2 && state.bufferUntil >= state.ticks) {
+              launch();
             }
             break;
           }

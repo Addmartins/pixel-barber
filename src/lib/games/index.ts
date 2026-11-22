@@ -4,10 +4,10 @@ import { kong } from "./kong";
 import { snake } from "./snake";
 import { valley } from "./valley";
 import { tower } from "./tower";
-import { maxTicks, type Difficulty, type Game, type GameCode, type GameState, type InputChange } from "./types";
+import { gameVersion, maxTicks, type EngineVersion, type Difficulty, type Game, type GameCode, type GameState, type InputChange } from "./types";
 
-function instantiate<S extends GameState>(game: Game<S>, seed: number, difficulty: Difficulty) {
-  const state = game.create(seed, difficulty);
+function instantiate<S extends GameState>(game: Game<S>, seed: number, difficulty: Difficulty, version: EngineVersion) {
+  const state = game.create(seed, difficulty, version);
   return {
     state,
     step(input: number) {
@@ -19,19 +19,19 @@ function instantiate<S extends GameState>(game: Game<S>, seed: number, difficult
   };
 }
 
-export function createGame(code: GameCode, seed: number, difficulty: Difficulty = "EASY") {
+export function createGame(code: GameCode, seed: number, difficulty: Difficulty = "EASY", version: EngineVersion = gameVersion) {
   switch (code) {
-    case "NAVALHA_RUSH": return instantiate(maze, seed, difficulty);
-    case "BARBA_FIGHTER": return instantiate(fighter, seed, difficulty);
-    case "TORRE_FADE": return instantiate(tower, seed, difficulty);
-    case "ESCALADA_KONG": return instantiate(kong, seed, difficulty);
-    case "BIGODE_SNAKE": return instantiate(snake, seed, difficulty);
-    case "BARBER_VALLEY": return instantiate(valley, seed, difficulty);
+    case "NAVALHA_RUSH": return instantiate(maze, seed, difficulty, version);
+    case "BARBA_FIGHTER": return instantiate(fighter, seed, difficulty, version);
+    case "TORRE_FADE": return instantiate(tower, seed, difficulty, version);
+    case "ESCALADA_KONG": return instantiate(kong, seed, difficulty, version);
+    case "BIGODE_SNAKE": return instantiate(snake, seed, difficulty, version);
+    case "BARBER_VALLEY": return instantiate(valley, seed, difficulty, version);
   }
 }
 
-export function replay(code: GameCode, seed: number, ticks: number, changes: InputChange[], difficulty: Difficulty = "EASY") {
-  const engine = createGame(code, seed, difficulty);
+export function replay(code: GameCode, seed: number, ticks: number, changes: InputChange[], difficulty: Difficulty = "EASY", version: EngineVersion = gameVersion) {
+  const engine = createGame(code, seed, difficulty, version);
   let mask = 0;
   let next = 0;
   for (let tick = 0; tick < ticks; tick++) {
