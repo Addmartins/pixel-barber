@@ -25,7 +25,7 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
   directionPriority?: boolean;
   directionsMode: "all" | "horizontal" | "none";
   playing: boolean;
-  onInput: (pointer: number, bit: number, sweeping?: boolean) => void;
+  onInput: (pointer: number, bit: number) => void;
   onStart: () => void;
   onSelect: () => void;
   startDisabled: boolean;
@@ -37,21 +37,27 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
 }) {
   const padPointer = useRef<number | null>(null);
   const [active, setActive] = useState(0);
+  const anchor = useRef<{ x: number; y: number; bit: number } | null>(null);
 
   function sweep(event: PointerEvent<HTMLDivElement>) {
-    if (padPointer.current !== event.pointerId) return;
+    if (!playing || padPointer.current !== event.pointerId) return;
     const bounds = event.currentTarget.getBoundingClientRect();
-    const direction = playing && directionsMode === "horizontal"
-      ? (event.clientX < bounds.left + bounds.width / 2 ? LEFT : RIGHT)
-      : playing ? radialDirection(event.clientX - bounds.left - bounds.width / 2,
-      event.clientY - bounds.top - bounds.height / 2) : 0;
+    const x = event.clientX;
+    const y = event.clientY;
+    const previous = anchor.current;
+    const onButton = event.type === "pointerdown" && event.target instanceof HTMLElement
+      ? Number(event.target.closest("button")?.dataset.bit ?? 0) : 0;
+    const direction = onButton || radialDirection(x - bounds.left - bounds.width / 2, y - bounds.top - bounds.height / 2);
+    if (previous && (previous.bit === direction || Math.hypot(x - previous.x, y - previous.y) < 12)) return;
+    anchor.current = { x, y, bit: direction };
     setActive(direction);
-    onInput(event.pointerId, direction, event.type === "pointermove");
+    onInput(event.pointerId, direction);
   }
 
   function releasePad(event: PointerEvent<HTMLDivElement>) {
     if (padPointer.current !== event.pointerId) return;
     padPointer.current = null;
+    anchor.current = null;
     setActive(0);
     onInput(event.pointerId, 0);
   }
@@ -98,7 +104,7 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
           onPointerMove={sweep} onPointerUp={releasePad}
           onPointerCancel={releasePad} onLostPointerCapture={releasePad}>
           {directions.filter(({ bit }) => directionsMode === "all" || bit === LEFT || bit === RIGHT).map(({ bit, label, face, area }) => (
-            <button key={bit} type="button" data-area={area} data-active={playing && active === bit}
+            <button key={bit} type="button" data-area={area} data-bit={bit} data-active={playing && active === bit}
               aria-label={label} disabled={!playing}
               onKeyDown={(event) => {
                 if (event.key !== " ") return;

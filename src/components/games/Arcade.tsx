@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { Check, Gamepad2, Rocket, Scissors, Timer, TrendingUp } from "lucide-react";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { AvatarId } from "@/lib/avatars";
 import type { CosmeticCode } from "@/lib/store";
+import { landscapeForArcade } from "@/lib/device/arcade-orientation";
 import { hapticImpact, hapticVictory } from "@/lib/device/haptics";
 import { playHitSound, playJumpSound, playScoreSound, playVictoryJingle, unlockGameAudio } from "@/lib/games/audio";
 import { boardWidth, boardHeight, cellInputShift } from "@/lib/games/salon-match";
@@ -24,9 +25,9 @@ const cartridges = [
   { code: "ESCALADA_KONG", station: "Estante de pomadas", goal: 30, mission: "Atravesse os aros da estante.", title: "Salto de Pomada", icon: SummitArt, accent: "amber", action: "Impulso", directions: "horizontal",
     instructions: "Guie o ricochete com esquerda e direita. Segure Impulso para saltar mais alto ao chegar perto do chão. Passe pelos quatro aros, evite os espinhos e atravesse o portão." },
   { code: "ORBITA_PIXEL", station: "Estação de limpeza", goal: 30, mission: "Pilote a cápsula e limpe o corredor.", title: "Órbita Pixel", icon: Rocket, accent: "sky", action: "Laser", directions: "all",
-    instructions: "Pilote entre os invasores. Segure Laser para disparar. Recolha cápsulas verdes para ativar o tiro triplo. O recorde é compartilhado com Bombas de Espuma." },
+    instructions: "Pilote entre os invasores. Segure Laser para disparar. Cápsulas verdes dão 5 segundos de tiro triplo. Derrote os dois mestres. O recorde é compartilhado com Bombas de Espuma." },
   { code: "BARBA_FIGHTER", station: "Depósito", goal: 150, mission: "Recolha as fichas da navalha no labirinto.", title: "Ruínas da Navalha", icon: TrendingUp, accent: "rose", action: undefined, directions: "all",
-    instructions: "Recolha as fichas e desvie dos sentinelas. Pegue uma loção dourada para inverter a perseguição por alguns segundos." },
+    instructions: "Toque para andar uma casa ou segure para continuar. Recolha as fichas e desvie dos sentinelas. Pegue uma loção dourada para inverter a perseguição por alguns segundos." },
   { code: "BARBER_VALLEY", station: "Organização do balcão", goal: 24, mission: "Reúna pelo menos três itens em uma troca.", title: "Itens do Salão", icon: SproutArt, accent: "lime", action: "Selecionar", directions: "all",
     instructions: "Toque em um item e depois em um vizinho. A troca só acontece se formar três ou mais itens iguais em linha. As combinações douram as casas. No teclado, use as setas e Selecionar." },
   { code: "TORRE_FADE", station: "Vitrine", goal: 45, mission: "Empilhe os expositores sem perder a base.", title: "Torre de Neon", icon: Timer, accent: "gold", action: "Soltar", directions: "none",
@@ -106,11 +107,13 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
   const [error, setError] = useState("");
   const [statsError, setStatsError] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const releaseOrientation = useRef<(() => Promise<void>) | null>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const paused = useRef(false);
   const sprite = useRef<HTMLDivElement>(null);
   const taps = useRef<number[]>([]);
+  const boardTouch = useRef<{ pointer: number; cell: number } | null>(null);
   const held = useRef(new Map<number | string, number>());
   const justPressed = useRef(new Map<number | string, number>());
   const cartridge = cartridges.find(({ code }) => code === selected) ?? cartridges[0];
@@ -122,6 +125,14 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
   const recordCode = !demo && selected === "ORBITA_PIXEL" ? "NAVALHA_RUSH" : selected;
   const points = result?.score ?? Math.round((snapshot?.score ?? 0) * multipliers[activeDifficulty]);
   const remaining = Math.max(0, roundSeconds(selected, activeDifficulty) - Math.floor((snapshot?.ticks ?? 0) / ticksPerSecond));
+
+  const restoreOrientation = useCallback(() => {
+    const release = releaseOrientation.current;
+    releaseOrientation.current = null;
+    void release?.();
+  }, []);
+
+  useEffect(() => restoreOrientation, [restoreOrientation]);
 
   useEffect(() => {
     if (!storageKey) return;
@@ -142,7 +153,15 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
     try { localStorage.setItem(storageKey, JSON.stringify(completed)); } catch { /* Optional device storage. */ }
   }, [storageKey, completed]);
 
-  useEffect(() => { paused.current = menuOpen; }, [menuOpen]);
+  useEffect(() => {
+    paused.current = menuOpen;
+    if (menuOpen) {
+      held.current.clear();
+      justPressed.current.clear();
+      taps.current.length = 0;
+      boardTouch.current = null;
+    }
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!booting) return;
@@ -150,10 +169,10 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
     return () => window.clearTimeout(timer);
   }, [booting]);
 
-  const onInput = useCallback((key: number | string, bit: number, sweeping = false) => {
-    if (sweeping) justPressed.current.delete(key);
+  const onInput = useCallback((key: number | string, bit: number) => {
+    if (paused.current) return;
     if (bit) {
-      if (!held.current.has(key) && !sweeping) justPressed.current.set(key, bit);
+      if (held.current.get(key) !== bit) justPressed.current.set(key, bit);
       held.current.set(key, bit);
     } else held.current.delete(key);
   }, []);
@@ -174,12 +193,12 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
     if (!playing || !visible || !opened) return;
     function keydown(event: KeyboardEvent) {
       const bit = keyboard[event.code];
-      if (!bit || event.defaultPrevented) return;
+      if (!bit || event.defaultPrevented || event.repeat) return;
       event.preventDefault();
       onInput(event.code, bit);
     }
     function keyup(event: KeyboardEvent) { onInput(event.code, 0); }
-    function reset() { held.current.clear(); justPressed.current.clear(); }
+    function reset() { held.current.clear(); justPressed.current.clear(); taps.current.length = 0; boardTouch.current = null; }
     function visibilityChange() { if (document.hidden) reset(); }
     window.addEventListener("keydown", keydown);
     window.addEventListener("keyup", keyup);
@@ -349,8 +368,16 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
     }
   }, [controlsLocked, demo, selected, difficulty]);
 
+  function boardCell(event: PointerEvent<HTMLCanvasElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const column = Math.floor(((event.clientX - bounds.left) * canvasWidth / bounds.width - 13) / 18);
+    const row = Math.floor(((event.clientY - bounds.top) * canvasHeight / bounds.height - 22) / 18);
+    return column >= 0 && column < boardWidth && row >= 0 && row < boardHeight ? row * boardWidth + column : -1;
+  }
+
   function select(code: GameCode, button: HTMLButtonElement) {
     opener.current = button;
+    releaseOrientation.current ??= landscapeForArcade();
     dialog.current?.showModal();
     setOpened(true);
     setMenuOpen(false);
@@ -439,9 +466,9 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
       <div ref={sprite} hidden><AvatarRenderer skinId={avatar} cosmetics={cosmetics} /></div>
       <dialog ref={dialog} className="arcade-fullscreen" aria-labelledby="arcade-game-title"
         onCancel={(event) => { event.preventDefault(); if (menuOpen) setMenuOpen(false); else closeGame(); }}
-        onClose={() => opener.current?.focus()}>
+        onClose={() => { restoreOrientation(); opener.current?.focus(); }}>
         <h2 id="arcade-game-title" className="sr-only">{cartridge.title}</h2>
-        <GameBoyFrame playing={playing} directionPriority={selected === "ESCALADA_KONG"} action={cartridge.action} directionsMode={cartridge.directions} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
+        <GameBoyFrame playing={playing && !menuOpen} directionPriority={selected === "ESCALADA_KONG"} action={cartridge.action} directionsMode={cartridge.directions} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
           startDisabled={controlsLocked} selectDisabled={controlsLocked} onExit={closeGame}
           exitDisabled={phase === "starting" || sending} onMenu={() => setMenuOpen((open) => !open)} menuOpen={menuOpen}>
             <div className="arcade-scoreboard">
@@ -454,16 +481,22 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
                 data-interactive={selected === "BARBER_VALLEY"}
                 aria-label={`Tela de ${cartridge.title}`}
                 onPointerDown={(event) => {
-                  if (!playing || selected !== "BARBER_VALLEY" || taps.current.length >= 4) return;
-                  const bounds = event.currentTarget.getBoundingClientRect();
-                  const x = (event.clientX - bounds.left) * canvasWidth / bounds.width - 13;
-                  const y = (event.clientY - bounds.top) * canvasHeight / bounds.height - 22;
-                  const column = Math.floor(x / 18);
-                  const row = Math.floor(y / 18);
-                  if (column >= 0 && column < boardWidth && row >= 0 && row < boardHeight) {
-                    taps.current.push((row * boardWidth + column + 1) << cellInputShift);
+                  if (!playing || menuOpen || selected !== "BARBER_VALLEY" || boardTouch.current || event.button !== 0) return;
+                  const cell = boardCell(event);
+                  if (cell < 0) return;
+                  boardTouch.current = { pointer: event.pointerId, cell };
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerUp={(event) => {
+                  const press = boardTouch.current;
+                  if (press?.pointer !== event.pointerId) return;
+                  boardTouch.current = null;
+                  if (!menuOpen && press.cell === boardCell(event) && taps.current.length < 2) {
+                    taps.current.push((press.cell + 1) << cellInputShift);
                   }
-                }} />
+                }}
+                onLostPointerCapture={() => { boardTouch.current = null; }}
+                onPointerCancel={() => { boardTouch.current = null; }} />
               {booting ? <div className="arcade-boot" role="status"><strong>PIXEL BARBER</strong></div> :
                 !run && <div className="arcade-title-screen">
                   <Gamepad2 size={28} aria-hidden="true" />

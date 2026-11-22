@@ -30,7 +30,7 @@ export function createGame(code: GameCode, seed: number, difficulty: Difficulty 
   }
   if (version >= 8 && code === "NAVALHA_RUSH") return instantiate(foamArena, seed, difficulty, version);
   if (version >= 8 && code === "BARBA_FIGHTER") return instantiate(ruinsArena, seed, difficulty, version);
-  if ((version === 4 || version === 6 || version === gameVersion) && code !== "BIGODE_SNAKE") return instantiate(pixel16[code], seed, difficulty, version);
+  if ((version === 4 || version === 6 || version === 8 || version === gameVersion) && code !== "BIGODE_SNAKE") return instantiate(pixel16[code], seed, difficulty, version);
   switch (code) {
     case "NAVALHA_RUSH": return instantiate(maze, seed, difficulty, version);
     case "BARBA_FIGHTER": return instantiate(fighter, seed, difficulty, version);

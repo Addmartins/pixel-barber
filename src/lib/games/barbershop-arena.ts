@@ -1,3 +1,4 @@
+import { repeatDirection, type DirectionalRepeat } from "./directional-repeat";
 import { A, DOWN, LEFT, RIGHT, UP, maxTicks, type Game, type GameState } from "./types";
 
 const width = 13;
@@ -32,7 +33,7 @@ const spawn = width + 1;
 
 type Guard = { cell: number; home: number; safeUntil: number };
 type Arena = GameState & {
-  bombMode: boolean; field: string[]; player: number; facing: number; moved: number; lives: number; invulnerable: number;
+  bombMode: boolean; controlled: boolean; repeat: DirectionalRepeat; field: string[]; player: number; facing: number; moved: number; lives: number; invulnerable: number;
   guards: Guard[]; seed: number; previous: number; direction: number; moveAt: number; guardPace: number;
   pellets: Set<number>; total: number; picked: number; powerUntil: number;
   bombs: { cell: number; fuse: number }[]; flames: Map<number, number>; crates: number;
@@ -129,7 +130,10 @@ function step(state: Arena, input: number) {
   }
   const requested = controls.findIndex(([mask]) => Boolean(input & mask));
   if (requested >= 0) state.direction = requested;
-  if (state.ticks >= state.moveAt && state.direction >= 0 && (requested >= 0 || !state.bombMode)) {
+  const move = state.controlled
+    ? repeatDirection(state.repeat, requested, state.ticks, state.bombMode ? 8 : 7)
+    : state.ticks >= state.moveAt && state.direction >= 0 && (requested >= 0 || !state.bombMode);
+  if (move) {
     const next = adjacent(state.player, state.direction);
     if (open(state, next) && !state.bombs.some(bomb => bomb.cell === next)) {
       state.player = next;
@@ -249,13 +253,13 @@ function draw(ctx: CanvasRenderingContext2D, state: Arena, avatar?: CanvasImageS
 
 export function barbershopArena(bombMode: boolean): Game<Arena> {
   return {
-    create(seed, difficulty) {
+    create(seed, difficulty, version = 10) {
       const field = [...(bombMode ? workshop : maze)];
       const pellets = new Set(bombMode ? [] : field.flatMap((cell, i) => cell === "." || cell === "o" ? [i] : []));
       const positions = bombMode ? [width + 10, 5 * width + 8, 7 * width + 3] : [width + 10, 7 * width + 9, 7 * width + 2];
       const guardCount = difficulty === "EASY" ? 2 : 3;
       return {
-        bombMode, field, seed, player: spawn, facing: 1, moved: 0, lives: difficulty === "HARD" ? 2 : 3,
+        bombMode, controlled: version >= 10, repeat: { direction: -1, next: 0 }, field, seed, player: spawn, facing: 1, moved: 0, lives: difficulty === "HARD" ? 2 : 3,
         invulnerable: 0, guards: positions.slice(0, guardCount).map(cell => ({ cell, home: cell, safeUntil: 0 })),
         previous: 0, direction: -1, moveAt: 0, guardPace: difficulty === "HARD" ? 11 : difficulty === "MEDIUM" ? 15 : 22,
         pellets, picked: 0, total: pellets.size, powerUntil: 0, bombs: [], flames: new Map(),

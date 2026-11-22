@@ -449,3 +449,28 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
   .pixel-boy-dpad { --pad-key: clamp(34px, 12dvh, 50px); }
   .pixel-boy-actions button { height: 2.5rem; min-height: 40px; }
 }
+
+@media (orientation: landscape) {
+  .pixel-boy {
+    --side-controls: clamp(6.5rem, 18vw, 11rem);
+    grid-template-columns: var(--side-controls) minmax(0, 1fr) var(--side-controls);
+  }
+  .pixel-boy-bezel { grid-column: 2; grid-row: 2 / 4; }
+  .pixel-boy-controls { display: contents; }
+  .pixel-boy-controls > :is(.pixel-boy-dpad, .pixel-boy-steering) {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    align-self: center;
+    justify-self: center;
+  }
+  .pixel-boy-dpad { --pad-key: clamp(32px, min(5.6vw, 11dvh), 48px); }
+  .pixel-boy-steering { width: 100%; }
+  .pixel-boy-controls > .pixel-boy-actions {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: center;
+    justify-self: center;
+  }
+  .pixel-boy[data-direction-priority=true] .pixel-boy-actions { grid-column: 3; justify-self: stretch; }
+  .pixel-boy-footer { grid-column: 3; grid-row: 3; }
+}
