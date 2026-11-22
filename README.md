@@ -103,3 +103,15 @@ Em produção, abra o site HTTPS. No Chrome para Android, use **Instalar aplicat
 O build mobile exporta a interface para `out/` e sincroniza as plataformas pelo Capacitor. Os endpoints de pontuação e resgate continuam no servidor Next.js, e a chave secreta do Supabase continua no ambiente do servidor. Antes de distribuir o app, aponte para um backend publicado com as migrações necessárias.
 
 O feedback háptico usa os motores nativos no Android e iOS. No PWA, funciona quando o navegador oferece a API de vibração. No Safari para iOS, esse feedback depende do pacote nativo.
+
+### Seis cartuchos no Pixel Boy
+
+A Escalada da Pomada, Bigode Snake e Barber Valley usam a mesma simulação de 60 passos por segundo e a mesma confirmação de placar por replay dos três jogos iniciais. Os tetos de placar base são 350, 400 e 450, respectivamente. O nível Mestre da Escalada dura 45 segundos. As demais sessões desses cartuchos duram até 60 segundos.
+
+Aplique `20261121000006_new_retro_games.sql` após as migrações anteriores. O número `00005` pertence à Loja do Avatar. O limite diário de três partidas creditadas é compartilhado entre os seis jogos.
+
+### Atualizações do app
+
+O PWA consulta a versão publicada ao abrir, voltar ao primeiro plano e a cada cinco minutos. Quando encontra uma versão nova, mostra **Atualizar agora**; a próxima abertura online também carrega a publicação atual. O service worker continua usando a rede para a página e as APIs, e guarda somente a tela offline.
+
+No Android nativo, o app compara o código de versão instalado com `GET /api/release` e mostra o link da versão mais recente. O Android pede confirmação para instalar um APK fora da loja. Para publicar um novo APK, incremente `androidVersionCode` em `src/lib/device/release.json`, compile com a mesma assinatura e substitua `public/downloads/pixel-barber-android-debug.apk` na mesma publicação.

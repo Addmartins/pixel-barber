@@ -64,6 +64,7 @@ h2 { font-size: 1.35rem; overflow-wrap: anywhere; }
 .avatar-option { cursor: pointer; min-width: 0; }
 .avatar-card {
   display: grid;
+  justify-items: center;
   gap: .3rem;
   padding: .3rem;
   border: 2px solid #6c497b;
@@ -72,14 +73,35 @@ h2 { font-size: 1.35rem; overflow-wrap: anywhere; }
 }
 .avatar-option input:checked + .avatar-card { border-color: #67eed7; background: #24343c; }
 .avatar-option input:focus-visible + .avatar-card { outline: 3px solid #ff8cb0; }
-.sprite {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  grid-template-rows: repeat(8, 1fr);
-  width: 100%;
-  aspect-ratio: 10 / 8;
+.pixel-avatar {
+  position: relative;
+  display: inline-block;
+  width: var(--avatar-size, 64px);
+  max-width: 100%;
+  aspect-ratio: 1 / 2;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
-.profile-avatar { width: 80px; flex-shrink: 0; border: 2px solid #67eed7; }
+.pixel-avatar-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+.cosmetic-sprite { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; }
+.avatar-card .pixel-avatar { width: min(64px, 100%); background: var(--avatar-backdrop); }
+.profile-avatar {
+  width: 80px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 2px solid #67eed7;
+  background: #312441;
+}
 .terms { color: #dfcce8; font-size: .875rem; }
 .terms summary { cursor: pointer; text-decoration: underline; }
 .terms p { margin-top: .65rem; }
@@ -196,3 +218,23 @@ html, body {
   padding-right: max(16px, env(safe-area-inset-right), var(--safe-area-inset-right, 0px));
 }
 .field input { font-size: max(16px, 1rem); }
+
+.device-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .4rem .75rem;
+  padding: max(.5rem, env(safe-area-inset-top), var(--safe-area-inset-top, 0px)) 1rem .5rem;
+  background: #e88b2e;
+  color: #12141a;
+  font-size: .875rem;
+  font-weight: 700;
+  text-align: center;
+}
+.device-notice :is(button, a) {
+  padding: .4rem .65rem;
+  border: 2px solid #12141a;
+  text-decoration: underline;
+  min-height: 36px;
+}

@@ -1,4 +1,4 @@
-export const gameCodes = ["NAVALHA_RUSH", "BARBA_FIGHTER", "TORRE_FADE"] as const;
+export const gameCodes = ["NAVALHA_RUSH", "BARBA_FIGHTER", "TORRE_FADE", "ESCALADA_KONG", "BIGODE_SNAKE", "BARBER_VALLEY"] as const;
 export type GameCode = (typeof gameCodes)[number];
 export const LEFT = 1;
 export const RIGHT = 2;
@@ -17,6 +17,7 @@ export function isDifficulty(value: unknown): value is Difficulty {
 }
 
 export function roundSeconds(game: GameCode, difficulty: Difficulty) {
+  if (game === "ESCALADA_KONG" && difficulty === "HARD") return 45;
   if (game !== "TORRE_FADE") return 60;
   return difficulty === "HARD" ? 30 : difficulty === "MEDIUM" ? 45 : 60;
 }

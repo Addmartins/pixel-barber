@@ -1,5 +1,8 @@
 import { fighter } from "./fighter";
 import { maze } from "./maze";
+import { kong } from "./kong";
+import { snake } from "./snake";
+import { valley } from "./valley";
 import { tower } from "./tower";
 import { maxTicks, type Difficulty, type Game, type GameCode, type GameState, type InputChange } from "./types";
 
@@ -21,6 +24,9 @@ export function createGame(code: GameCode, seed: number, difficulty: Difficulty 
     case "NAVALHA_RUSH": return instantiate(maze, seed, difficulty);
     case "BARBA_FIGHTER": return instantiate(fighter, seed, difficulty);
     case "TORRE_FADE": return instantiate(tower, seed, difficulty);
+    case "ESCALADA_KONG": return instantiate(kong, seed, difficulty);
+    case "BIGODE_SNAKE": return instantiate(snake, seed, difficulty);
+    case "BARBER_VALLEY": return instantiate(valley, seed, difficulty);
   }
 }
 

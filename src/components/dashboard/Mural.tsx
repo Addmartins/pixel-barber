@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef } from "react";
-import { AvatarSprite } from "@/components/auth/AvatarSprite";
+import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import { avatars } from "@/lib/avatars";
 import type { GameCode } from "@/lib/games/types";
 import type { RankingEntry } from "@/lib/supabase/browser";
@@ -110,6 +110,9 @@ const masterBadges: Record<GameCode, string> = {
   NAVALHA_RUSH: "Mestre no Navalha Rush",
   BARBA_FIGHTER: "Mestre no Barba Fighter II",
   TORRE_FADE: "Mestre na Torre do Fade",
+  ESCALADA_KONG: "Mestre na Escalada da Pomada",
+  BIGODE_SNAKE: "Mestre no Bigode Snake",
+  BARBER_VALLEY: "Mestre no Barber Valley",
 };
 
 function MasterBadges({ games }: { games?: GameCode[] }) {
@@ -170,7 +173,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                 return (
                   <li key={entry.position} className={styles.podiumEntry}>
                     <PixelGrid pixels={medal.pixels} colors={{ x: medal.color }} className={styles.medal} />
-                    <AvatarSprite id={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />
+                    <AvatarRenderer skinId={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />
                     <div className={styles.podiumLabel}>
                       <span className={styles.position} style={{ color: medal.color }}>{entry.position}º</span>
                       <strong>{entryName(entry)}</strong>
@@ -203,7 +206,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
                   <tr key={entry.position}>
                     <th scope="row">{entry.position}º</th>
                     <td>
-                      <span className={styles.tableAvatar}><AvatarSprite id={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />{entryName(entry)}</span>
+                      <span className={styles.tableAvatar}><AvatarRenderer size={32} skinId={entry.avatar_skin} cosmetics={entry.equipped_cosmetics} />{entryName(entry)}</span>
                       <MasterBadges games={entry.mastered_games} />
                     </td>
                     <td>{formatPoints.format(entry.points_balance)}</td>

@@ -10,6 +10,7 @@ import {
   type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
 } from "@/lib/games/types";
 import { GameBoyFrame } from "./GameBoyFrame";
+import { SummitArt, WhiskerArt, SproutArt } from "./RetroCartArt";
 import "./arcade.css";
 
 const cartridges = [
@@ -19,6 +20,12 @@ const cartridges = [
     instructions: "Segure a direção indicada para esquivar. Depois toque A (tesoura) ou B (navalha) conforme o sinal. Após cinco acertos, use B para o Corte Turbo. No nível Mestre, faça os dois cortes na ordem mostrada." },
   { code: "TORRE_FADE", title: "Torre do Fade", icon: Timer, accent: "gold",
     instructions: "Use ◀ e ▶ para se mover e A ou ▲ para pular. Atravesse as esteiras e as poças de xampu para chegar ao topo antes que o tempo acabe." },
+  { code: "ESCALADA_KONG", title: "Escalada da Pomada", icon: SummitArt, accent: "amber",
+    instructions: "Use ◀ ▶ nas vigas e ▲ ▼ nas escadas. Pule potes com A e pegue o pente com B. Alcance a Tesoura de Ouro no topo." },
+  { code: "BIGODE_SNAKE", title: "Bigode Snake", icon: WhiskerArt, accent: "lime",
+    instructions: "Guie o bigode pelo espelho com as setas. Pegue óleos e loções douradas sem encostar no corpo, nas bordas ou nas navalhas." },
+  { code: "BARBER_VALLEY", title: "Barber Valley", icon: SproutArt, accent: "sky",
+    instructions: "Veja o pedido sobre o cliente. Pegue o item na bancada com B, volte à cadeira, segure A e solte quando o cursor estiver no verde." },
 ] as const;
 
 const keyboard: Partial<Record<string, number>> = {

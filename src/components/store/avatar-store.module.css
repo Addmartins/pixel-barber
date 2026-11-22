@@ -57,8 +57,10 @@
 }
 
 .fittingSprite {
-  width: clamp(4.5rem, 25vw, 7rem);
+  width: 104px;
   flex: 0 0 auto;
+  display: grid;
+  place-items: center;
   border: 2px solid #a57ab7;
   box-shadow: 0 3px 0 #130d1d;
 }
@@ -161,4 +163,9 @@
 @media (max-width: 480px) {
   .fitting { position: sticky; top: .35rem; z-index: 1; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 375px) {
+  .fittingSprite { width: 72px; }
+  .fittingSprite :global(.pixel-avatar) { width: 64px; }
 }

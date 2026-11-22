@@ -271,3 +271,10 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
   padding-right: max(.6rem, env(safe-area-inset-right), var(--safe-area-inset-right, 0px));
 }
 .pixel-boy-controls { touch-action: none; user-select: none; }
+
+.arcade-cartridges button[data-accent=amber] { background: #3b282c; border-color: #ac704e; }
+.arcade-cartridges button[data-accent=amber] svg { color: #ffd68b; }
+.arcade-cartridges button[data-accent=lime] { background: #283522; border-color: #78934e; }
+.arcade-cartridges button[data-accent=lime] svg { color: #c6ec83; }
+.arcade-cartridges button[data-accent=sky] { background: #263641; border-color: #5d8c97; }
+.arcade-cartridges button[data-accent=sky] svg { color: #9fe1e7; }

@@ -6,7 +6,7 @@ import { Gamepad2, Scissors } from "lucide-react";
 import { avatars, consentVersion, type AvatarId } from "@/lib/avatars";
 import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
-import { AvatarSprite } from "./AvatarSprite";
+import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { CosmeticCode } from "@/lib/store";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
@@ -211,7 +211,7 @@ export function AuthScreen() {
               {currentProfile ? (
                 <>
                   <div className="dashboard-profile">
-                    <div className="profile-avatar"><AvatarSprite id={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
+                    <div className="profile-avatar"><AvatarRenderer skinId={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
                     <div className="dashboard-profile-name">
                       <h2>Olá, {currentProfile.nome}!</h2>
                       <p className="muted">Nível {currentProfile.level} · {currentProfile.points_balance} pontos</p>
@@ -279,13 +279,13 @@ export function AuthScreen() {
                   <>
                     <fieldset>
                       <legend className="mb-2 font-semibold">Escolha seu avatar</legend>
-                      <div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-4">
                         {avatars.map((option) => (
                           <label key={option.id} className="avatar-option">
                             <input className="sr-only" type="radio" name="avatar" value={option.id}
                               checked={avatar === option.id} onChange={() => setAvatar(option.id)} />
                             <span className="avatar-card">
-                              <AvatarSprite id={option.id} />
+                              <AvatarRenderer skinId={option.id} />
                               <span>{option.name}</span>
                             </span>
                           </label>
