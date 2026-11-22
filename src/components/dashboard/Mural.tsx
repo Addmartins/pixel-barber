@@ -7,81 +7,6 @@ import type { GameCode } from "@/lib/games/types";
 import type { RankingEntry } from "@/lib/supabase/browser";
 import styles from "./mural.module.css";
 
-const cuts = [
-  {
-    name: "Degradê",
-    backdrop: "#244651",
-    skin: "#e4a275",
-    shirt: "#87dfca",
-    pixels: [
-      "................",
-      ".....hhhhhh.....",
-      "....hhhhhhhh....",
-      "...hhhhhhhhh....",
-      "...mmmmmmhh.....",
-      "...mmmmsssss....",
-      "...ffssseess....",
-      "...ssssssssss...",
-      "....ssssssss....",
-      "....sssssssss...",
-      ".....sssssss....",
-      ".....ssssss.....",
-      "....ttssttt.....",
-      "...ttttttttt....",
-      "..ttttttttttt...",
-      "..tttttttttttt..",
-    ],
-  },
-  {
-    name: "Fade",
-    backdrop: "#48314e",
-    skin: "#c07955",
-    shirt: "#f598b5",
-    pixels: [
-      "................",
-      "........hhh.....",
-      ".....hhhhhhh....",
-      "...hhhhhhlhh....",
-      "..hhhllhhhhh....",
-      "...hhhhhhhhh....",
-      "...hhhmmmsss....",
-      "...mmfsseess....",
-      "...ssssssssss...",
-      "....ssssssss....",
-      "....sssssssss...",
-      ".....sssssss....",
-      "....ttssttt.....",
-      "...ttttttttt....",
-      "..ttttttttttt...",
-      "..tttttttttttt..",
-    ],
-  },
-  {
-    name: "Barba Lenhador",
-    backdrop: "#514030",
-    skin: "#d48e62",
-    shirt: "#ffc982",
-    pixels: [
-      "................",
-      "......hhhh......",
-      "....hhhhhhh.....",
-      "...hhllhhhhh....",
-      "...hhhhhhhhh....",
-      "...hhsssssss....",
-      "...hsssseess....",
-      "...hsssssssss...",
-      "...hssssssss....",
-      "...hhsshhhhhh...",
-      "...hhhhhhhlll...",
-      "....hllhhhhh....",
-      "....thhhhhh.....",
-      "...ttthhhttt....",
-      "..ttttttttttt...",
-      "..tttttttttttt..",
-    ],
-  },
-] as const;
-
 const medals = [
   { color: "#ffd77d", pixels: ["x..x..x", "xx.x.xx", "xxxxxxx", ".xxxxx.", ".xxxxx."] },
   { color: "#d3e2f2", pixels: [".x...x.", "..x.x..", "..xxx..", ".xxxxx.", "..xxx.."] },
@@ -143,17 +68,11 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
       <section aria-labelledby={muralId}>
         <h2 id={muralId}>Mural de cortes</h2>
         <ul className={styles.gallery}>
-          {cuts.map(({ name, backdrop, skin, shirt, pixels }) => (
-            <li key={name} className={styles.cut} style={{ backgroundColor: backdrop }}>
-              <PixelGrid pixels={pixels} className={styles.portrait} colors={{
-                h: "#252032",
-                l: "#544058",
-                m: "#65475a",
-                f: "#986574",
-                s: skin,
-                t: shirt,
-                e: "#261c27",
-              }} />
+          {avatars.map(({ id, name, backdrop }) => (
+            <li key={id} className={styles.cut}>
+              <div className={styles.portrait} style={{ backgroundColor: backdrop }}>
+                <AvatarRenderer skinId={id} size={64} />
+              </div>
               <span className={styles.cutName}>{name}</span>
             </li>
           ))}

@@ -11,27 +11,35 @@
   margin-block: .8rem;
 }
 
+.gallery {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+@media (min-width: 560px) {
+  .gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
 .cut {
   display: flex;
   flex-direction: column;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: .75rem;
+  border-radius: 1rem;
   overflow: hidden;
-}
-
-.portrait,
-.medal {
-  display: grid;
+  box-shadow: var(--surface-shadow);
 }
 
 .portrait {
-  aspect-ratio: 1;
-  width: 100%;
-  max-width: 10rem;
-  margin-inline: auto;
-  background: radial-gradient(circle at 50% 39%, #ffffff28 24%, transparent 25%);
+  display: grid;
+  place-items: end center;
+  min-height: 9rem;
+  padding: .75rem .25rem;
+  background-image: radial-gradient(ellipse at 50% 38%, rgb(255 255 255 / 16%), transparent 68%),
+    linear-gradient(transparent, rgb(11 13 19 / 55%));
 }
+
+.medal { display: grid; }
 
 .cutName,
 .podiumLabel {
@@ -45,7 +53,8 @@
 
 .cutName {
   flex: 1;
-  background: var(--surface-raised);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
   font-size: .875rem;
   font-weight: 700;
   line-height: 1.2;
