@@ -2,7 +2,7 @@
 
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Settings2 } from "lucide-react";
-import { A, B, DOWN, LEFT, RIGHT, UP } from "@/lib/games/types";
+import { A, DOWN, LEFT, RIGHT, UP } from "@/lib/games/types";
 
 const directions = [
   { bit: UP, label: "Cima", face: "▲", area: "up" },
@@ -10,7 +10,7 @@ const directions = [
   { bit: RIGHT, label: "Direita", face: "▶", area: "right" },
   { bit: DOWN, label: "Baixo", face: "▼", area: "down" },
 ];
-const actions = [{ bit: B, label: "Ação B", face: "B" }, { bit: A, label: "Ação A", face: "A" }];
+
 
 export function radialDirection(dx: number, dy: number) {
   if (dx * dx + dy * dy <= 144) return 0;
@@ -19,8 +19,10 @@ export function radialDirection(dx: number, dy: number) {
 }
 
 export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, startDisabled, selectDisabled,
-  onExit, exitDisabled, onMenu, menuOpen }: {
+  onExit, exitDisabled, onMenu, menuOpen, action, directionsMode }: {
   children: ReactNode;
+  action?: string;
+  directionsMode: "all" | "horizontal" | "none";
   playing: boolean;
   onInput: (pointer: number, bit: number, sweeping?: boolean) => void;
   onStart: () => void;
@@ -38,7 +40,9 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
   function sweep(event: PointerEvent<HTMLDivElement>) {
     if (padPointer.current !== event.pointerId) return;
     const bounds = event.currentTarget.getBoundingClientRect();
-    const direction = playing ? radialDirection(event.clientX - bounds.left - bounds.width / 2,
+    const direction = playing && directionsMode === "horizontal"
+      ? (event.clientX < bounds.left + bounds.width / 2 ? LEFT : RIGHT)
+      : playing ? radialDirection(event.clientX - bounds.left - bounds.width / 2,
       event.clientY - bounds.top - bounds.height / 2) : 0;
     setActive(direction);
     onInput(event.pointerId, direction, event.type === "pointermove");
@@ -61,14 +65,10 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
         </button>
       </div>
       <div className="pixel-boy-bezel">
-        <div className="pixel-boy-bezel-caption">
-          <span className="pixel-boy-battery" aria-hidden="true"><i />BATTERY</span>
-          <span>DOT MATRIX WITH STEREO SOUND</span>
-        </div>
         <div className="pixel-boy-screen">{children}</div>
       </div>
       <div className="pixel-boy-controls" role="group" aria-label="Controles do Pixel Boy">
-        <div className="pixel-boy-dpad" role="group" aria-label="Direcional"
+        {directionsMode !== "none" && <div className="pixel-boy-dpad" data-layout={directionsMode} role="group" aria-label="Direcional"
           onPointerDown={(event) => {
             if (!playing || event.button !== 0 || padPointer.current !== null) return;
             event.preventDefault();
@@ -78,7 +78,7 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
           }}
           onPointerMove={sweep} onPointerUp={releasePad}
           onPointerCancel={releasePad} onLostPointerCapture={releasePad}>
-          {directions.map(({ bit, label, face, area }) => (
+          {directions.filter(({ bit }) => directionsMode === "all" || bit === LEFT || bit === RIGHT).map(({ bit, label, face, area }) => (
             <button key={bit} type="button" data-area={area} data-active={playing && active === bit}
               aria-label={label} disabled={!playing}
               onKeyDown={(event) => {
@@ -89,15 +89,14 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
               onKeyUp={(event) => { if (event.key === " ") onInput(-bit, 0); }}
               onBlur={() => onInput(-bit, 0)}>{face}</button>
           ))}
-        </div>
-        <div className="pixel-boy-actions">
-          {actions.map(({ bit, label, face }) => (
-            <button key={bit} type="button" aria-label={label} disabled={!playing}
+        </div>}
+        {action && <div className="pixel-boy-actions">
+            <button type="button" disabled={!playing}
               onPointerDown={(event) => {
                 if (event.button !== 0) return;
                 event.preventDefault();
                 event.currentTarget.setPointerCapture(event.pointerId);
-                onInput(event.pointerId, bit);
+                onInput(event.pointerId, A);
               }}
               onPointerUp={(event) => onInput(event.pointerId, 0)}
               onPointerCancel={(event) => onInput(event.pointerId, 0)}
@@ -105,19 +104,18 @@ export function GameBoyFrame({ children, playing, onInput, onStart, onSelect, st
               onKeyDown={(event) => {
                 if (event.key !== " ") return;
                 event.preventDefault();
-                onInput(-bit, bit);
+                onInput(-A, A);
               }}
-              onKeyUp={(event) => { if (event.key === " ") onInput(-bit, 0); }}
-              onBlur={() => onInput(-bit, 0)}>{face}</button>
-          ))}
-        </div>
+              onKeyUp={(event) => { if (event.key === " ") onInput(-A, 0); }}
+              onBlur={() => onInput(-A, 0)}>{action}</button>
+        </div>}
       </div>
       <div className="pixel-boy-footer">
         <div className="pixel-boy-menu">
           <button type="button" aria-keyshortcuts="Shift" onClick={onSelect} disabled={selectDisabled}>SELECT</button>
           <button type="button" aria-keyshortcuts="Enter" onClick={onStart} disabled={startDisabled}>START</button>
         </div>
-        <div className="pixel-boy-speaker" aria-hidden="true"><span /><span /><span /><span /><span /></div>
+
       </div>
     </div>
   );

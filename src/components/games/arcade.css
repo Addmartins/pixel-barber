@@ -32,41 +32,7 @@
   background: #3a3d46;
   box-shadow: inset 0 -3px #30303e;
 }
-.pixel-boy-bezel-caption {
-  display: flex;
-  align-items: center;
-  gap: .45rem;
-  margin-bottom: .5rem;
-  color: #f4eaf2;
-  font: 700 clamp(.47rem, 1.8vw, .64rem) ui-monospace, monospace;
-  letter-spacing: .03em;
-  white-space: nowrap;
-}
-.pixel-boy-bezel-caption::before,
-.pixel-boy-bezel-caption::after {
-  content: "";
-  flex: 1 1 .4rem;
-  min-width: .4rem;
-  height: 6px;
-  border-block: 2px solid;
-  border-top-color: #a75172;
-  border-bottom-color: #817fc0;
-}
 .pixel-boy-screen { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
-.pixel-boy-battery {
-  display: flex;
-  align-items: center;
-  gap: .3rem;
-  color: #f1ccd8;
-  font: 700 .5rem ui-monospace, monospace;
-}
-.pixel-boy-battery i {
-  width: .44rem;
-  height: .44rem;
-  border-radius: 50%;
-  background: #93464e;
-}
-.pixel-boy[data-playing=true] .pixel-boy-battery i { background: #f65262; box-shadow: 0 0 .45rem #ff546f; }
 .arcade-scoreboard {
   display: flex;
   justify-content: space-between;
@@ -155,8 +121,8 @@
   width: max-content;
   justify-self: start;
   display: grid;
-  grid-template-columns: repeat(3, clamp(31px, 10vw, 44px));
-  grid-template-rows: repeat(3, clamp(31px, 10vw, 44px));
+  grid-template-columns: repeat(3, var(--pad-key));
+  grid-template-rows: repeat(3, var(--pad-key));
   grid-template-areas: ". up ." "left center right" ". down .";
 }
 .pixel-boy-dpad::after {
@@ -212,35 +178,6 @@
   content: "";
 }
 .pixel-boy-menu button:active::before { background: #424858; box-shadow: inset 0 2px #333747; }
-.pixel-boy-speaker {
-  display: flex;
-  position: absolute;
-  right: .7rem;
-  bottom: .35rem;
-  gap: .25rem;
-  margin-right: .2rem;
-  transform: rotate(-26deg);
-}
-.pixel-boy-speaker span {
-  display: block;
-  width: .19rem;
-  height: clamp(.85rem, 3vw, 1.45rem);
-  border-radius: 999px;
-  background: #606873;
-  box-shadow: inset 1px 0 #3e4755, 1px 0 #eef2f5;
-}
-@media (prefers-reduced-motion: reduce) {
-  .arcade-boot > :first-child { animation: none; }
-}
-.arcade-keys { font-size: .875rem; }
-.arcade-result { color: #9cf7e8; font-weight: 700; }
-.arcade-retry { display: flex; flex-wrap: wrap; gap: .5rem; }
-.dashboard-nav.dashboard-with-arcade { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.dashboard-with-arcade button { padding-inline: .25rem; font-size: .875rem; }
-@media (max-width: 375px) {
-  .dashboard-with-arcade button svg { display: none; }
-}
-
 .arcade-difficulty { display: grid; gap: .5rem; min-inline-size: 0; }
 .arcade-difficulty legend { margin-bottom: .4rem; font-weight: 750; }
 .arcade-levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
@@ -307,7 +244,6 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
   .pixel-boy-bezel { grid-row: 2 / 4; }
   .pixel-boy-controls { grid-column: 2; margin: 0; }
   .pixel-boy-footer { grid-column: 2; }
-  .pixel-boy-speaker { display: none; }
   .arcade-game-details { gap: .35rem; font-size: .83rem; }
   .arcade-game-details .arcade-keys { display: none; }
 }
@@ -318,3 +254,58 @@ body:has(.arcade-fullscreen[open]) { overflow: hidden; }
 .arcade-cartridges button[data-accent=lime] svg { color: #c6ec83; }
 .arcade-cartridges button[data-accent=sky] { background: #263641; border-color: #5d8c97; }
 .arcade-cartridges button[data-accent=sky] svg { color: #9fe1e7; }
+
+/* Keep the playfield and touch controls usable in both orientations. */
+.pixel-boy {
+  gap: .5rem;
+  padding: clamp(.4rem, 1.5vw, .85rem);
+  border: 1px solid #394553;
+  border-radius: 1rem;
+  background: #171e2a;
+  box-shadow: none;
+  clip-path: none;
+  color: #f1f5f9;
+}
+.pixel-boy-bezel {
+  grid-template-rows: minmax(0, 1fr);
+  padding: .25rem;
+  border: 1px solid #334052;
+  border-radius: .75rem;
+  background: #0e1420;
+  box-shadow: none;
+}
+.arcade-scoreboard { background: #142436; color: #b9d6e5; }
+.arcade-scoreboard strong { color: #a9f3e0; }
+.arcade-lcd-viewport { background: #0e1420; }
+.arcade-display { background: #142436; box-shadow: none; }
+.arcade-title-screen, .arcade-boot { color: #a9f3e0; background: #142436; }
+.pixel-boy-power, .pixel-boy-options, .pixel-boy-brand { color: #d9e5f2; }
+.pixel-boy-brand span { color: #67eed7; }
+.pixel-boy-controls { justify-content: space-evenly; margin: 0; }
+.pixel-boy-dpad:only-child, .pixel-boy-actions:only-child { grid-column: 1 / -1; justify-self: center; }
+.pixel-boy-dpad { --pad-key: clamp(42px, 11vw, 54px); }
+.pixel-boy-dpad[data-layout="horizontal"] {
+  grid-template: "left right" var(--pad-key) / repeat(2, var(--pad-key));
+  gap: .4rem;
+}
+.pixel-boy-dpad[data-layout="horizontal"]::after { display: none; }
+.pixel-boy-dpad[data-layout="horizontal"] button { border-radius: .65rem; }
+.pixel-boy-actions { display: flex; align-items: center; justify-content: center; padding: 0; transform: none; background: transparent; }
+.pixel-boy-actions button {
+  width: auto;
+  min-width: 5rem;
+  height: 3rem;
+  padding-inline: .7rem;
+  border: 1px solid #5ab8af;
+  border-radius: .75rem;
+  background: #266b67;
+  color: #ecfffb;
+  box-shadow: none;
+  font-size: .8rem;
+}
+.pixel-boy-actions button:active { background: #134742; box-shadow: none; }
+.pixel-boy-menu button { color: #dae6ed; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .pixel-boy-controls { align-self: center; gap: .5rem; }
+  .pixel-boy-dpad { --pad-key: clamp(36px, 12dvh, 50px); }
+}

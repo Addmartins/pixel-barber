@@ -1,6 +1,6 @@
 import { deviceApi } from "../device/api";
 import { getSupabase } from "../supabase/browser";
-import { gameVersion, type ArcadeStats, type Difficulty, type GameCode, type GameResult, type InputChange, type Run } from "./types";
+import { gameVersion, orbitVersion, type ArcadeStats, type Difficulty, type GameCode, type GameResult, type InputChange, type Run } from "./types";
 
 type Finish = { action: "finish"; id: string; ticks: number; changes: InputChange[] };
 
@@ -19,7 +19,7 @@ async function send<T>(body: { action: "start"; game: GameCode; difficulty: Diff
 }
 
 export function startRun(game: GameCode, difficulty: Difficulty) {
-  return send<Run>({ action: "start", game, difficulty, engineVersion: gameVersion });
+  return send<Run>({ action: "start", game, difficulty, engineVersion: game === "ORBITA_PIXEL" ? orbitVersion : gameVersion });
 }
 
 export function finishRun(id: string, ticks: number, changes: InputChange[]) {

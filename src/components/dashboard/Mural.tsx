@@ -38,6 +38,7 @@ const masterBadges: Record<GameCode, string> = {
   ESCALADA_KONG: "Mestre na Escalada da Pomada",
   BIGODE_SNAKE: "Mestre no Bigode Snake",
   BARBER_VALLEY: "Mestre no Barber Valley",
+  ORBITA_PIXEL: "Mestre no Órbita Pixel",
 };
 
 function MasterBadges({ games }: { games?: GameCode[] }) {

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { replay } from "@/lib/games";
-import { isEngineVersion, isDifficulty, isGameCode, maxTicks, multipliers, type InputChange } from "@/lib/games/types";
+import { isEngineVersion, orbitVersion, isDifficulty, isGameCode, maxTicks, multipliers, type InputChange } from "@/lib/games/types";
 import type { Database } from "@/lib/supabase/browser";
 
 export const runtime = "nodejs";
@@ -79,8 +79,11 @@ export async function POST(request: Request) {
     if (!isGameCode(body.game) || !isDifficulty(body.difficulty)) {
       return failure("Escolha um cartucho e uma dificuldade válidos. Se a opção não aparecer, atualize a página.", 400);
     }
+    // The two action cartridges share the same persisted score category.
+    const orbit = body.game === "ORBITA_PIXEL";
+    if (orbit !== (version === orbitVersion)) return failure("Versão do cartucho inválida.", 400);
     const { data, error } = await supabase.rpc("start_arcade_run", {
-      p_client_id: client, p_game_code: body.game, p_engine_version: version, p_difficulty: body.difficulty,
+      p_client_id: client, p_game_code: orbit ? "NAVALHA_RUSH" : body.game, p_engine_version: version, p_difficulty: body.difficulty,
     }).single();
     if (error?.code === "P0001") return failure("Aguarde dois segundos antes de começar outra partida.", 429);
     if (error || !data) return failure("Não foi possível iniciar a partida.", 503);

@@ -57,27 +57,19 @@ Antes de publicar uma compilação da Sprint 2 na Vercel, aplique a migração d
 
 ## Sprint Arcade
 
-O painel **Arcade** inclui Navalha Rush, Barba Fighter II e Torre do Fade. Use o D-Pad e os botões A/B na tela ou as setas, Z para B e X para A no teclado. A demonstração roda sem Supabase e mantém recordes somente enquanto a sessão local estiver aberta.
-
-| Jogo | Pontuação de referência |
-| --- | --- |
-| Navalha Rush | +10 por pomada, +50 por toalha e bônus por combo após aquecer a navalha. As vitórias típicas ficam entre 170 e 300 pontos. |
-| Barba Fighter II | +22 por corte, +44 no Corte Turbo e bônus por adversário e vitória perfeita. Uma vitória perfeita vale 374 pontos. |
-| Torre do Fade | De 100 a 250 ao chegar à cadeira do topo, conforme o tempo restante. |
+O painel **Pixel Boy** reúne sete cartuchos. A demonstração roda sem Supabase e mantém os recordes durante a sessão local.
 
 O servidor inicia cada partida com uma semente e associa a sessão à conta autenticada. Ao fim, a API recebe os comandos e reproduz a partida a 60 passos por segundo para calcular o placar. O PostgreSQL compara a duração simulada ao tempo decorrido, salva a melhor marca e credita até três partidas com placar positivo por dia no horário de Brasília. O crédito e o lançamento no ledger são atômicos e o reenvio da mesma partida não duplica pontos. A reprodução verifica a coerência dos comandos, mas um bot ainda pode jogar seguindo as regras.
 
-Para publicar, aplique primeiro as migrações pendentes até `20261121000004_arcade_difficulty.sql`. Configure `SUPABASE_SECRET_KEY` como variável exclusiva do servidor na Vercel e em `.env.local` para desenvolvimento com a API real. A API também aceita `SUPABASE_SERVICE_ROLE_KEY` em projetos com chaves legadas. As variáveis públicas do Supabase permanecem as mesmas.
+Para publicar, aplique primeiro as migrações pendentes até `20261121000006_new_retro_games.sql`. Configure `SUPABASE_SECRET_KEY` como variável exclusiva do servidor na Vercel e em `.env.local` para desenvolvimento com a API real. A API também aceita `SUPABASE_SERVICE_ROLE_KEY` em projetos com chaves legadas. As variáveis públicas do Supabase permanecem as mesmas.
 
 Execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/arcade.sql` em um banco de teste migrado para verificar duração inválida, titularidade, teto diário, recorde na quarta partida, reenvio, saldo e ranking.
 
 ### Pixel Boy e dificuldade
 
-Selecione um cartucho e escolha **Iniciante (1,0×)**, **Experiente (1,5×)** ou **Mestre (2,5×)**. Use **SELECT** ou **Shift** para alternar, e **START** ou **Enter** para começar. As setas controlam o D-Pad, **Z** aciona B, e **X** ou **Espaço** acionam A.
+Selecione um cartucho e escolha **Iniciante (1,0×)**, **Experiente (1,5×)** ou **Mestre (2,5×)**. Use **SELECT** ou **Shift** para alternar e **START** ou **Enter** para começar. As setas movem o personagem nos cartuchos direcionais. **X** ou **Espaço** acionam o botão específico do cartucho.
 
-A dificuldade fica vinculada à sessão e o servidor aplica o multiplicador ao placar reconstituído, com arredondamento ao inteiro mais próximo. Uma vitória em Mestre libera uma conquista para o jogo no ranking, inclusive se a cota diária de crédito já tiver sido atingida. Os recordes anteriores continuam válidos, com os registros antigos classificados como Iniciante e sem conquista retroativa.
-
-Aplique `20261121000004_arcade_difficulty.sql` antes de publicar o frontend atualizado. Partidas abertas no motor anterior precisam ser reiniciadas após a atualização.
+O servidor reconstitui a partida para validar o placar. Os registros antigos e as conquistas foram preservados. Patrulha Neon e Órbita Pixel compartilham o recorde online da categoria de ação. Todos os cartuchos compartilham o limite diário de três partidas creditadas.
 
 ## Loja do Avatar
 
@@ -104,11 +96,11 @@ O build mobile exporta a interface para `out/` e sincroniza as plataformas pelo 
 
 O feedback háptico usa os motores nativos no Android e iOS. No PWA, funciona quando o navegador oferece a API de vibração. No Safari para iOS, esse feedback depende do pacote nativo.
 
-### Seis cartuchos no Pixel Boy
+### Sete cartuchos em estilo 16-bit
 
-A Escalada da Pomada, Bigode Snake e Barber Valley usam a mesma simulação de 60 passos por segundo e a mesma confirmação de placar por replay dos três jogos iniciais. Os tetos de placar base são 350, 400 e 450, respectivamente. O nível Mestre da Escalada dura 45 segundos. As demais sessões desses cartuchos duram até 60 segundos.
+Patrulha Neon, Salto de Pomada, Órbita Pixel, Ruínas da Navalha, Joias do Salão e Torre de Neon têm mecânicas e controles próprios. Bigode Snake mantém o crescimento da cauda e as loções douradas, com nova arte e mais tempo para a primeira direção. Os jogos usam o avatar e os cosméticos equipados.
 
-Aplique `20261121000006_new_retro_games.sql` após as migrações anteriores. O número `00005` pertence à Loja do Avatar. O limite diário de três partidas creditadas é compartilhado entre os seis jogos.
+A migração `20261121000006_new_retro_games.sql` deve estar aplicada. Os motores antigos continuam disponíveis para validar partidas iniciadas por versões anteriores do app.
 
 ### Atualizações do app
 

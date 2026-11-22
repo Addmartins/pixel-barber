@@ -12,6 +12,7 @@ const ink = "#273a23";
 
 type SnakeState = GameState & {
   difficulty: Difficulty;
+  modern: boolean;
   seed: number;
   segments: number[];
   obstacles: number[];
@@ -40,13 +41,13 @@ function pace(state: SnakeState) {
 }
 
 export const snake: Game<SnakeState> = {
-  create(seed, difficulty) {
+  create(seed, difficulty, version) {
     const state: SnakeState = {
-      score: 0, ticks: 0, status: "playing", seed, difficulty,
+      score: 0, ticks: 0, status: "playing", seed, difficulty, modern: version === 4,
       segments: [128, 127, 126], obstacles: difficulty === "HARD" ? [...obstacles] : [],
       direction: 1, wanted: 1, nextMove: 0, oils: 0, oil: -1, golden: -1, goldenUntil: 0,
     };
-    state.nextMove = pace(state);
+    state.nextMove = state.modern ? 34 : pace(state);
     state.oil = freeCell(state, -1);
     return state;
   },
@@ -94,12 +95,32 @@ export const snake: Game<SnakeState> = {
     else if (state.ticks >= maxTicks) state.status = state.oils >= 15 ? "won" : "lost";
     state.nextMove = state.ticks + pace(state);
   },
-  draw(ctx, state) {
+  draw(ctx, state, avatar) {
     const cell = (position: number, color: string, inset: number) => {
       if (position < 0) return;
       ctx.fillStyle = color;
       ctx.fillRect(20 + (position % width) * 10 + inset, 20 + Math.floor(position / width) * 10 + inset, 10 - inset * 2, 10 - inset * 2);
     };
+    if (state.modern) {
+      ctx.fillStyle = "#10182b"; ctx.fillRect(0, 0, 240, 160);
+      ctx.fillStyle = "#426d76"; ctx.fillRect(18, 18, 204, 134);
+      for (let i = 0; i < area; i++) cell(i, (i + Math.floor(i / width)) % 2 ? "#20384a" : "#263e50", 0);
+      for (const rock of state.obstacles) { cell(rock, "#3f344e", 0); cell(rock, "#ae85aa", 2); }
+      cell(state.oil, "#ffb56f", 2);
+      cell(state.oil, "#fff3ba", 4);
+      cell(state.golden, "#f9e577", 1 + Math.floor(state.ticks / 8) % 2);
+      state.segments.forEach((position, index) => {
+        cell(position, index ? "#246b6f" : "#98f5c3", 0);
+        if (index) cell(position, index % 2 ? "#51bb9e" : "#61ceab", 2);
+      });
+      if (avatar) {
+        const head = state.segments[0];
+        ctx.drawImage(avatar, 20 + head % width * 10, 16 + Math.floor(head / width) * 10, 10, 18);
+      } else cell(state.segments[0], "#20384a", 3);
+      ctx.fillStyle = "#9cf3d4"; ctx.font = "bold 8px monospace"; ctx.textAlign = "left";
+      ctx.fillText(`ÓLEOS ${state.oils} / 15  ·  CAUDA ${state.segments.length}`, 20, 12);
+      return;
+    }
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, 240, 160);
     ctx.fillStyle = ink;

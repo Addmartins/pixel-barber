@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Gamepad2, Scissors, Timer, TrendingUp } from "lucide-react";
+import { Gamepad2, Rocket, Scissors, Timer, TrendingUp } from "lucide-react";
+import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
+import type { AvatarId } from "@/lib/avatars";
+import type { CosmeticCode } from "@/lib/store";
 import { hapticImpact, hapticVictory } from "@/lib/device/haptics";
 import { playHitSound, playJumpSound, playScoreSound, playVictoryJingle, unlockGameAudio } from "@/lib/games/audio";
 import { createGame } from "@/lib/games";
 import { finishRun, getArcadeStats, startRun } from "@/lib/games/client";
 import {
-  A, B, canvasHeight, canvasWidth, difficulties, DOWN, gameVersion, LEFT, multipliers, RIGHT, roundSeconds, ticksPerSecond, UP,
+  A, canvasHeight, canvasWidth, difficulties, DOWN, gameVersion, LEFT, multipliers, orbitVersion, RIGHT, roundSeconds, ticksPerSecond, UP,
   type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
 } from "@/lib/games/types";
 import { GameBoyFrame } from "./GameBoyFrame";
@@ -15,23 +18,25 @@ import { SummitArt, WhiskerArt, SproutArt } from "./RetroCartArt";
 import "./arcade.css";
 
 const cartridges = [
-  { code: "NAVALHA_RUSH", title: "Navalha Rush", icon: Scissors, accent: "mint",
-    instructions: "Use as direções para coletar pomadas (+10). Toalhas quentes (+50) deixam os inimigos azuis para você encadear combos." },
-  { code: "BARBA_FIGHTER", title: "Barba Fighter II", icon: TrendingUp, accent: "rose",
-    instructions: "Segure a direção indicada para esquivar. Depois toque A (tesoura) ou B (navalha) conforme o sinal. Após cinco acertos, use B para o Corte Turbo. No nível Mestre, faça os dois cortes na ordem mostrada." },
-  { code: "TORRE_FADE", title: "Torre do Fade", icon: Timer, accent: "gold",
-    instructions: "Use ◀ e ▶ para se mover e A ou ▲ para pular. Atravesse as esteiras e as poças de xampu para chegar ao topo antes que o tempo acabe." },
-  { code: "ESCALADA_KONG", title: "Escalada da Pomada", icon: SummitArt, accent: "amber",
-    instructions: "Use ◀ ▶ nas vigas e ▲ ▼ nas escadas. Pule potes com A e pegue o pente com B. Alcance a Tesoura de Ouro no topo." },
-  { code: "BIGODE_SNAKE", title: "Bigode Snake", icon: WhiskerArt, accent: "lime",
-    instructions: "Guie o bigode pelo espelho com as setas. Pegue óleos e loções douradas sem encostar no corpo, nas bordas ou nas navalhas." },
-  { code: "BARBER_VALLEY", title: "Barber Valley", icon: SproutArt, accent: "sky",
-    instructions: "Veja o pedido sobre o cliente. Pegue o item na bancada com B, volte à cadeira, segure A e solte quando o cursor estiver no verde." },
+  { code: "NAVALHA_RUSH", title: "Patrulha Neon", icon: Scissors, accent: "mint", action: "Rajada", directions: "all",
+    instructions: "Mova-se em quatro direções. Toque ou segure Rajada para disparar três feixes e desativar os drones." },
+  { code: "ESCALADA_KONG", title: "Salto de Pomada", icon: SummitArt, accent: "amber", action: "Impulso", directions: "horizontal",
+    instructions: "Guie o ricochete com esquerda e direita. Use Impulso durante a queda para alcançar cristais e evitar as placas de espinhos." },
+  { code: "ORBITA_PIXEL", title: "Órbita Pixel", icon: Rocket, accent: "sky", action: "Laser", directions: "all",
+    instructions: "Pilote entre os invasores. Segure Laser para disparar continuamente. O recorde é compartilhado com Patrulha Neon." },
+  { code: "BARBA_FIGHTER", title: "Ruínas da Navalha", icon: TrendingUp, accent: "rose", action: "Abrir", directions: "all",
+    instructions: "Explore as passagens e colete as pedras preciosas. Use Abrir perto de uma parede para abrir um atalho." },
+  { code: "BARBER_VALLEY", title: "Joias do Salão", icon: SproutArt, accent: "lime", action: "Lapidar", directions: "all",
+    instructions: "Selecione uma joia com o direcional. Lapidar muda a cor ou coleta grupos de três ou mais joias iguais ligadas pelos lados." },
+  { code: "TORRE_FADE", title: "Torre de Neon", icon: Timer, accent: "gold", action: "Soltar", directions: "none",
+    instructions: "Solte o bloco quando ele se alinhar à torre. Encaixes precisos rendem mais pontos e preservam a largura." },
+  { code: "BIGODE_SNAKE", title: "Bigode Snake", icon: WhiskerArt, accent: "lime", action: undefined, directions: "all",
+    instructions: "Guie o avatar com o direcional. Pegue óleos e loções douradas sem tocar na cauda, nas bordas ou nas navalhas." },
 ] as const;
 
 const keyboard: Partial<Record<string, number>> = {
   ArrowLeft: LEFT, ArrowRight: RIGHT, ArrowUp: UP, ArrowDown: DOWN,
-  KeyZ: B, Space: A, KeyX: A,
+  Space: A, KeyX: A,
 };
 
 const levels: Record<Difficulty, { title: string; subtitle: string; description: string }> = {
@@ -66,7 +71,7 @@ function playBootChime() {
 function currentStatus(state: GameState) { return state.status; }
 
 function remainingHealth(state: ReturnType<typeof createGame>["state"]) {
-  if ("lives" in state) return state.lives;
+  if (state.lives !== undefined) return state.lives;
   if ("hearts" in state) return state.hearts;
   return undefined;
 }
@@ -75,9 +80,11 @@ type FinishedRun = { run: Run; snapshot: GameState; changes: InputChange[] };
 type Phase = "idle" | "starting" | "playing" | "finished";
 const tickMs = 1000 / ticksPerSecond;
 
-export function Arcade({ demo, visible, onBalance }: {
+export function Arcade({ demo, visible, onBalance, avatar, cosmetics }: {
   demo: boolean;
   visible: boolean;
+  avatar: AvatarId;
+  cosmetics: CosmeticCode[];
   onBalance: (balance: number) => void;
 }) {
   const [selected, setSelected] = useState<GameCode>("NAVALHA_RUSH");
@@ -98,12 +105,14 @@ export function Arcade({ demo, visible, onBalance }: {
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const sprite = useRef<HTMLDivElement>(null);
   const held = useRef(new Map<number | string, number>());
   const justPressed = useRef(new Map<number | string, number>());
   const cartridge = cartridges.find(({ code }) => code === selected) ?? cartridges[0];
   const playing = phase === "playing";
   const controlsLocked = playing || phase === "starting" || sending || Boolean(pending) || booting;
   const activeDifficulty = run?.difficulty ?? difficulty;
+  const recordCode = !demo && selected === "ORBITA_PIXEL" ? "NAVALHA_RUSH" : selected;
   const points = result?.score ?? Math.round((snapshot?.score ?? 0) * multipliers[activeDifficulty]);
   const remaining = Math.max(0, roundSeconds(selected, activeDifficulty) - Math.floor((snapshot?.ticks ?? 0) / ticksPerSecond));
 
@@ -164,7 +173,7 @@ export function Arcade({ demo, visible, onBalance }: {
       const saved = await finishRun(finished.run.id, finished.snapshot.ticks, finished.changes);
       setResult(saved);
       setPending(null);
-      setBest((previous) => ({ ...previous, [finished.run.game]: saved.high_score }));
+      setBest((previous) => ({ ...previous, [finished.run.game === "ORBITA_PIXEL" ? "NAVALHA_RUSH" : finished.run.game]: saved.high_score }));
       setCredited(saved.credited_today);
       onBalance(saved.points_balance);
     } catch (failure) {
@@ -184,6 +193,15 @@ export function Arcade({ demo, visible, onBalance }: {
     }
     context.imageSmoothingEnabled = false;
     const engine = createGame(run.game, run.seed, run.difficulty, run.engineVersion ?? 2);
+    const avatarArt = sprite.current?.querySelector("svg");
+    const image = new Image();
+    if (avatarArt) {
+      const source = avatarArt.cloneNode(true) as SVGElement;
+      source.setAttribute("width", "32");
+      source.setAttribute("height", "64");
+      const svg = new XMLSerializer().serializeToString(source);
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
     const changes: InputChange[] = [];
     let previousMask = 0;
     let previousTime = performance.now();
@@ -215,7 +233,7 @@ export function Arcade({ demo, visible, onBalance }: {
         const stepStatus = currentStatus(engine.state);
         const damaged = health !== undefined && currentHealth !== undefined && currentHealth < health;
         health = currentHealth;
-        if (damaged || (run?.game === "BARBA_FIGHTER" && stepStatus === "lost")) {
+        if (damaged || (run?.game === "BARBA_FIGHTER" && (run.engineVersion ?? 2) < 4 && stepStatus === "lost")) {
           terminalHit = stepStatus === "lost";
           if (motion) shake = 4;
           hapticImpact();
@@ -231,11 +249,11 @@ export function Arcade({ demo, visible, onBalance }: {
         context!.fillRect(0, 0, canvasWidth, canvasHeight);
         context!.save();
         context!.translate(shake % 2 ? -2 : 3, shake % 2 ? 2 : -2);
-        engine.draw(context!);
+        engine.draw(context!, image.complete && image.naturalWidth ? image : undefined);
         context!.restore();
         shake--;
       } else {
-        engine.draw(context!);
+        engine.draw(context!, image.complete && image.naturalWidth ? image : undefined);
       }
       const { score, status, ticks } = engine.state;
       const second = Math.floor(ticks / ticksPerSecond);
@@ -282,7 +300,7 @@ export function Arcade({ demo, visible, onBalance }: {
     setPhase("starting");
     try {
       const next: Run = demo
-        ? { id: "demo", seed: 1 + Math.floor(Math.random() * 2147483646), game: selected, difficulty, engineVersion: gameVersion }
+        ? { id: "demo", seed: 1 + Math.floor(Math.random() * 2147483646), game: selected, difficulty, engineVersion: selected === "ORBITA_PIXEL" ? orbitVersion : gameVersion }
         : await startRun(selected, difficulty);
       setRun(next);
       setPhase("playing");
@@ -368,16 +386,17 @@ export function Arcade({ demo, visible, onBalance }: {
         : <p className="muted">{credited === null ? "Até três partidas com pontos por dia." : `${credited}/3 partidas creditadas hoje, no horário de Brasília.`}</p>}
       {statsError && <p className="error">Os recordes salvos estão indisponíveis no momento.</p>}
 
+      <div ref={sprite} hidden><AvatarRenderer skinId={avatar} cosmetics={cosmetics} /></div>
       <dialog ref={dialog} className="arcade-fullscreen" aria-labelledby="arcade-game-title"
         onCancel={(event) => { event.preventDefault(); if (menuOpen) setMenuOpen(false); else closeGame(); }}
         onClose={() => opener.current?.focus()}>
         <h2 id="arcade-game-title" className="sr-only">{cartridge.title}</h2>
-        <GameBoyFrame playing={playing} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
+        <GameBoyFrame playing={playing} action={cartridge.action} directionsMode={cartridge.directions} onInput={onInput} onStart={() => void start()} onSelect={cycleDifficulty}
           startDisabled={controlsLocked} selectDisabled={controlsLocked} onExit={closeGame}
           exitDisabled={phase === "starting" || sending} onMenu={() => setMenuOpen((open) => !open)} menuOpen={menuOpen}>
             <div className="arcade-scoreboard">
               <span>PLACAR <strong>{points}</strong></span>
-              <span>RECORDE <strong>{best[selected] ?? 0}</strong></span>
+              <span>RECORDE <strong>{best[recordCode] ?? 0}</strong></span>
               <span>TEMPO <strong>{remaining}s</strong></span>
             </div>
             <div className="arcade-lcd-viewport"><div className="arcade-display">
@@ -408,7 +427,7 @@ export function Arcade({ demo, visible, onBalance }: {
               <p className="muted">{levels[difficulty].description}</p>
             </fieldset>
             <p className="muted">{cartridge.instructions}</p>
-            <p className="muted arcade-keys">Teclado: setas, Z = B, X ou Espaço = A, Enter = START, Shift = SELECT.</p>
+            <p className="muted arcade-keys">Teclado: setas para dirigir, X ou Espaço para a ação, Enter para iniciar e Shift para mudar a dificuldade.</p>
             {phase === "finished" && snapshot && <p role="status" className="arcade-result">
               {snapshot.status === "won" ? "Você venceu!" : "Fim de jogo."} {points} pontos de placar.
               {result && (result.points_awarded > 0 ? ` +${result.points_awarded} pontos no seu saldo.` :

@@ -1,4 +1,5 @@
-export const gameCodes = ["NAVALHA_RUSH", "BARBA_FIGHTER", "TORRE_FADE", "ESCALADA_KONG", "BIGODE_SNAKE", "BARBER_VALLEY"] as const;
+const storedGameCodes = ["NAVALHA_RUSH", "BARBA_FIGHTER", "TORRE_FADE", "ESCALADA_KONG", "BIGODE_SNAKE", "BARBER_VALLEY"] as const;
+export const gameCodes = [...storedGameCodes, "ORBITA_PIXEL"] as const;
 export type GameCode = (typeof gameCodes)[number];
 export const LEFT = 1;
 export const RIGHT = 2;
@@ -22,22 +23,23 @@ export function roundSeconds(game: GameCode, difficulty: Difficulty) {
   return difficulty === "HARD" ? 30 : difficulty === "MEDIUM" ? 45 : 60;
 }
 
-export const gameVersion = 3;
-export type EngineVersion = 2 | typeof gameVersion;
+export const gameVersion = 4;
+export const orbitVersion = 5;
+export type EngineVersion = 2 | 3 | typeof gameVersion | typeof orbitVersion;
 export function isEngineVersion(value: unknown): value is EngineVersion {
-  return value === 2 || value === gameVersion;
+  return value === 2 || value === 3 || value === gameVersion || value === orbitVersion;
 }
 export const ticksPerSecond = 60;
 export const maxTicks = 3600;
 export const canvasWidth = 240;
 export const canvasHeight = 160;
 
-export type GameState = { score: number; ticks: number; status: "playing" | "won" | "lost"; jumps?: number };
+export type GameState = { lives?: number; score: number; ticks: number; status: "playing" | "won" | "lost"; jumps?: number };
 export type State = GameState;
 export type Game<S extends GameState = GameState> = {
   create(seed: number, difficulty: Difficulty, engineVersion?: EngineVersion): S;
   step(state: S, input: number): void;
-  draw(ctx: CanvasRenderingContext2D, state: S): void;
+  draw(ctx: CanvasRenderingContext2D, state: S, avatar?: CanvasImageSource): void;
 };
 
 export type InputChange = [tick: number, mask: number];

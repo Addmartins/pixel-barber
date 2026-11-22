@@ -89,7 +89,7 @@ export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmet
         inventory={shop.inventory} loading={shop.loading} error={shop.error} demo={!clientId}
         onReload={() => void shop.reload()} onBuy={shop.buy} onEquip={shop.equip} /></div>}
       {arcadeOpened && <div hidden={section !== "arcade"}>
-        <Arcade demo={!clientId} visible={section === "arcade"} onBalance={updateBalance} />
+        <Arcade avatar={avatar} cosmetics={shop.equipped} demo={!clientId} visible={section === "arcade"} onBalance={updateBalance} />
       </div>}
       <div hidden={section !== "booking"}><Booking api={api} /></div>
       {section === "mural" && (
