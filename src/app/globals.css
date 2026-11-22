@@ -409,3 +409,23 @@ html, body {
   87.5% { transform: translate(7px, 11px) rotate(315deg); }
   100% { transform: translate(16px, 3px) rotate(360deg); }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .launch-prism { animation: launch-prism 3.6s ease-in-out infinite; }
+  .launch-stitch { animation: launch-stitch 3s linear infinite; }
+  .launch-emblem { animation: launch-emblem 2.8s ease-in-out infinite; }
+}
+
+@keyframes launch-prism {
+  0%, 100% { opacity: .6; filter: hue-rotate(0deg); }
+  50% { opacity: 1; filter: hue-rotate(110deg); }
+}
+
+@keyframes launch-stitch {
+  to { stroke-dashoffset: -22; }
+}
+
+@keyframes launch-emblem {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; filter: drop-shadow(0 0 1px #ffcf7a); }
+}

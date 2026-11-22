@@ -24,6 +24,11 @@ const silhouettes = {
   hat: "M7 4H17V6H19V14H23V18H1V14H5V6H7Z",
   chair: "M4 2H17V4H19V12H21V15H19V19H14V21H19V23H4V21H9V19H5V16H2V12H4Z",
   aura: "M10 2H14V4H16V6H13V9H11V6H8V4H10Z M10 15H13V18H16V20H14V22H10V20H8V18H10Z M2 10H4V8H6V11H9V13H6V16H4V14H2Z M15 11H18V8H20V10H22V14H20V16H18V13H15Z",
+  prism: "M5 2H10V7H12V10H13V7H15V2H20V8H18V11H16V14H20V16H22V21H19V23H15V21H13V18H11V21H9V23H5V21H2V16H4V14H9V11H7V8H5Z",
+  founderHat: "M2 15H5V12H6V7H8V4H11V2H14V4H17V6H19V11H21V14H23V18H17V19H7V18H2Z",
+  founderApron: "M5 2H9V6H15V2H19V10H18V13H21V22H3V13H6V10H5Z",
+  founderChair: "M5 2H19V4H21V11H23V15H21V18H16V21H21V23H3V21H8V18H3V15H1V11H3V4H5Z",
+  signAura: "M8 1H16V3H20V5H22V9H23V15H22V19H20V21H16V23H8V21H4V19H2V15H1V9H2V5H4V3H8Z M8 6H5V10H4V14H5V18H8V20H16V18H19V14H20V10H19V6H16V4H8Z",
 } as const;
 
 const details = {
@@ -49,17 +54,44 @@ const details = {
   hat: "M8 6H16V8H8Z M6 12H18V14H6Z M2 15H22V16H2Z M11 11H13V14H11Z",
   chair: "M6 4H16V6H6Z M6 8H17V12H6Z M4 13H19V15H4Z M11 19H13V22H11Z",
   aura: "M11 3H13V6H11Z M11 18H13V21H11Z M3 11H6V13H3Z M18 11H21V13H18Z",
+  prism: "M6 3H9V6H7V5H6Z M16 3H19V5H17V8H16Z M8 8H10V10H8Z M5 16H8V20H5Z M16 16H19V20H16Z M11 13H14V15H11Z",
+  founderHat: "M8 8H16V9H8Z M6 13H20V15H6Z M10 11H14V12H15V14H13V16H11V14H9V12H10Z M3 16H9V17H3Z",
+  founderApron: "M7 4H9V8H7Z M15 4H17V8H15Z M6 12H18V13H6Z M6 14H7V20H6Z M17 14H18V20H17Z M10 15H14V19H10Z M5 20H19V21H5Z",
+  founderChair: "M7 3H17V5H7Z M5 6H7V11H5Z M17 6H19V11H17Z M2 12H6V14H2Z M18 12H22V14H18Z M6 15H18V17H6Z M11 18H13V21H11Z",
+  signAura: "M8 2H16V3H8Z M20 6H21V10H20Z M21 14H22V17H21Z M8 21H16V22H8Z M2 14H3V17H2Z M3 6H4V10H3Z",
 } as const;
 
 export function CollectionArt({ code, mounted }: { code: CollectionCode; mounted?: boolean }) {
   const { art, rarity, base, light } = avatarCollection[code];
   const legendary = rarity === "LENDARIO";
+  const exclusive = rarity === "EXCLUSIVO";
   return (
     <g className={art === "aura" ? "cosmetic-orbit" : undefined}>
       <path d={silhouettes[art]} fill={base} stroke={ink} strokeWidth={1.25} strokeLinejoin="bevel" />
       <path d={details[art]} fill={light} className={art === "flame" || art === "neon" ? "cosmetic-shimmer" : undefined} />
-      {rarity !== "COMUM" && !mounted && <path d="M20 2h2v2h-2z M3 20h1v1H3z" fill={light} opacity={.78} />}
+      {exclusive && <LaunchHighlight art={art} light={light} />}
+      {rarity === "RARO" && !mounted && <path d="M20 2h2v2h-2z M3 20h1v1H3z" fill={light} opacity={.78} />}
       {legendary && <path className="cosmetic-sparkles" d={mounted ? "M21 3h1V2h1v1h1v1h-1v1h-1V4h-1z" : "M1 6h1V4h1v2h2v1H3v2H2V7H1z M19 18h2v-2h1v2h2v1h-2v2h-1v-2h-2z"} fill={light} />}
     </g>
   );
+}
+
+function LaunchHighlight({ art, light }: {
+  art: (typeof avatarCollection)[CollectionCode]["art"]; light: string;
+}) {
+  switch (art) {
+    case "prism": return <g className="launch-prism">
+      <path fill="#c48bff" d="M6 4H8V6H6Z M17 6H19V8H17Z M4 17H6V20H4Z" />
+      <path fill={light} d="M7 3H9V4H7Z M16 4H18V5H16Z M11 13H14V14H11Z" />
+    </g>;
+    case "founderHat": return <path className="launch-emblem" fill="#fff3bd"
+      d="M11 11h2v1h1v2h-1v1h-2v-1h-1v-2h1z" />;
+    case "founderApron": return <path className="launch-stitch" d="M6 15V20H18V15 M9 9H15"
+      fill="none" stroke={light} strokeWidth="1" strokeDasharray="3 4" />;
+    case "founderChair": return <path className="launch-stitch" d="M6 10V5H18V10 M5 15H19"
+      fill="none" stroke={light} strokeWidth="1" strokeDasharray="3 4" />;
+    case "signAura": return <path className="launch-stitch" d="M12 2C18 2 22 6 22 12S18 22 12 22 2 18 2 12 6 2 12 2Z"
+      fill="none" stroke={light} strokeWidth="1" strokeDasharray="3 4" />;
+    default: return null;
+  }
 }

@@ -193,3 +193,10 @@
 .rarityGroup[data-rarity=LENDARIO] h3 { color: #e9c7ff; }
 .item[data-rarity=RARO] .art { background: radial-gradient(ellipse, #263c50, var(--surface-raised)); }
 .item[data-rarity=LENDARIO] .art { background: radial-gradient(ellipse, #473662, #21192e 78%); }
+
+.item[data-rarity=EXCLUSIVO] { --border: #8a744b; }
+.item[data-rarity=EXCLUSIVO] .rarity,
+.rarityGroup[data-rarity=EXCLUSIVO] h3 { color: #ffe2a0; }
+.item[data-rarity=EXCLUSIVO] .art {
+  background: radial-gradient(ellipse at 55% 40%, #4d463c, #19363d 48%, #1e2330);
+}

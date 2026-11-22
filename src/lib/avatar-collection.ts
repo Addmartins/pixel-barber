@@ -29,6 +29,11 @@ export const avatarCollection = {
   cadeira_barbear: { name: "Cadeira de barbeiro portátil", slot: "scene", rarity: "LENDARIO", price: 850, art: "chair", base: "#8e3457", light: "#ef9aa3" },
   aura_laminas: { name: "Aura de lâminas giratórias", slot: "effect", rarity: "LENDARIO", price: 850, art: "aura", base: "#726ae6", light: "#b9eeff" },
   chapeu_supremo: { name: "Chapéu Barbeiro Supremo", slot: "head", rarity: "LENDARIO", price: 780, art: "hat", base: "#34264f", light: "#f3b4ff" },
+  tesoura_prisma: { name: "Tesoura Prisma", slot: "tool", rarity: "EXCLUSIVO", price: 1100, art: "prism", base: "#7297e4", light: "#eefbff" },
+  chapeu_fundador: { name: "Chapéu do Fundador", slot: "head", rarity: "EXCLUSIVO", price: 1250, art: "founderHat", base: "#284753", light: "#ffe098" },
+  avental_estreia: { name: "Avental Primeira Edição", slot: "body", rarity: "EXCLUSIVO", price: 1400, art: "founderApron", base: "#33415a", light: "#fbd892" },
+  trono_inauguracao: { name: "Trono da Inauguração", slot: "scene", rarity: "EXCLUSIVO", price: 1600, art: "founderChair", base: "#1f626a", light: "#f5d08b" },
+  aura_letreiro: { name: "Aura Letreiro Neon", slot: "effect", rarity: "EXCLUSIVO", price: 1850, art: "signAura", base: "#6991df", light: "#94fff3" },
 } as const;
 
 export type CollectionCode = keyof typeof avatarCollection;

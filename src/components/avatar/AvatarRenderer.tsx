@@ -19,7 +19,7 @@ const placement: Record<CosmeticSlot, [number, number, number, number]> = {
   head: [4, 0, 24, 17], tool: [19, 24, 13, 18], effect: [0, 11, 32, 32],
 };
 
-const fittedLegendary: Partial<Record<CosmeticCode, [number, number, number, number]>> = {
+const fittedAccessories: Partial<Record<CosmeticCode, [number, number, number, number]>> = {
   maquina_ouro: [21, 27, 11, 16],
   navalha_flamejante: [21, 25, 11, 17],
   coroa_barber: [6, 0, 21, 12],
@@ -27,6 +27,9 @@ const fittedLegendary: Partial<Record<CosmeticCode, [number, number, number, num
   cabelo_neon: [5, 1, 23, 17],
   tesoura_diamante: [21, 26, 11, 16],
   chapeu_supremo: [5, 0, 24, 14],
+  tesoura_prisma: [21, 25, 11, 17],
+  chapeu_fundador: [5, 0, 24, 14],
+  avental_estreia: [7, 23, 18, 22],
 };
 
 const beardAnchors: Partial<Record<CosmeticCode, {
@@ -42,7 +45,7 @@ function Accessory({ code }: { code: CosmeticCode }) {
   if (!isCollectionCode(code)) return <CosmeticArt code={code} />;
   const item = avatarCollection[code];
   const beard = beardAnchors[code];
-  const [x, y, width, height] = beard?.frame ?? fittedLegendary[code] ?? placement[item.slot];
+  const [x, y, width, height] = beard?.frame ?? fittedAccessories[code] ?? placement[item.slot];
   return (
     <svg x={x} y={y} width={width} height={height} viewBox={beard?.viewBox ?? "0 0 24 24"} preserveAspectRatio="none"
       data-cosmetic={code} data-rarity={item.rarity}>
@@ -57,8 +60,10 @@ export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }:
   const outfit = (slot: CosmeticSlot) => cosmetics.filter(code => cosmeticSlot(code) === slot)
     .map(code => <Accessory key={code} code={code} />);
 
-  const seated = cosmetics.includes("cadeira_barbear");
-  const aura = cosmetics.includes("aura_laminas");
+  const launchChair = cosmetics.includes("trono_inauguracao");
+  const launchAura = cosmetics.includes("aura_letreiro");
+  const seated = launchChair || cosmetics.includes("cadeira_barbear");
+  const aura = launchAura || cosmetics.includes("aura_laminas");
   const hair = outfit("hair");
   const beard = outfit("beard");
   const upper = (
@@ -77,11 +82,11 @@ export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }:
     <span className={`pixel-avatar${className ? ` ${className}` : ""}`} style={style} aria-hidden="true">
       <svg className="pixel-avatar-art" viewBox="0 0 32 64" shapeRendering="crispEdges" focusable="false"
         data-pose={seated ? "seated" : "standing"}>
-        {aura && <BladeAura />}
-        {seated ? <BarberChairBack /> : <DenimArt />}
+        {aura && <BladeAura launch={launchAura} />}
+        {seated ? <BarberChairBack launch={launchChair} /> : <DenimArt />}
         {seated ? <svg width="32" height="49" viewBox="0 0 32 49" overflow="hidden">{upper}</svg> : upper}
         {seated && <SeatedDenim />}
-        {seated && <BarberChairArms />}
+        {seated && <BarberChairArms launch={launchChair} />}
         <g transform={seated ? "translate(0 7)" : undefined}>{outfit("tool")}</g>
       </svg>
     </span>

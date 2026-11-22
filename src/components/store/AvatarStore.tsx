@@ -9,14 +9,14 @@ import { CosmeticSprite } from "./CosmeticSprite";
 import styles from "./avatar-store.module.css";
 
 const rarities = [
-  ["COMUM", "Comuns"], ["RARO", "Raros"], ["LENDARIO", "Lendários"],
+  ["COMUM", "Comuns"], ["RARO", "Raros"], ["LENDARIO", "Lendários"], ["EXCLUSIVO", "Exclusivos de lançamento"],
 ] as const;
 const filters = [["all", "Todos"], ...rarities, ["wardrobe", "Meu Guarda-Roupa"]] as const;
 const slots: [CosmeticSlot, string][] = [
   ["head", "Cabeça"], ["body", "Roupas"], ["face", "Rosto"], ["tool", "Ferramentas"],
   ["hair", "Cabelo"], ["beard", "Barba e bigode"], ["neck", "Colares"], ["scene", "Cenário"], ["effect", "Efeitos"],
 ];
-const rarityLabels = { COMUM: "Comum", RARO: "Raro", LENDARIO: "Lendário" };
+const rarityLabels = { COMUM: "Comum", RARO: "Raro", LENDARIO: "Lendário", EXCLUSIVO: "Exclusivo de lançamento" };
 const points = new Intl.NumberFormat("pt-BR");
 type Filter = "all" | "wardrobe" | Rarity;
 type Action = "buy" | "equip" | "unequip";

@@ -7,7 +7,7 @@ const legacySlots = {
 
 export type CosmeticCode = keyof typeof legacySlots | CollectionCode;
 export type CosmeticSlot = "head" | "body" | "face" | "tool" | "hair" | "beard" | "neck" | "scene" | "effect";
-export type Rarity = "COMUM" | "RARO" | "LENDARIO";
+export type Rarity = "COMUM" | "RARO" | "LENDARIO" | "EXCLUSIVO";
 
 export type CosmeticProduct = {
   id: string;
