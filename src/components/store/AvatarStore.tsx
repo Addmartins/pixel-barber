@@ -119,7 +119,7 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
       </div>
 
       <section className={styles.fitting} aria-labelledby="fitting-title">
-        <div className={styles.fittingSprite}><AvatarRenderer skinId={avatar} cosmetics={fitting} size={96} /></div>
+        <div className={styles.fittingSprite}><AvatarRenderer skinId={avatar} cosmetics={fitting} /></div>
         <div className={styles.fittingDetails}>
           <h3 id="fitting-title">Provador</h3>
           <p aria-live="polite">{preview ? preview.nome : "Escolha um acessório para experimentar."}</p>
