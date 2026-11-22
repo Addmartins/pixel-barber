@@ -3,22 +3,22 @@
 import { useState } from "react";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { AvatarId } from "@/lib/avatars";
-import type { CosmeticProduct, InventoryItem } from "@/lib/store";
+import { isCollectionCode } from "@/lib/avatar-collection";
+import type { CosmeticProduct, CosmeticSlot, InventoryItem, Rarity } from "@/lib/store";
 import { CosmeticSprite } from "./CosmeticSprite";
 import styles from "./avatar-store.module.css";
 
-const filters = [
-  ["all", "Todos"],
-  ["head", "Cabeça"],
-  ["body", "Roupas"],
-  ["face", "Rosto"],
-  ["tool", "Ferramentas"],
-  ["wardrobe", "Meu Guarda-Roupa"],
+const rarities = [
+  ["COMUM", "Comuns"], ["RARO", "Raros"], ["LENDARIO", "Lendários"],
 ] as const;
-
+const filters = [["all", "Todos"], ...rarities, ["wardrobe", "Meu Guarda-Roupa"]] as const;
+const slots: [CosmeticSlot, string][] = [
+  ["head", "Cabeça"], ["body", "Roupas"], ["face", "Rosto"], ["tool", "Ferramentas"],
+  ["hair", "Cabelo"], ["beard", "Barba e bigode"], ["neck", "Colares"], ["scene", "Cenário"], ["effect", "Efeitos"],
+];
 const rarityLabels = { COMUM: "Comum", RARO: "Raro", LENDARIO: "Lendário" };
 const points = new Intl.NumberFormat("pt-BR");
-type Filter = (typeof filters)[number][0];
+type Filter = "all" | "wardrobe" | Rarity;
 type Action = "buy" | "equip" | "unequip";
 
 type StoreProps = {
@@ -72,6 +72,7 @@ function endSound(context: AudioContext | undefined, action?: Action) {
 
 export function AvatarStore({ avatar, balance, products, inventory, loading, error, demo, onReload, onBuy, onEquip }: StoreProps) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [slot, setSlot] = useState<CosmeticSlot | "all">("all");
   const [previewId, setPreviewId] = useState<string>();
   const [pendingId, setPendingId] = useState<string>();
   const [feedback, setFeedback] = useState<{ text: string; error?: boolean }>();
@@ -81,9 +82,13 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
   const fitting = equipped.filter((product) => product.cosmetic_slot !== preview?.cosmetic_slot)
     .map((product) => product.cosmetic_code);
   if (preview) fitting.push(preview.cosmetic_code);
-  const visibleProducts = products.filter((product) => (
-    filter === "all" || (filter === "wardrobe" ? owned.has(product.id) : product.cosmetic_slot === filter)
-  ));
+  const collectionAvailable = products.some(product => product.cosmetic_code !== "tesoura" && isCollectionCode(product.cosmetic_code));
+  const visibleProducts = products.filter(product => {
+    if (slot !== "all" && product.cosmetic_slot !== slot) return false;
+    if (filter === "wardrobe") return owned.has(product.id);
+    if (collectionAvailable && !isCollectionCode(product.cosmetic_code)) return false;
+    return filter === "all" || product.rarity === filter;
+  });
 
   async function apply(product: CosmeticProduct, action: Action) {
     if (pendingId) return;
@@ -127,11 +132,19 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
         </div>
       </section>
 
-      <div className={styles.filters} role="group" aria-label="Filtros de acessórios">
+      <div className={styles.filters} role="group" aria-label="Raridade e guarda-roupa">
         {filters.map(([key, label]) => (
           <button type="button" key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>
         ))}
       </div>
+
+      <label className={styles.slotFilter}>
+        Categoria
+        <select value={slot} onChange={event => setSlot(event.target.value as CosmeticSlot | "all")}>
+          <option value="all">Todas</option>
+          {slots.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>
 
       {error && (
         <div className={styles.error}>
@@ -145,36 +158,43 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
         <p className={styles.message}>{filter === "wardrobe" ? "Seu guarda-roupa ainda está vazio." : "Nenhum acessório nesta categoria."}</p>
       )}
 
-      <ul className={styles.grid}>
-        {visibleProducts.map((product) => {
-          const status = owned.get(product.id);
-          const missing = Math.max(0, product.preco_pontos - balance);
-          const action = status?.is_equipped ? "unequip" : status ? "equip" : "buy";
-          const soldOut = !status && product.estoque <= 0;
-          const disabled = loading || Boolean(pendingId) || soldOut || (!status && missing > 0);
-          const actionLabel = status?.is_equipped ? "✓ Equipado" : status ? "Equipar" : soldOut ? "Esgotado"
-            : missing ? `Faltam ${points.format(missing)} PTS` : "Resgatar com pontos";
-          return (
-            <li key={product.id} className={styles.item} data-rarity={product.rarity}>
-              <button type="button" className={styles.preview} aria-pressed={previewId === product.id}
-                aria-label={`Experimentar ${product.nome}`} onClick={() => setPreviewId(product.id)}>
-                <span className={styles.art}><CosmeticSprite code={product.cosmetic_code} /></span>
-                <span className={styles.rarity}>{rarityLabels[product.rarity]}</span>
-                <span className={styles.itemName}>{product.nome}</span>
-              </button>
-              <p className={styles.price}>
-                {status && filter === "wardrobe" ? "Adquirido" : <><span className={styles.coin} aria-hidden="true" /> {points.format(product.preco_pontos)} PTS</>}
-              </p>
-              <button type="button" className={styles.action} data-action={action} disabled={disabled}
-                title={status?.is_equipped ? "Desequipar acessório" : undefined}
-                aria-label={status?.is_equipped ? `Equipado. Desequipar ${product.nome}` : undefined}
-                onClick={() => { void apply(product, action); }}>
-                {pendingId === product.id ? "Atualizando…" : actionLabel}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {rarities.map(([rarity, label]) => {
+        const group = visibleProducts.filter(product => product.rarity === rarity);
+        if (!group.length) return null;
+        return <section key={rarity} aria-label={label} className={styles.rarityGroup} data-rarity={rarity}>
+          <h3>{label}</h3>
+          <ul className={styles.grid}>
+            {group.map((product) => {
+              const status = owned.get(product.id);
+              const missing = Math.max(0, product.preco_pontos - balance);
+              const action = status?.is_equipped ? "unequip" : status ? "equip" : "buy";
+              const soldOut = !status && product.estoque <= 0;
+              const disabled = loading || Boolean(pendingId) || soldOut || (!status && missing > 0);
+              const actionLabel = status?.is_equipped ? "✓ Equipado" : status ? "Equipar" : soldOut ? "Esgotado"
+                : missing ? `Faltam ${points.format(missing)} PTS` : "Resgatar com pontos";
+              return (
+                <li key={product.id} className={styles.item} data-rarity={product.rarity}>
+                  <button type="button" className={styles.preview} aria-pressed={previewId === product.id}
+                    aria-label={`Experimentar ${product.nome}`} onClick={() => setPreviewId(product.id)}>
+                    <span className={styles.art}><CosmeticSprite code={product.cosmetic_code} /></span>
+                    <span className={styles.rarity}>{rarityLabels[product.rarity]}</span>
+                    <span className={styles.itemName}>{product.nome}</span>
+                  </button>
+                  <p className={styles.price}>
+                    {status && filter === "wardrobe" ? "Adquirido" : <><span className={styles.coin} aria-hidden="true" /> {points.format(product.preco_pontos)} PTS</>}
+                  </p>
+                  <button type="button" className={styles.action} data-action={action} disabled={disabled}
+                    title={status?.is_equipped ? "Desequipar acessório" : undefined}
+                    aria-label={status?.is_equipped ? `Equipado. Desequipar ${product.nome}` : undefined}
+                    onClick={() => { void apply(product, action); }}>
+                    {pendingId === product.id ? "Atualizando…" : actionLabel}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>;
+      })}
     </section>
   );
 }

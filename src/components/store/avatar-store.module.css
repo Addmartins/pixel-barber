@@ -103,7 +103,7 @@
   background: var(--panel);
 }
 .item[data-rarity=RARO] { --border: #506e9d; }
-.item[data-rarity=LENDARIO] { --border: #a87c45; }
+.item[data-rarity=LENDARIO] { --border: #7956a1; }
 
 .preview {
   display: grid;
@@ -137,7 +137,7 @@
   font: 700 .7rem ui-monospace, monospace;
 }
 .item[data-rarity=RARO] .rarity { color: #c4e3ff; }
-.item[data-rarity=LENDARIO] .rarity { color: #ffe3a6; }
+.item[data-rarity=LENDARIO] .rarity { color: #e9c7ff; }
 .itemName { font-size: .875rem; font-weight: 750; overflow-wrap: anywhere; }
 .price {
   display: flex;
@@ -169,3 +169,27 @@
   .fitting { position: sticky; top: calc(var(--safe-top) + .35rem); z-index: 1; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+.slotFilter {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: var(--muted);
+  font-size: .875rem;
+}
+.slotFilter select {
+  min-height: 44px;
+  min-width: 0;
+  padding: .35rem .6rem;
+  border: 1px solid var(--control-line);
+  border-radius: .6rem;
+  background: var(--surface-raised);
+  color: #f1f5f9;
+}
+.rarityGroup { display: grid; gap: .55rem; min-width: 0; }
+.rarityGroup h3 { font-size: 1rem; font-weight: 750; }
+.rarityGroup[data-rarity=RARO] h3 { color: #aed7ff; }
+.rarityGroup[data-rarity=LENDARIO] h3 { color: #e9c7ff; }
+.item[data-rarity=RARO] .art { background: radial-gradient(ellipse, #263c50, var(--surface-raised)); }
+.item[data-rarity=LENDARIO] .art { background: radial-gradient(ellipse, #473662, #21192e 78%); }

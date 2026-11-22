@@ -1,17 +1,20 @@
+import { isCollectionCode } from "@/lib/avatar-collection";
+import { CollectionArt } from "./CollectionArt";
 import type { CosmeticCode } from "@/lib/store";
 import { ink } from "./AvatarBaseArt";
 
-export const cosmeticViewBoxes: Record<CosmeticCode, string> = {
+const legacyViewBoxes = {
   snapback: "5 0 25 16", boina: "5 0 23 16", bandana: "4 3 24 18",
   aviador: "8 8 20 13", avental: "5 22 21 24", jaqueta: "2 23 27 23",
-  navalha: "16 24 16 21", tesoura: "17 24 15 22",
+  navalha: "16 24 16 21",
 };
 
-export const cosmeticLayers: readonly CosmeticCode[] = [
-  "avental", "jaqueta", "aviador", "snapback", "boina", "bandana", "navalha", "tesoura",
-];
+export function cosmeticViewBox(code: CosmeticCode) {
+  return isCollectionCode(code) ? "0 0 24 24" : legacyViewBoxes[code];
+}
 
 export function CosmeticArt({ code }: { code: CosmeticCode }) {
+  if (isCollectionCode(code)) return <CollectionArt code={code} />;
   switch (code) {
     case "snapback": return <>
       <path fill={ink} d="M9 4H14V2H18V3H22V4H24V6H26V9H29V12H24V13H17V12H11V13H7V9H8V6H9Z"/>
@@ -64,13 +67,6 @@ export function CosmeticArt({ code }: { code: CosmeticCode }) {
       <path fill="#d5b694" d="M24 36H26V38H24V40H21V38H22V37H24Z"/>
       <path fill="#fff0d2" d="M22 37H24V38H22Z M21 38H22V39H21Z"/>
       <path fill="#91664c" d="M24 38H25V39H24Z"/>
-    </>;
-    case "tesoura": return <>
-      <path fill={ink} d="M24 27H26V30H27V28H30V31H29V33H28V35H29V38H28V40H25V39H24V41H21V40H20V37H21V35H24V33H23V29H24Z"/>
-      <path fill="#c1c4d2" d="M24 28H25V31H26V33H27V31H28V29H29V31H28V33H27V36H25V34H24Z"/>
-      <path fill="#f9eefa" d="M28 29H29V30H28Z M24 28H25V30H24Z M26 34H27V35H26Z"/>
-      <path fill="#9a6eab" d="M21 37H22V36H24V39H23V40H21Z M25 36H28V39H25Z"/>
-      <path fill="#3f3155" d="M22 37H23V39H22Z M26 37H27V38H26Z"/>
     </>;
   }
 }

@@ -373,3 +373,22 @@ html, body {
 .daily-login-dialog { text-align: center; }
 .daily-login-dialog > svg { margin-inline: auto; color: #ffd587; }
 .daily-login-multiplier { color: #ffd587; font: 800 2.4rem ui-monospace, monospace; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .cosmetic-shimmer { animation: cosmetic-sparkle .8s steps(4) infinite alternate; }
+  .cosmetic-sparkles { animation: cosmetic-sparkle 1.85s ease-in-out infinite alternate; }
+  .cosmetic-orbit {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: cosmetic-orbit 6s steps(48) infinite;
+  }
+}
+
+@keyframes cosmetic-sparkle {
+  from { opacity: .3; }
+  to { opacity: 1; }
+}
+
+@keyframes cosmetic-orbit {
+  to { transform: rotate(360deg); }
+}

@@ -73,9 +73,9 @@ O servidor reconstitui a partida para validar o placar. Os registros antigos e a
 
 ## Loja do Avatar
 
-A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. O catálogo inicial tem oito acessórios de 100 a 800 PTS. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
+A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 30 acessórios, com dez comuns, dez raros e dez lendários. Os preços vão de 80 a 850 PTS. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
 
-Aplique `20261121000005_avatar_store.sql` depois das migrações anteriores. O endpoint `POST /api/store/avatar/buy` aceita apenas `product_id` e usa a sessão do cliente. O banco consulta preço e estoque do catálogo e registra o débito, a aquisição e o equipamento na mesma transação. A demonstração usa 1.000 PTS fictícios e guarda as compras até sair ou atualizar a página.
+Aplique `20261121000005_avatar_store.sql` e `20261122000007_avatar_collection.sql` na ordem das migrações. O endpoint `POST /api/store/avatar/buy` aceita apenas `product_id` e usa a sessão do cliente. O banco consulta preço e estoque do catálogo e registra o débito, a aquisição e o equipamento na mesma transação. A demonstração usa 1.000 PTS fictícios e guarda as compras até sair ou atualizar a página.
 
 Para validar as regras da loja em um banco descartável, execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/avatar_store.sql` após aplicar as migrações.
 
