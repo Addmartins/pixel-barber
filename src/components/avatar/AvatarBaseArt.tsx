@@ -42,6 +42,14 @@ export function DenimArt() {
   </>;
 }
 
+export function BaseMoustache() {
+  const p = palettes.bigode;
+  return <>
+    <path fill={ink} d="M13 18H16V17H19V18H21V17H23V19H21V20H19V19H17V20H13Z" />
+    <path fill={p.hair} d="M14 18H17V17H19V18H17V19H14Z M20 18H22V19H20Z" />
+  </>;
+}
+
 export function HairArt({ skinId }: { skinId: AvatarId }) {
   const p = palettes[skinId];
   if (skinId === "fade") return <>
@@ -51,8 +59,8 @@ export function HairArt({ skinId }: { skinId: AvatarId }) {
     <path fill={p.deep} d="M10 13H11V14H10Z M9 15H10V16H9Z"/>
   </>;
   if (skinId === "bigode") return <>
-    <path fill={ink} d="M9 5H12V4H21V5H23V7H25V11H24V12H22V10H20V8H18V10H15V12H11V15H8V13H7V9H8V7H9Z M13 18H16V17H19V18H21V17H23V19H21V20H19V19H17V20H13Z"/>
-    <path fill={p.hair} d="M10 6H13V5H20V6H22V8H24V10H23V9H21V7H18V8H16V10H13V11H10V14H9V12H8V10H9V8H10Z M14 18H17V17H19V18H17V19H14Z M20 18H22V19H20Z"/>
+    <path fill={ink} d="M9 5H12V4H21V5H23V7H25V11H24V12H22V10H20V8H18V10H15V12H11V15H8V13H7V9H8V7H9Z"/>
+    <path fill={p.hair} d="M10 6H13V5H20V6H22V8H24V10H23V9H21V7H18V8H16V10H13V11H10V14H9V12H8V10H9V8H10Z"/>
     <path fill={p.hairLight} d="M11 7H14V6H18V7H16V8H13V9H10V8H11Z M19 6H21V7H19Z M9 10H11V11H9Z"/>
   </>;
   if (skinId === "pompadour") return <>

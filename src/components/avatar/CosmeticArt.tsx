@@ -13,8 +13,8 @@ export function cosmeticViewBox(code: CosmeticCode) {
   return isCollectionCode(code) ? "0 0 24 24" : legacyViewBoxes[code];
 }
 
-export function CosmeticArt({ code }: { code: CosmeticCode }) {
-  if (isCollectionCode(code)) return <CollectionArt code={code} />;
+export function CosmeticArt({ code, mounted }: { code: CosmeticCode; mounted?: boolean }) {
+  if (isCollectionCode(code)) return <CollectionArt code={code} mounted={mounted} />;
   switch (code) {
     case "snapback": return <>
       <path fill={ink} d="M9 4H14V2H18V3H22V4H24V6H26V9H29V12H24V13H17V12H11V13H7V9H8V6H9Z"/>

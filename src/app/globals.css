@@ -375,6 +375,10 @@ html, body {
 .daily-login-multiplier { color: #ffd587; font: 800 2.4rem ui-monospace, monospace; }
 
 @media (prefers-reduced-motion: no-preference) {
+  .cosmetic-avatar-orbit {
+    animation: cosmetic-avatar-orbit 8s linear infinite;
+    animation-delay: var(--orbit-delay);
+  }
   .cosmetic-shimmer { animation: cosmetic-sparkle .8s steps(4) infinite alternate; }
   .cosmetic-sparkles { animation: cosmetic-sparkle 1.85s ease-in-out infinite alternate; }
   .cosmetic-orbit {
@@ -391,4 +395,17 @@ html, body {
 
 @keyframes cosmetic-orbit {
   to { transform: rotate(360deg); }
+}
+
+
+@keyframes cosmetic-avatar-orbit {
+  0% { transform: translate(16px, 3px) rotate(0deg); }
+  12.5% { transform: translate(25px, 11px) rotate(45deg); }
+  25% { transform: translate(28px, 31px) rotate(90deg); }
+  37.5% { transform: translate(25px, 51px) rotate(135deg); }
+  50% { transform: translate(16px, 59px) rotate(180deg); }
+  62.5% { transform: translate(7px, 51px) rotate(225deg); }
+  75% { transform: translate(4px, 31px) rotate(270deg); }
+  87.5% { transform: translate(7px, 11px) rotate(315deg); }
+  100% { transform: translate(16px, 3px) rotate(360deg); }
 }

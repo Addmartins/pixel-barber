@@ -51,15 +51,15 @@ const details = {
   aura: "M11 3H13V6H11Z M11 18H13V21H11Z M3 11H6V13H3Z M18 11H21V13H18Z",
 } as const;
 
-export function CollectionArt({ code }: { code: CollectionCode }) {
+export function CollectionArt({ code, mounted }: { code: CollectionCode; mounted?: boolean }) {
   const { art, rarity, base, light } = avatarCollection[code];
   const legendary = rarity === "LENDARIO";
   return (
     <g className={art === "aura" ? "cosmetic-orbit" : undefined}>
       <path d={silhouettes[art]} fill={base} stroke={ink} strokeWidth={1.25} strokeLinejoin="bevel" />
       <path d={details[art]} fill={light} className={art === "flame" || art === "neon" ? "cosmetic-shimmer" : undefined} />
-      {rarity !== "COMUM" && <path d="M20 2h2v2h-2z M3 20h1v1H3z" fill={light} opacity={.78} />}
-      {legendary && <path className="cosmetic-sparkles" d="M1 6h1V4h1v2h2v1H3v2H2V7H1z M19 18h2v-2h1v2h2v1h-2v2h-1v-2h-2z" fill={light} />}
+      {rarity !== "COMUM" && !mounted && <path d="M20 2h2v2h-2z M3 20h1v1H3z" fill={light} opacity={.78} />}
+      {legendary && <path className="cosmetic-sparkles" d={mounted ? "M21 3h1V2h1v1h1v1h-1v1h-1V4h-1z" : "M1 6h1V4h1v2h2v1H3v2H2V7H1z M19 18h2v-2h1v2h2v1h-2v2h-1v-2h-2z"} fill={light} />}
     </g>
   );
 }
