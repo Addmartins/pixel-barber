@@ -1,14 +1,19 @@
-import { boardWidth, boardSize, cellInputShift, createBoard, matchSwap, settleBoard } from "./salon-match";
+import { boardWidth, boardSize, cellInputShift, createBoard, matchSwap, neighbors, settleBoard } from "./salon-match";
 import { nextSeed } from "./random";
 import { A, DOWN, LEFT, RIGHT, UP, roundSeconds, type Difficulty, type Game, type GameCode, type GameState } from "./types";
 
 type Mode = "blaster" | "bounce" | "orbit" | "ruins" | "jewels" | "stack";
+type BoardEffect = {
+  before: number[]; swapped: number[]; from: number; to: number;
+  matches: Set<number>; start: number; end: number;
+};
 type State = GameState & {
-  revised: boolean; board: number[]; selected: number; message: string; collected: number; facing: number; moving: boolean;
+  revised: boolean; version: number; polished: Set<number>; boostUntil: number; effect?: BoardEffect; board: number[]; selected: number; message: string; collected: number; facing: number; moving: boolean;
   difficulty: Difficulty; limit: number; seed: number; input: number;
   x: number; y: number; vx: number; vy: number; wave: number; flash: number;
   cooldown: number; lives: number; pieces: Piece[]; shots: Piece[];
   stack: { x: number; width: number }[];
+  drop?: { x: number; start: number };
 };
 type Piece = { x: number; y: number; kind: number };
 const colors = ["#70ead6", "#ffbc69", "#ef81ae", "#9e9bff", "#d6eb93"];
@@ -84,6 +89,20 @@ function bounce(state: State, input: number, pressed: boolean) {
     state.vy = -4.9 - state.wave * .25;
   }
   if (state.y < 25) { state.y = 25; state.vy = 1; }
+  if (state.version >= 8) {
+    state.pieces = state.pieces.filter(piece => {
+      if (!overlap(piece, { x: state.x, y: state.y, kind: 0 }, 12)) return true;
+      state.collected++;
+      award(state, 15);
+      return false;
+    });
+    if (!state.pieces.length && Math.abs(state.x - 215) < 15 && Math.abs(state.y - 120) < 18) {
+      award(state, 30);
+      state.status = "won";
+    }
+    state.message = state.pieces.length ? `AROS ${state.collected}/4` : "SIGA PARA A SAÍDA";
+    return;
+  }
   for (const piece of state.pieces) {
     if (!overlap(piece, { x: state.x, y: state.y, kind: 0 }, 10)) continue;
     award(state, 15);
@@ -139,7 +158,13 @@ function moveGrid(state: State, input: number) {
   return [clamp(state.x + dx, 0, 11), clamp(state.y + (dx ? 0 : dy), 0, 6)];
 }
 
+function polishGoal(difficulty: Difficulty) {
+  return difficulty === "HARD" ? 24 : difficulty === "MEDIUM" ? 18 : 12;
+}
+
 function matchItems(state: State, input: number, pressed: boolean) {
+  if (state.effect && state.ticks < state.effect.end) return;
+  state.effect = undefined;
   const tapped = (input >> cellInputShift) - 1;
   const priorTap = (state.input >> cellInputShift) - 1;
   if (tapped >= 0 && tapped < boardSize && tapped !== priorTap) {
@@ -160,7 +185,18 @@ function matchItems(state: State, input: number, pressed: boolean) {
     state.message = "ESCOLHA UM VIZINHO";
     return;
   }
-  const matched = matchSwap(state.board, state.selected, current);
+  const from = state.selected;
+  if (state.version >= 8 && (state.limit - state.ticks <= 32 || !neighbors(from, current))) {
+    state.message = state.limit - state.ticks <= 32 ? "TEMPO QUASE NO FIM" : "ESCOLHA UM VIZINHO";
+    return;
+  }
+  const before = state.version >= 8 ? [...state.board] : [];
+  const matched = matchSwap(state.board, from, current);
+  if (state.version >= 8 && matched.size) {
+    for (const cell of matched) state.polished.add(cell);
+    state.effect = { before, swapped: [...state.board], from, to: current, matches: matched,
+      start: state.ticks, end: state.ticks + 32 };
+  }
   if (!matched.size) {
     state.message = "PRECISA FORMAR 3 EM LINHA";
     return;
@@ -219,12 +255,30 @@ function orbitFlight(state: State, input: number, pressed: boolean) {
   const dy = Number(Boolean(input & DOWN)) - Number(Boolean(input & UP));
   state.x = clamp(state.x + dx * 2, 12, 220);
   state.y = clamp(state.y + dy * 2.2, 27, 148);
-  if (pressed || ((input & A) && state.ticks % 11 === 0)) state.shots.push({ x: state.x + 9, y: state.y, kind: 0 });
+  if (pressed || ((input & A) && state.ticks % 11 === 0)) {
+    state.shots.push({ x: state.x + 9, y: state.y, kind: 0 });
+    if (state.version >= 9 && state.ticks < state.boostUntil) {
+      state.shots.push({ x: state.x + 7, y: state.y - 6, kind: -1 }, { x: state.x + 7, y: state.y + 6, kind: 1 });
+    }
+  }
   const gap = Math.max(17, (state.difficulty === "HARD" ? 29 : 44) - state.wave * 4);
   if (state.ticks % gap === 1) state.pieces.push({ x: 244, y: 28 + random(state, 115), kind: random(state, 3) });
-  for (const shot of state.shots) shot.x += 6;
+  if (state.version >= 9 && state.ticks % 480 === 240) {
+    state.pieces.push({ x: 238, y: 34 + random(state, 105), kind: 4 });
+  }
+  for (const shot of state.shots) {
+    shot.x += 6;
+    shot.y += shot.kind * .5;
+  }
   for (const enemy of state.pieces) {
     enemy.x -= (enemy.kind === 1 ? 2.5 : 1.6) + state.wave * .15;
+    if (enemy.kind === 4) {
+      if (overlap(enemy, { x: state.x, y: state.y, kind: 0 }, 12)) {
+        state.boostUntil = state.ticks + 480;
+        enemy.x = -20;
+      }
+      continue;
+    }
     if (enemy.kind === 2) enemy.y = clamp(enemy.y + (Math.floor(state.ticks / 20) % 2 ? 1 : -1), 25, 148);
     const hit = state.shots.find(shot => overlap(shot, enemy, 10));
     if (hit) {
@@ -237,15 +291,25 @@ function orbitFlight(state: State, input: number, pressed: boolean) {
     }
   }
   state.pieces = state.pieces.filter(piece => piece.x > -14);
-  state.shots = state.shots.filter(shot => shot.x < 246);
+  state.shots = state.shots.filter(shot => shot.x < 246 && (state.version < 9 || (shot.y > 17 && shot.y < 160)));
 }
 
 function stacking(state: State, pressed: boolean) {
   const top = state.stack.at(-1)!;
-  state.x += state.vx * (1 + state.wave * .2);
-  if (state.x < 14 || state.x + top.width > 226) state.vx *= -1;
-  state.x = clamp(state.x, 14, 226 - top.width);
-  if (!pressed) return;
+  if (state.drop) {
+    if (state.ticks - state.drop.start < 15) return;
+    state.x = state.drop.x;
+    state.drop = undefined;
+  } else {
+    state.x += state.vx * (1 + state.wave * .2);
+    if (state.x < 14 || state.x + top.width > 226) state.vx *= -1;
+    state.x = clamp(state.x, 14, 226 - top.width);
+    if (!pressed) return;
+    if (state.version >= 8) {
+      if (state.ticks + 15 < state.limit) state.drop = { x: Math.round(state.x), start: state.ticks };
+      return;
+    }
+  }
   const left = Math.max(top.x, Math.round(state.x));
   const right = Math.min(top.x + top.width, Math.round(state.x) + top.width);
   if (right - left < 5) {
@@ -264,7 +328,7 @@ function makeGame(mode: Mode, code: GameCode, cap: number): Game<State> {
   return {
     create(seed, difficulty, version = 6) {
       const state: State = {
-        revised: version >= 6, board: [], selected: -1, message: "", collected: 0, facing: 1, moving: false,
+        revised: version >= 6, version, polished: new Set(), boostUntil: 0, board: [], selected: -1, message: "", collected: 0, facing: 1, moving: false,
         seed, difficulty, limit: roundSeconds(code, difficulty) * 60,
         status: "playing", score: 0, ticks: 0, input: 0, x: 120, y: 128, vx: 2, vy: 0, wave: 0, flash: 0,
         lives: difficulty === "HARD" ? 2 : 3, cooldown: 0, pieces: [], shots: [], stack: [{ x: 89, width: 62 }],
@@ -292,7 +356,12 @@ function makeGame(mode: Mode, code: GameCode, cap: number): Game<State> {
           state.pieces.push({ x: 3, y: 5, kind: 5 });
         }
         if (mode === "orbit") { state.x = 26; state.y = 80; }
-        if (mode === "bounce") { state.vx = 0; state.vy = -4.9; }
+        if (mode === "bounce") {
+          state.vx = 0;
+          state.vy = -4.9;
+          if (version >= 8) state.pieces = [{ x: 51, y: 104, kind: 0 }, { x: 95, y: 67, kind: 1 },
+            { x: 145, y: 102, kind: 2 }, { x: 196, y: 76, kind: 3 }];
+        }
       }
       return state;
     },
@@ -316,7 +385,9 @@ function makeGame(mode: Mode, code: GameCode, cap: number): Game<State> {
       state.input = input;
       state.score = Math.min(cap, state.score);
       if (state.status === "playing") {
-        if (state.score >= cap || (mode === "ruins" && !state.revised && !state.pieces.some(piece => piece.kind < 4))) state.status = "won";
+        const boardGoal = mode === "jewels" && state.version >= 8;
+        if ((boardGoal && state.polished.size >= polishGoal(state.difficulty) && !state.effect) ||
+            (!boardGoal && state.score >= cap && !state.effect) || (mode === "ruins" && !state.revised && !state.pieces.some(piece => piece.kind < 4))) state.status = "won";
         else if (state.ticks >= state.limit) state.status = "lost";
       }
     },
@@ -393,14 +464,39 @@ function draw(ctx: CanvasRenderingContext2D, s: State, mode: Mode, avatar?: Canv
     rect(0, 151, 240, 9, floor);
   }
   if (s.revised && mode === "jewels") {
-    s.board.forEach((kind, cell) => {
-      const x = 13 + cell % boardWidth * 18;
-      const y = 22 + Math.floor(cell / boardWidth) * 18;
-      rect(x, y, 17, 17, cell === s.selected ? "#61535f" : floor);
-      tool(x + 8, y + 8, kind);
+    const effect = s.effect;
+    const age = effect ? s.ticks - effect.start : 0;
+    const position = (cell: number) => [13 + cell % boardWidth * 18, 22 + Math.floor(cell / boardWidth) * 18];
+    const board = effect && age < 9 ? effect.before : effect && age < 23 ? effect.swapped : s.board;
+    board.forEach((kind, cell) => {
+      const [x, y] = position(cell);
+      const matched = effect && age >= 9 && age < 23 && effect.matches.has(cell);
+      const polished = s.polished.has(cell) && !(effect && age < 9 && effect.matches.has(cell));
+      rect(x, y, 17, 17, matched ? "#a98249" : cell === s.selected ? "#61535f" : polished ? "#6a533b" : floor);
+      if (polished) rect(x + 1, y + 1, 15, 1, "#ac875c");
+      if (effect && age < 9 && (cell === effect.from || cell === effect.to)) return;
+      const rise = effect && age >= 23 && (effect.matches.has(cell) || kind !== effect.swapped[cell])
+        ? Math.round((32 - age) * .65) : 0;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x, y, 17, 17); ctx.clip();
+      tool(x + 8, y + 8 - rise, kind);
+      ctx.restore();
+      if (matched) {
+        ctx.strokeStyle = "#ffe99d";
+        ctx.strokeRect(x + .5, y + .5, 16, 16);
+      }
     });
-    ctx.strokeStyle = s.selected < 0 ? light : "#ffe99d";
-    ctx.strokeRect(13.5 + s.x * 18, 22.5 + s.y * 18, 16, 16);
+    if (effect && age < 9) {
+      for (const [from, to] of [[effect.from, effect.to], [effect.to, effect.from]]) {
+        const [x, y] = position(from);
+        const [targetX, targetY] = position(to);
+        const ratio = age / 9;
+        tool(x + 8 + (targetX - x) * ratio, y + 8 + (targetY - y) * ratio, effect.before[from]);
+      }
+    } else if (!effect) {
+      ctx.strokeStyle = s.selected < 0 ? light : "#ffe99d";
+      ctx.strokeRect(13.5 + s.x * 18, 22.5 + s.y * 18, 16, 16);
+    }
   } else if (s.revised && mode === "ruins") {
     ruinMap.forEach((row, y) => [...row].forEach((cell, x) => {
       const px = 13 + x * 18;
@@ -446,10 +542,23 @@ function draw(ctx: CanvasRenderingContext2D, s: State, mode: Mode, avatar?: Canv
     };
     s.stack.forEach((p,i)=>brick(p.x,147-i*10,p.width,colors[i%4]));
     const top=s.stack.at(-1)!;
-    brick(Math.round(s.x),147-s.stack.length*10,top.width,light);
+    const landingY = 147 - s.stack.length * 10;
+    const releaseY = Math.max(23, landingY - 44);
+    const hangingY = s.version < 8 ? landingY : s.drop
+      ? releaseY + (landingY - releaseY) * Math.min(1, (s.ticks - s.drop.start) / 15)
+      : releaseY;
+    if (s.version >= 8) {
+      const cableX = Math.round(s.x + top.width / 2);
+      rect(cableX - 4, 20, 9, 4, "#b49467");
+      if (!s.drop) rect(cableX, 24, 1, Math.max(0, hangingY - 24), "#c9c3a8");
+      rect(top.x, landingY, 1, 11, "#fbe49d");
+      rect(top.x + top.width - 1, landingY, 1, 11, "#fbe49d");
+    }
+    brick(Math.round(s.x),hangingY,top.width,light);
     if (!s.revised) hero(220,138);
   } else if (mode === "orbit" && s.revised) {
     for (const enemy of s.pieces) {
+      if (enemy.kind === 4) { gem(enemy.x, enemy.y, "#72efbc"); continue; }
       rect(enemy.x - 5, enemy.y - 6, 10, 12, colors[enemy.kind]);
       rect(enemy.x - 9, enemy.y - 2, 11, 4, "#443151");
       rect(enemy.x - 3, enemy.y, 4, 2, "#ffebce");
@@ -468,7 +577,21 @@ function draw(ctx: CanvasRenderingContext2D, s: State, mode: Mode, avatar?: Canv
       const hazard=120+Math.round(Math.sin(s.ticks/36)*65);
       rect(hazard-16,149,32,5,"#e35f77");
       for (let i=-15;i<16;i+=6) rect(hazard+i,145,4,4,"#ffa18c");
-      s.pieces.forEach(p=>gem(p.x,p.y,colors[p.kind]));
+      if (s.version >= 8) {
+        for (const p of s.pieces) {
+          const color = colors[p.kind];
+          rect(p.x - 4, p.y - 8, 8, 2, color);
+          rect(p.x - 7, p.y - 5, 2, 10, color);
+          rect(p.x + 5, p.y - 5, 2, 10, color);
+          rect(p.x - 4, p.y + 6, 8, 2, color);
+          rect(p.x - 2, p.y - 8, 4, 1, "#fff0c9");
+        }
+        if (!s.pieces.length) {
+          rect(201, 103, 27, 36, "#75c6a2");
+          rect(204, 107, 21, 32, sky);
+          rect(214, 115, 4, 12, "#9af1b9");
+        }
+      } else s.pieces.forEach(p=>gem(p.x,p.y,colors[p.kind]));
       rect(s.x-8,s.y-8,16,16,light);
       rect(s.x-5,s.y-6,10,3,"#fff0cf");
     } else {
@@ -487,9 +610,11 @@ function draw(ctx: CanvasRenderingContext2D, s: State, mode: Mode, avatar?: Canv
   rect(0,0,240,17,"#101522");
   ctx.fillStyle = s.flash > s.ticks ? "#fff1ba" : light;
   ctx.font = "bold 9px monospace"; ctx.textAlign = "left";
-  ctx.fillText(s.message || `FASE ${s.wave+1}  ·  ${s.score} PTS`,8,12);
+  ctx.fillText((s.effect && s.ticks - s.effect.start < 9 ? "TROCANDO ITENS..." : s.message) || `FASE ${s.wave+1}  ·  ${s.score} PTS`,8,12);
   ctx.textAlign = "right";
-  if (!(s.revised && mode === "jewels")) ctx.fillText(`${s.lives} VIDAS`,232,12);
+  if (mode === "jewels" && s.version >= 8) ctx.fillText(`${s.polished.size}/${polishGoal(s.difficulty)} CASAS`,232,12);
+  else if (mode === "orbit" && s.ticks < s.boostUntil) ctx.fillText("LASER TRIPLO",232,12);
+  else if (!(s.revised && mode === "jewels")) ctx.fillText(`${s.lives} VIDAS`,232,12);
 }
 
 export const pixel16 = {

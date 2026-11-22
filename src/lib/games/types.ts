@@ -23,12 +23,12 @@ export function roundSeconds(game: GameCode, difficulty: Difficulty) {
   return difficulty === "HARD" ? 30 : difficulty === "MEDIUM" ? 45 : 60;
 }
 
-export const gameVersion = 6;
-export const orbitVersion = 7;
-export const isOrbitVersion = (version: number) => version === 5 || version === orbitVersion;
-export type EngineVersion = 2 | 3 | 4 | 5 | typeof gameVersion | typeof orbitVersion;
+export const gameVersion = 8;
+export const orbitVersion = 9;
+export const isOrbitVersion = (version: number) => version === 5 || version === 7 || version === orbitVersion;
+export type EngineVersion = 2 | 3 | 4 | 5 | 6 | 7 | typeof gameVersion | typeof orbitVersion;
 export function isEngineVersion(value: unknown): value is EngineVersion {
-  return value === 2 || value === 3 || value === 4 || value === 5 || value === gameVersion || value === orbitVersion;
+  return value === 2 || value === 3 || value === 4 || value === 5 || value === 6 || value === 7 || value === gameVersion || value === orbitVersion;
 }
 // Persisted arcade scores are also wallet credits in the current database.
 export function gameCredit(rawScore: number, difficulty: Difficulty, loginMultiplier = 1) {

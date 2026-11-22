@@ -43,7 +43,7 @@ function pace(state: SnakeState) {
 export const snake: Game<SnakeState> = {
   create(seed, difficulty, version) {
     const state: SnakeState = {
-      score: 0, ticks: 0, status: "playing", seed, difficulty, modern: version === 4 || version === 6,
+      score: 0, ticks: 0, status: "playing", seed, difficulty, modern: version === 4 || version === 6 || version === 8,
       segments: [128, 127, 126], obstacles: difficulty === "HARD" ? [...obstacles] : [],
       direction: 1, wanted: 1, nextMove: 0, oils: 0, oil: -1, golden: -1, goldenUntil: 0,
     };

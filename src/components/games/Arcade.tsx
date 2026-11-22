@@ -19,18 +19,18 @@ import { SummitArt, WhiskerArt, SproutArt } from "./RetroCartArt";
 import "./arcade.css";
 
 const cartridges = [
-  { code: "NAVALHA_RUSH", station: "Bancada de corte", goal: 30, mission: "Desative os drones da bancada.", title: "Patrulha Neon", icon: Scissors, accent: "mint", action: "Rajada", directions: "all",
-    instructions: "Mova-se em quatro direções. Toque ou segure Rajada para disparar três feixes e desativar os drones." },
-  { code: "ESCALADA_KONG", station: "Estante de pomadas", goal: 30, mission: "Recolha dois cristais.", title: "Salto de Pomada", icon: SummitArt, accent: "amber", action: "Impulso", directions: "horizontal",
-    instructions: "Guie o ricochete com esquerda e direita. Segure Impulso para saltar mais alto ao chegar perto do chão. Recolha os cristais e evite os espinhos." },
+  { code: "NAVALHA_RUSH", station: "Bancada de corte", goal: 80, mission: "Desative os robôs da oficina.", title: "Bombas de Espuma", icon: Scissors, accent: "mint", action: "Bomba", directions: "all",
+    instructions: "Plante uma bomba, vire a esquina e fuja da explosão em cruz. Quebre caixas para abrir passagem até os robôs." },
+  { code: "ESCALADA_KONG", station: "Estante de pomadas", goal: 30, mission: "Atravesse os aros da estante.", title: "Salto de Pomada", icon: SummitArt, accent: "amber", action: "Impulso", directions: "horizontal",
+    instructions: "Guie o ricochete com esquerda e direita. Segure Impulso para saltar mais alto ao chegar perto do chão. Passe pelos quatro aros, evite os espinhos e atravesse o portão." },
   { code: "ORBITA_PIXEL", station: "Estação de limpeza", goal: 30, mission: "Pilote a cápsula e limpe o corredor.", title: "Órbita Pixel", icon: Rocket, accent: "sky", action: "Laser", directions: "all",
-    instructions: "Pilote entre os invasores. Segure Laser para disparar continuamente. O recorde é compartilhado com Patrulha Neon." },
-  { code: "BARBA_FIGHTER", station: "Depósito", goal: 250, mission: "Recupere as quatro chaves e abra o portão.", title: "Ruínas da Navalha", icon: TrendingUp, accent: "rose", action: undefined, directions: "all",
-    instructions: "Pegue as quatro chaves e atravesse o portão. Use o direcional e contorne o sentinela vermelho." },
+    instructions: "Pilote entre os invasores. Segure Laser para disparar. Recolha cápsulas verdes para ativar o tiro triplo. O recorde é compartilhado com Bombas de Espuma." },
+  { code: "BARBA_FIGHTER", station: "Depósito", goal: 150, mission: "Recolha as fichas da navalha no labirinto.", title: "Ruínas da Navalha", icon: TrendingUp, accent: "rose", action: undefined, directions: "all",
+    instructions: "Recolha as fichas e desvie dos sentinelas. Pegue uma loção dourada para inverter a perseguição por alguns segundos." },
   { code: "BARBER_VALLEY", station: "Organização do balcão", goal: 24, mission: "Reúna pelo menos três itens em uma troca.", title: "Itens do Salão", icon: SproutArt, accent: "lime", action: "Selecionar", directions: "all",
-    instructions: "Toque em um item e depois em um vizinho. A troca só acontece se formar três ou mais itens iguais em linha. No teclado, use as setas e Selecionar." },
+    instructions: "Toque em um item e depois em um vizinho. A troca só acontece se formar três ou mais itens iguais em linha. As combinações douram as casas. No teclado, use as setas e Selecionar." },
   { code: "TORRE_FADE", station: "Vitrine", goal: 45, mission: "Empilhe os expositores sem perder a base.", title: "Torre de Neon", icon: Timer, accent: "gold", action: "Soltar", directions: "none",
-    instructions: "Solte o bloco quando ele se alinhar à torre. Encaixes precisos rendem mais pontos e preservam a largura." },
+    instructions: "Observe o cabo e solte o bloco quando ele se alinhar à torre. Encaixes precisos rendem mais pontos e preservam a largura." },
   { code: "BIGODE_SNAKE", station: "Prateleira de óleos", goal: 30, mission: "Alimente a cobrinha com três óleos.", title: "Bigode Snake", icon: WhiskerArt, accent: "lime", action: undefined, directions: "all",
     instructions: "Guie a cobrinha com o direcional. Pegue óleos e loções douradas sem tocar na cauda, nas bordas ou nas navalhas." },
 ] as const;

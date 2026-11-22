@@ -1,3 +1,4 @@
+import { barbershopArena } from "./barbershop-arena";
 import { pixel16 } from "./pixel16";
 import { fighter } from "./fighter";
 import { maze } from "./maze";
@@ -6,6 +7,9 @@ import { snake } from "./snake";
 import { valley } from "./valley";
 import { tower } from "./tower";
 import { gameVersion, isOrbitVersion, maxTicks, type EngineVersion, type Difficulty, type Game, type GameCode, type GameState, type InputChange } from "./types";
+
+const foamArena = barbershopArena(true);
+const ruinsArena = barbershopArena(false);
 
 function instantiate<S extends GameState>(game: Game<S>, seed: number, difficulty: Difficulty, version: EngineVersion) {
   const state = game.create(seed, difficulty, version);
@@ -24,7 +28,9 @@ export function createGame(code: GameCode, seed: number, difficulty: Difficulty 
   if (code === "ORBITA_PIXEL" || (code === "NAVALHA_RUSH" && isOrbitVersion(version))) {
     return instantiate(pixel16.ORBITA_PIXEL, seed, difficulty, version);
   }
-  if ((version === 4 || version === gameVersion) && code !== "BIGODE_SNAKE") return instantiate(pixel16[code], seed, difficulty, version);
+  if (version >= 8 && code === "NAVALHA_RUSH") return instantiate(foamArena, seed, difficulty, version);
+  if (version >= 8 && code === "BARBA_FIGHTER") return instantiate(ruinsArena, seed, difficulty, version);
+  if ((version === 4 || version === 6 || version === gameVersion) && code !== "BIGODE_SNAKE") return instantiate(pixel16[code], seed, difficulty, version);
   switch (code) {
     case "NAVALHA_RUSH": return instantiate(maze, seed, difficulty, version);
     case "BARBA_FIGHTER": return instantiate(fighter, seed, difficulty, version);

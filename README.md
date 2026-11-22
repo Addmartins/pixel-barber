@@ -69,7 +69,7 @@ Execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/arcade.sql` em um banco de te
 
 Selecione um cartucho e escolha **Iniciante (1,0×)**, **Experiente (1,5×)** ou **Mestre (2,5×)**. Use **SELECT** ou **Shift** para alternar e **START** ou **Enter** para começar. As setas movem o personagem nos cartuchos direcionais. **X** ou **Espaço** acionam o botão específico do cartucho.
 
-O servidor reconstitui a partida para validar o placar. Os registros antigos e as conquistas foram preservados. Patrulha Neon e Órbita Pixel compartilham o recorde online da categoria de ação. Todos os cartuchos compartilham o limite diário de três partidas creditadas. A base de crédito é um ponto a cada 50 no placar, arredondada para cima e limitada a 15. Com o bônus de login, o crédito final fica limitado a 20 pontos por partida. Os recordes históricos exibem os valores já registrados.
+O servidor reconstitui a partida para validar o placar. Os registros antigos e as conquistas foram preservados. Bombas de Espuma e Órbita Pixel compartilham o recorde online da categoria de ação. Todos os cartuchos compartilham o limite diário de três partidas creditadas. A base de crédito é um ponto a cada 50 no placar, arredondada para cima e limitada a 15. Com o bônus de login, o crédito final fica limitado a 20 pontos por partida. Os recordes históricos exibem os valores já registrados.
 
 ## Loja do Avatar
 
@@ -98,7 +98,16 @@ O feedback háptico usa os motores nativos no Android e iOS. No PWA, funciona qu
 
 ### Sete cartuchos em estilo 16-bit
 
-Patrulha Neon, Salto de Pomada, Órbita Pixel, Ruínas da Navalha, Itens do Salão e Torre de Neon têm mecânicas e controles próprios. Bigode Snake mantém o crescimento da cauda e as loções douradas, com nova arte e mais tempo para a primeira direção. Patrulha Neon e Ruínas da Navalha usam o avatar e os cosméticos equipados. Em Itens do Salão, só são aceitas trocas entre vizinhos que formem uma linha de três ou mais itens iguais.
+Bombas de Espuma, Salto de Pomada, Órbita Pixel, Ruínas da Navalha, Itens do Salão e Torre de Neon têm mecânicas e controles próprios. Bigode Snake mantém o crescimento da cauda e as loções douradas, com nova arte e mais tempo para a primeira direção. Bombas de Espuma e Ruínas da Navalha usam o avatar e os cosméticos equipados. Em Itens do Salão, só são aceitas trocas entre vizinhos que formem uma linha de três ou mais itens iguais.
+
+As referências do briefing orientam a jogabilidade dos cartuchos, com arte, mapas e personagens da barbearia.
+
+- **Bombas de Espuma** usa bombas temporizadas, caixas destrutíveis e robôs. A referência de plataforma e robôs do PDF deu lugar à arena solicitada na revisão. [Mega Man: The Wily Wars](https://en.wikipedia.org/wiki/Mega_Man:_The_Wily_Wars) · [Konami](https://www.konami.com/games/asia/en/topics/572/)
+- **Salto de Pomada** pede passar pelos aros para liberar o portão. [Bounce](https://en.wikipedia.org/wiki/Bounce_(video_game_series))
+- **Órbita Pixel** combina nave lateral, ondas de inimigos e cápsulas de tiro triplo. [Space Impact](https://en.wikipedia.org/wiki/Space_Impact)
+- **Ruínas da Navalha** combina exploração do depósito e perseguição em labirinto. [Diamond Rush](https://en.wikipedia.org/wiki/Diamond_Rush) · [Guia da Bandai Namco](https://www.namcogames.com/_guides/User_Guide_-_PAC-MAN_Plus_by_Namco.pdf)
+- **Itens do Salão** anima a troca, destaca a linha e doura as casas completadas. [Jewel Quest II](https://www.iwin.com/games/jewel-quest-ii?from=home)
+- **Torre de Neon** usa um cabo móvel e premia quedas alinhadas. [Tower Bloxx](https://en.wikipedia.org/wiki/Tower_Bloxx)
 
 A migração `20261121000006_new_retro_games.sql` deve estar aplicada. Os motores antigos continuam disponíveis para validar partidas iniciadas por versões anteriores do app.
 
