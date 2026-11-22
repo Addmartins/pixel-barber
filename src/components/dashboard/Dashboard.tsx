@@ -65,24 +65,24 @@ export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmet
 
   return (
     <div className="dashboard">
-      <nav className="dashboard-nav mode-switch dashboard-with-arcade dashboard-with-store" aria-label="Painel do cliente">
+      <nav className="dashboard-nav mode-switch bottom-nav" aria-label="Painel do cliente">
         <button type="button" aria-pressed={section === "booking"} onClick={() => setSection("booking")}>
-          <CalendarDays size={18} aria-hidden="true" /> Agenda
+          <CalendarDays size={18} aria-hidden="true" /> Agendar
+        </button>
+        <button type="button" aria-pressed={section === "arcade"} onClick={() => {
+          setArcadeOpened(true);
+          setSection("arcade");
+        }}>
+          <Gamepad2 size={18} aria-hidden="true" /> Pixel Boy
+        </button>
+        <button type="button" aria-pressed={section === "store"} onClick={() => { setStoreOpened(true); setSection("store"); }}>
+          <ShoppingBag size={18} aria-hidden="true" /> Loja
         </button>
         <button type="button" aria-pressed={section === "mural"} onClick={() => {
           if (section !== "mural") setRequest({ offset: 0 });
           setSection("mural");
         }}>
           <Images size={18} aria-hidden="true" /> Mural
-        </button>
-        <button type="button" aria-pressed={section === "arcade"} onClick={() => {
-          setArcadeOpened(true);
-          setSection("arcade");
-        }}>
-          <Gamepad2 size={18} aria-hidden="true" /> Arcade
-        </button>
-        <button type="button" aria-pressed={section === "store"} onClick={() => { setStoreOpened(true); setSection("store"); }}>
-          <ShoppingBag size={18} aria-hidden="true" /> Loja
         </button>
       </nav>
       {storeOpened && <div hidden={section !== "store"}><AvatarStore avatar={avatar} balance={balance} products={shop.products}

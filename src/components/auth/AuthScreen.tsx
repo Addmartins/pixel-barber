@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Gamepad2, Scissors } from "lucide-react";
+import { Coins, Gamepad2, Scissors } from "lucide-react";
 import { avatars, consentVersion, type AvatarId } from "@/lib/avatars";
 import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
@@ -195,26 +195,34 @@ export function AuthScreen() {
   const signedIn = demo || Boolean(session);
 
   return (
-    <main className="device-shell min-h-screen">
-      <article className={`arcade mx-auto w-full ${signedIn ? "max-w-4xl" : "max-w-lg"}`}>
+    <main className={signedIn && currentProfile ? "device-shell has-bottom-nav" : "device-shell"}>
+      <div className="shell-content">
         <header className="masthead">
-          <div className="brand-icon"><Scissors size={27} aria-hidden="true" /></div>
+          <div className="brand-icon"><Scissors size={20} aria-hidden="true" /></div>
           <div>
             <h1>PIXEL<span> BARBER</span></h1>
-            <p>Clube da Barbearia</p>
+            <p>Clube de Fidelidade</p>
           </div>
+          {signedIn && currentProfile && (
+            <div className="masthead-account">
+              <div className="profile-avatar"><AvatarRenderer skinId={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
+              <div className="wallet-badge" aria-label={`${currentProfile.points_balance} pontos`}>
+                <Coins size={16} aria-hidden="true" />
+                <strong>{currentProfile.points_balance} pts</strong>
+              </div>
+            </div>
+          )}
         </header>
 
-        <div className="screen">
+        <div className={signedIn ? "min-w-0" : "card-modern auth-card"}>
           {signedIn ? (
             <section className="space-y-5" aria-label="Perfil">
               {currentProfile ? (
                 <>
-                  <div className="dashboard-profile">
-                    <div className="profile-avatar"><AvatarRenderer skinId={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
+                  <div className="dashboard-profile card-modern">
                     <div className="dashboard-profile-name">
                       <h2>Olá, {currentProfile.nome}!</h2>
-                      <p className="muted">Nível {currentProfile.level} · {currentProfile.points_balance} pontos</p>
+                      <p className="muted">Nível {currentProfile.level}</p>
                     </div>
                     <button type="button" className="secondary" onClick={() => void leave()} disabled={busy}>Sair</button>
                   </div>
@@ -299,7 +307,7 @@ export function AuthScreen() {
                       <p>Use a conta somente para testar o Pixel Barber. Para pedir acesso, correção ou exclusão de dados, procure o responsável que disponibilizou este ambiente de testes.</p>
                     </details>
                     <label className="flex items-start gap-3 text-sm">
-                      <input className="mt-0.5 size-5 shrink-0 accent-pink-400" name="consent" type="checkbox" required />
+                      <input className="mt-0.5 size-5 shrink-0 accent-teal-400" name="consent" type="checkbox" required />
                       <span>Li e aceito os Termos de Uso e a Política de Privacidade desta versão de testes.</span>
                     </label>
                   </>
@@ -321,7 +329,7 @@ export function AuthScreen() {
           {error && <p className="feedback error" role="alert">{error}</p>}
           {message && <p className="feedback" role="status">{message}</p>}
         </div>
-      </article>
+      </div>
     </main>
   );
 }

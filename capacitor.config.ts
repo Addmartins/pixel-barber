@@ -5,10 +5,10 @@ const config: CapacitorConfig = {
   appName: "Pixel Barber",
   webDir: "out",
   server: { hostname: "localhost", androidScheme: "https", iosScheme: "capacitor" },
-  backgroundColor: "#12141a",
+  backgroundColor: "#0b0d13",
   plugins: {
     CapacitorHttp: { enabled: true },
-    StatusBar: { style: "DARK", backgroundColor: "#12141a", overlaysWebView: true },
+    StatusBar: { style: "DARK", backgroundColor: "#0b0d13", overlaysWebView: true },
     SystemBars: { style: "DARK", insetsHandling: "css" },
   },
 };
