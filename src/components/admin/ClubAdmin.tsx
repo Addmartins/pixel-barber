@@ -20,6 +20,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [notices, setNotices] = useState<ClubNotice[]>([]);
   const [suggestions, setSuggestions] = useState<ClubSuggestion[]>([]);
+  const [supportsAlbumBarbers, setSupportsAlbumBarbers] = useState(false);
   const [albumBarbers, setAlbumBarbers] = useState<Record<string, string | null>>({});
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [reviewed, setReviewed] = useState(false);
@@ -61,12 +62,16 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
               const ids = result.data.slice(0, 8).map(({ id }) => id);
               const [catalog, assignments] = await Promise.all([
                 client.from("barbers").select("*").order("nome"),
-                ids.length ? client.from("club_notices").select("id,barber_id").in("id", ids) : null,
+                ids.length ? client.from("club_notices").select("id,barber_id").in("id", ids)
+                  : client.from("club_notices").select("id,barber_id").limit(0),
               ]);
-              if (catalog.error || assignments?.error) throw catalog.error ?? assignments?.error;
+              if (catalog.error || (assignments.error && assignments.error.code !== "42703")) {
+                throw catalog.error ?? assignments.error;
+              }
               if (active) {
                 setBarbers(catalog.data);
-                setAlbumBarbers(Object.fromEntries((assignments?.data ?? []).map(({ id, barber_id }) => [id, barber_id])));
+                setSupportsAlbumBarbers(!assignments.error);
+                setAlbumBarbers(Object.fromEntries((assignments.data ?? []).map(({ id, barber_id }) => [id, barber_id])));
               }
             }
             if (active) {
@@ -139,17 +144,18 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     }), form);
   }
 
-  function saveBarberDetails(event: FormEvent<HTMLFormElement>, barberId: string) {
+  function saveBarberDetails(event: FormEvent<HTMLFormElement>, barber: Barber) {
     event.preventDefault();
     if (!db) return;
     const fields = new FormData(event.currentTarget);
     const address = String(fields.get("address") ?? "").trim() || null;
     const photo = String(fields.get("photo") ?? "").trim() || null;
-    if (photo && !/^https:\/\//i.test(photo)) {
+    if (photo && photo !== barber.foto_pixel && !/^https:\/\//i.test(photo)) {
       setError("Use um link HTTPS para a foto.");
       return;
     }
-    void mutate(() => db.from("barbers").update({ endereco: address, foto_pixel: photo }).eq("id", barberId).select("id").single());
+    const updates = photo === barber.foto_pixel ? { endereco: address } : { endereco: address, foto_pixel: photo };
+    void mutate(() => db.from("barbers").update(updates).eq("id", barber.id).select("id").single());
   }
 
   if (!db) return null;
@@ -216,12 +222,12 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         </div>
         {!portfolio && !loading && !loadError && notices.length >= 2
           ? <p className="muted">O quadro já tem dois avisos. Remova um para publicar outro.</p>
-          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} barbers={barbers} disabled={busy || (portfolio && (loading || Boolean(loadError)))}
+          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} linkBarber={supportsAlbumBarbers} barbers={barbers} disabled={busy || (portfolio && (loading || Boolean(loadError)))}
             onBusy={setBusy} onPublished={() => { setPostPage(0); setRevision((current) => current + 1); }} />}
         {!loading && !loadError && notices.map((notice) => (
           <article key={notice.id} className="space-y-2 border-t border-white/10 pt-3">
             <NoticePost notice={notice} />
-            {portfolio && <form className="space-y-2" onSubmit={(event) => {
+            {portfolio && supportsAlbumBarbers && <form className="space-y-2" onSubmit={(event) => {
               event.preventDefault();
               const barberId = String(new FormData(event.currentTarget).get("albumBarber") ?? "") || null;
               void mutate(() => db.from("club_notices").update({ barber_id: barberId }).eq("id", notice.id).select("id").single());
@@ -263,12 +269,12 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         {!loading && !loadError && <ul className="space-y-2">{barbers.map((barber) => (
           <li key={barber.id} className="space-y-2 border-t border-white/10 pt-3">
             <p>{barber.nome} <span className="muted">· {barber.especialidade}</span></p>
-            {barber.endereco !== undefined && <form className="space-y-2" onSubmit={(event) => saveBarberDetails(event, barber.id)}>
+            {barber.endereco !== undefined && <form className="space-y-2" onSubmit={(event) => saveBarberDetails(event, barber)}>
               <label className="field">Endereço de atendimento (opcional)
                 <input name="address" defaultValue={barber.endereco ?? ""} maxLength={240} disabled={busy} />
               </label>
               <label className="field">Link HTTPS da foto (opcional)
-                <input type="url" name="photo" defaultValue={barber.foto_pixel ?? ""} maxLength={2048} disabled={busy} />
+                <input inputMode="url" name="photo" defaultValue={barber.foto_pixel ?? ""} maxLength={2048} disabled={busy} />
               </label>
               <button type="submit" className="secondary" disabled={busy}>Salvar dados</button>
             </form>}

@@ -9,12 +9,15 @@ import { getSupabase } from "@/lib/supabase/browser";
 type MuralBarber = Pick<Barber, "id" | "nome" | "foto_pixel">;
 const albumsPerBarber = 2;
 
-function AlbumColumn({ barber, openAlbum }: { barber?: MuralBarber; openAlbum: (album: ClubNotice) => void }) {
+function AlbumColumn({ barber, legacy = false, openAlbum }: {
+  barber?: MuralBarber; legacy?: boolean; openAlbum: (album: ClubNotice) => void;
+}) {
   const [albums, setAlbums] = useState<ClubNotice[]>();
   const [page, setPage] = useState(0);
   const [failed, setFailed] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
   const barberId = barber?.id ?? null;
+  const pageSize = legacy ? 4 : albumsPerBarber;
 
   useEffect(() => {
     let active = true;
@@ -22,17 +25,19 @@ function AlbumColumn({ barber, openAlbum }: { barber?: MuralBarber; openAlbum: (
     setFailed(false);
     void (async () => {
       try {
-        const result = await getSupabase()?.rpc("get_cut_albums", {
-          p_barber_id: barberId, p_limit: albumsPerBarber + 1, p_offset: page * albumsPerBarber,
-        });
+        const db = getSupabase();
+        const pagination = { p_limit: pageSize + 1, p_offset: page * pageSize };
+        const result = await (legacy
+          ? db?.rpc("get_club_posts", { p_portfolio: true, ...pagination })
+          : db?.rpc("get_cut_albums", { p_barber_id: barberId, ...pagination }));
         if (!result || result.error) throw new Error();
         if (active) setAlbums(result.data);
       } catch { if (active) setFailed(true); }
     })();
     return () => { active = false; };
-  }, [barberId, page]);
+  }, [barberId, legacy, page, pageSize]);
 
-  if (!barber && !failed && !albums?.length && page === 0) return null;
+  if (!barber && !legacy && !failed && !albums?.length && page === 0) return null;
   return (
     <section className="min-w-0 space-y-3" aria-label={barber?.nome ?? "Álbuns anteriores sem barbeiro vinculado"}>
       <header className="flex flex-col items-center gap-2 text-center">
@@ -42,21 +47,21 @@ function AlbumColumn({ barber, openAlbum }: { barber?: MuralBarber; openAlbum: (
             ? <img className="size-full object-cover" src={barber.foto_pixel} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setPhotoFailed(true)} />
             : <UserRound size={24} aria-hidden="true" />}
         </div>}
-        <h3 className="w-full break-words text-sm font-semibold">{barber?.nome ?? "Álbuns anteriores"}</h3>
+        {!legacy && <h3 className="w-full break-words text-sm font-semibold">{barber?.nome ?? "Álbuns anteriores"}</h3>}
       </header>
       {failed ? <p className="error text-sm" role="alert">Não foi possível carregar os álbuns.</p>
         : !albums ? <p className="muted text-sm" role="status">Carregando álbuns…</p>
         : !albums.length ? <p className="muted text-sm">Nenhum álbum publicado.</p>
-        : albums.slice(0, albumsPerBarber).map((album) => (
+        : <div className={legacy ? "grid grid-cols-2 gap-2" : "space-y-3"}>{albums.slice(0, pageSize).map((album) => (
           <article className="min-w-0 break-words rounded-lg border border-white/10 p-2 sm:p-3" key={album.id}>
             <NoticePost notice={album} cover />
             <button type="button" className="secondary mt-2 w-full text-sm" aria-haspopup="dialog"
               aria-label={`Abrir álbum ${album.title}`} onClick={() => openAlbum(album)}>Ver álbum</button>
           </article>
-        ))}
-      {(page > 0 || (albums?.length ?? 0) > albumsPerBarber) && <div className="flex flex-wrap justify-center gap-2">
+        ))}</div>}
+      {(page > 0 || (albums?.length ?? 0) > pageSize) && <div className="flex flex-wrap justify-center gap-2">
         {page > 0 && <button type="button" className="secondary text-sm" onClick={() => setPage(page - 1)}>Anterior</button>}
-        {(albums?.length ?? 0) > albumsPerBarber && <button type="button" className="secondary text-sm" onClick={() => setPage(page + 1)}>Mais álbuns</button>}
+        {(albums?.length ?? 0) > pageSize && <button type="button" className="secondary text-sm" onClick={() => setPage(page + 1)}>Mais álbuns</button>}
       </div>}
     </section>
   );
@@ -65,6 +70,7 @@ function AlbumColumn({ barber, openAlbum }: { barber?: MuralBarber; openAlbum: (
 export function NoticeBoard({ clientId }: { clientId: string }) {
   const [notices, setNotices] = useState<ClubNotice[]>();
   const [barbers, setBarbers] = useState<MuralBarber[]>();
+  const [legacyAlbums, setLegacyAlbums] = useState(false);
   const [barberError, setBarberError] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState<ClubNotice>();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -89,8 +95,17 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
     let active = true;
     void (async () => {
       try {
-        const result = await getSupabase()?.from("barbers").select("id,nome,foto_pixel").order("nome").order("id");
-        if (!result || result.error) throw new Error();
+        const db = getSupabase();
+        if (!db) throw new Error();
+        const availability = await db.rpc("get_cut_albums", { p_barber_id: null, p_limit: 1 });
+        if (!active) return;
+        if (availability.error?.code === "PGRST202") {
+          setLegacyAlbums(true);
+          return;
+        }
+        if (availability.error) throw availability.error;
+        const result = await db.from("barbers").select("id,nome,foto_pixel").order("nome").order("id");
+        if (result.error) throw result.error;
         if (active) setBarbers(result.data);
       } catch { if (active) setBarberError(true); }
     })();
@@ -137,13 +152,14 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
       </section>
       <section className="card-modern space-y-3" aria-labelledby="portfolio-title">
         <h2 id="portfolio-title"><CutMuralTitle /></h2>
-        {barberError ? <p className="error" role="alert">Não foi possível carregar os barbeiros.</p>
+        {legacyAlbums ? <AlbumColumn legacy openAlbum={openAlbum} />
+          : barberError ? <p className="error" role="alert">Não foi possível carregar os barbeiros.</p>
           : !barbers ? <p className="muted" role="status">Carregando barbeiros…</p>
           : !barbers.length ? <p className="muted">Nenhum barbeiro cadastrado.</p>
           : <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {barbers.map((barber) => <AlbumColumn key={barber.id} barber={barber} openAlbum={openAlbum} />)}
           </div>}
-        <AlbumColumn openAlbum={openAlbum} />
+        {barbers && <AlbumColumn openAlbum={openAlbum} />}
         <dialog ref={dialog} className="wallet-dialog" aria-label={selectedAlbum?.title ?? "Álbum do mural de cortes"} onClose={() => setSelectedAlbum(undefined)}>
           <button type="button" className="secondary justify-self-end" onClick={() => dialog.current?.close()}>Fechar</button>
           {selectedAlbum && <NoticePost notice={selectedAlbum} />}

@@ -3,9 +3,10 @@ import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import { muralBucket, muralPhotoBytes, muralPhotoFormats, muralPhotoLimit, type MuralTag } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 
-export function MuralComposer({ accountId, portfolio, barbers, disabled, onBusy, onPublished }: {
+export function MuralComposer({ accountId, portfolio, linkBarber, barbers, disabled, onBusy, onPublished }: {
   accountId: string;
   portfolio: boolean;
+  linkBarber: boolean;
   barbers: { id: string; nome: string }[];
   disabled: boolean;
   onBusy: (busy: boolean) => void;
@@ -42,7 +43,7 @@ export function MuralComposer({ accountId, portfolio, barbers, disabled, onBusy,
     const fields = new FormData(form);
     const title = String(fields.get("title") ?? "").trim();
     const barberId = String(fields.get("barber") ?? "");
-    if (portfolio && !barberId) {
+    if (portfolio && linkBarber && !barberId) {
       setError("Selecione o barbeiro responsável pelo álbum.");
       return;
     }
@@ -69,7 +70,7 @@ export function MuralComposer({ accountId, portfolio, barbers, disabled, onBusy,
         if (upload.error) throw upload.error;
       }
       const args = { p_title: title, p_caption: caption, p_photos: paths, p_tagged_client: tag?.id };
-      const result = await (portfolio
+      const result = await (portfolio && linkBarber
         ? db.rpc("publish_cut_album", { ...args, p_barber_id: barberId })
         : db.rpc("publish_mural_notice", args));
       if (result.error) throw result.error;
@@ -94,12 +95,12 @@ export function MuralComposer({ accountId, portfolio, barbers, disabled, onBusy,
       <fieldset className="space-y-3" disabled={disabled}>
         <label className="field">Título <input name="title" maxLength={100} required /></label>
         {portfolio && <>
-          <label className="field">Barbeiro
+          {linkBarber && <label className="field">Barbeiro
             <select name="barber" defaultValue="" required>
               <option value="" disabled>Selecione um barbeiro</option>
               {barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.nome}</option>)}
             </select>
-          </label>
+          </label>}
           <label className="field">Fotos <input name="photos" type="file" accept={Object.keys(muralPhotoFormats).join(",")} multiple required /></label>
           <p className="muted text-sm">Até 4 fotos JPG, PNG ou WebP, de até 6 MB cada.</p>
         </>}
