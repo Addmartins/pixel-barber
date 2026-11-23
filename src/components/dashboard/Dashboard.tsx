@@ -15,8 +15,9 @@ import { Mural } from "./Mural";
 
 const pageSize = 50;
 
-export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmetics }: {
+export function Dashboard({ clientId, name, avatar, balance, onPointsBalance, onCosmetics }: {
   clientId?: string;
+  name: string;
   avatar: AvatarId;
   balance: number;
   onPointsBalance: (balance: number) => void;
@@ -43,7 +44,7 @@ export function Dashboard({ clientId, avatar, balance, onPointsBalance, onCosmet
 
   const outfit = shop.equipped.map(splitCosmetic);
   const demoLeaderboard = [...demoRanking, {
-    position: 0, display_name: "Visitante", avatar_skin: avatar, points_balance: balance, equipped_cosmetics: outfit.map(item => item.code), shirt_number: outfit.find(item => item.shirtNumber !== undefined)?.shirtNumber,
+    position: 0, display_name: name.split(/\s+/)[0], avatar_skin: avatar, points_balance: balance, equipped_cosmetics: outfit.map(item => item.code), shirt_number: outfit.find(item => item.shirtNumber !== undefined)?.shirtNumber,
   }].sort((a, b) => b.points_balance - a.points_balance).map((entry, index) => ({ ...entry, position: index + 1 }));
 
   useEffect(() => {

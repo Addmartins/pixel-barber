@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Gamepad2, Scissors } from "lucide-react";
-import { avatars, consentVersion, type AvatarId } from "@/lib/avatars";
+import { consentVersion, type AvatarId } from "@/lib/avatars";
 import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
-import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import type { EquippedCosmetic } from "@/lib/store";
+import { AvatarPicker } from "./AvatarPicker";
+import { ProfileEditor } from "./ProfileEditor";
 import { WalletDialogs } from "./WalletDialogs";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
@@ -42,6 +43,7 @@ export function AuthScreen() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<(Profile & { id: string }) | null>(null);
   const [demo, setDemo] = useState(false);
+  const [demoDetails, setDemoDetails] = useState<Pick<Profile, "nome" | "avatar_skin">>(demoProfile);
   const [demoBalance, setDemoBalance] = useState(demoProfile.points_balance);
   const [equipped, setEquipped] = useState<{ owner: string; cosmetics: EquippedCosmetic[] } | null>(null);
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
@@ -176,6 +178,7 @@ export function AuthScreen() {
     setError("");
     if (demo) {
       setDemo(false);
+      setDemoDetails(demoProfile);
       setDemoBalance(demoProfile.points_balance);
       setEquipped(null);
       return;
@@ -192,7 +195,21 @@ export function AuthScreen() {
     }
   }
 
-  const currentProfile = demo ? { ...demoProfile, points_balance: demoBalance } : profile?.id === userId ? profile : null;
+  async function saveProfile(details: Pick<Profile, "nome" | "avatar_skin">) {
+    if (demo) {
+      setDemoDetails(details);
+      return;
+    }
+
+    const supabase = getSupabase();
+    if (!supabase || !userId) throw new Error("Sessão indisponível.");
+    const { data, error } = await supabase.from("clients")
+      .update(details).eq("id", userId).select("nome,avatar_skin").single();
+    if (error || !data) throw new Error("Perfil indisponível.");
+    setProfile((current) => current?.id === userId ? { ...current, ...data } : current);
+  }
+
+  const currentProfile = demo ? { ...demoProfile, ...demoDetails, points_balance: demoBalance } : profile?.id === userId ? profile : null;
   const signedIn = demo || Boolean(session);
 
   return (
@@ -211,7 +228,8 @@ export function AuthScreen() {
           </div>
           {signedIn && currentProfile && (
             <div className="masthead-account">
-              <div className="profile-avatar"><AvatarRenderer skinId={currentProfile.avatar_skin} cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} /></div>
+              <ProfileEditor key={cosmeticsOwner} profile={currentProfile} onSave={saveProfile}
+                cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} />
               <div className="masthead-profile">
                 <h2>Olá, {currentProfile.nome}!</h2>
                 <p>Nível {currentProfile.level}</p>
@@ -227,7 +245,7 @@ export function AuthScreen() {
               {currentProfile ? (
                 <>
                   {demo && <p className="muted text-sm">Demonstração com dados de exemplo. As reservas duram até você sair ou atualizar a página.</p>}
-                  <Dashboard key={demo ? "demo" : userId} clientId={demo ? undefined : userId} avatar={currentProfile.avatar_skin} balance={currentProfile.points_balance}
+                  <Dashboard key={demo ? "demo" : userId} clientId={demo ? undefined : userId} name={currentProfile.nome} avatar={currentProfile.avatar_skin} balance={currentProfile.points_balance}
                     onPointsBalance={updatePointsBalance} onCosmetics={updateCosmetics} />
                 </>
               ) : (
@@ -285,21 +303,7 @@ export function AuthScreen() {
 
                 {mode === "register" && (
                   <>
-                    <fieldset>
-                      <legend className="mb-2 font-semibold">Escolha seu avatar</legend>
-                      <div className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-4">
-                        {avatars.map((option) => (
-                          <label key={option.id} className="avatar-option">
-                            <input className="sr-only" type="radio" name="avatar" value={option.id}
-                              checked={avatar === option.id} onChange={() => setAvatar(option.id)} />
-                            <span className="avatar-card">
-                              <AvatarRenderer skinId={option.id} />
-                              <span>{option.name}</span>
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </fieldset>
+                    <AvatarPicker value={avatar} onChange={setAvatar} />
 
                     <details className="terms">
                       <summary>Termos e política de privacidade</summary>
