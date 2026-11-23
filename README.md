@@ -15,9 +15,9 @@ O Pixel Barber é um clube de fidelidade para barbearias. Clientes escolhem o se
 
 Capturas da interface web em tamanho de celular com dados fictícios.
 
-| Acesso ao clube | Agendamento |
-| --- | --- |
-| <img src="docs/screenshots/acesso.webp" alt="Tela de login e entrada na demonstração" width="280"> | <img src="docs/screenshots/agendamento.webp" alt="Agendamento com seleção de serviço" width="280"> |
+| Acesso ao clube | Agendamento | Loja do Avatar |
+| --- | --- | --- |
+| <img src="docs/screenshots/acesso.webp" alt="Tela de login e entrada na demonstração" width="280"> | <img src="docs/screenshots/agendamento.webp" alt="Agendamento com seleção de serviço" width="280"> | <img src="docs/screenshots/loja.webp" alt="Loja do Avatar com saldo em pontos, provador e filtros do catálogo" width="280"> |
 
 | Quadro de avisos e Mural de Cortes | Ranking semanal | Pixel Boy |
 | --- | --- | --- |
