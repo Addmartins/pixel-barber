@@ -6,10 +6,11 @@ import { AvatarPicker } from "./AvatarPicker";
 
 type ProfileDetails = { nome: string; avatar_skin: AvatarId };
 
-export function ProfileEditor({ profile, cosmetics, onSave }: {
+export function ProfileEditor({ profile, cosmetics, onSave, onChangePassword }: {
   profile: ProfileDetails;
   cosmetics?: EquippedCosmetic[];
   onSave: (details: ProfileDetails) => Promise<void>;
+  onChangePassword?: () => void;
 }) {
   const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -64,6 +65,8 @@ export function ProfileEditor({ profile, cosmetics, onSave }: {
             </label>
             <AvatarPicker value={draft.avatar_skin} cosmetics={cosmetics}
               onChange={(avatar_skin) => setDraft({ ...draft, avatar_skin })} />
+            {onChangePassword && <button type="button" className="secondary w-full"
+              onClick={() => { dialog.current?.close(); onChangePassword(); }}>Alterar senha por SMS</button>}
             {error && <p className="text-sm text-rose-300" role="alert">{error}</p>}
             <div className="grid grid-cols-2 gap-2">
               <button className="secondary" type="button" onClick={() => dialog.current?.close()}>Cancelar</button>

@@ -12,6 +12,7 @@ import type { AvatarId } from "@/lib/avatars";
 import { splitCosmetic, type EquippedCosmetic } from "@/lib/store";
 import { Booking } from "./Booking";
 import { Mural } from "./Mural";
+import { NoticeBoard } from "./NoticeBoard";
 
 const pageSize = 50;
 
@@ -44,7 +45,7 @@ export function Dashboard({ clientId, name, avatar, balance, onPointsBalance, on
 
   const outfit = shop.equipped.map(splitCosmetic);
   const demoLeaderboard = [...demoRanking, {
-    position: 0, display_name: name.split(/\s+/)[0], avatar_skin: avatar, points_balance: balance, equipped_cosmetics: outfit.map(item => item.code), shirt_number: outfit.find(item => item.shirtNumber !== undefined)?.shirtNumber,
+    position: 0, display_name: name.split(/\s+/)[0], avatar_skin: avatar, points_balance: 0, equipped_cosmetics: outfit.map(item => item.code), shirt_number: outfit.find(item => item.shirtNumber !== undefined)?.shirtNumber,
   }].sort((a, b) => b.points_balance - a.points_balance).map((entry, index) => ({ ...entry, position: index + 1 }));
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export function Dashboard({ clientId, name, avatar, balance, onPointsBalance, on
       <div hidden={section !== "booking"}><Booking api={api} /></div>
       {section === "mural" && (
         <>
+          {clientId && <NoticeBoard clientId={clientId} />}
           <Mural ranking={clientId ? ranking : demoLeaderboard} loading={rankingBusy && !ranking.length} error={rankingError}
             loadingMore={rankingBusy && Boolean(ranking.length)} hasMore={hasMore}
             onLoadMore={() => { if (!rankingBusy) setRequest({ offset: rankingOffset }); }} />

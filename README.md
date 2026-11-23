@@ -32,7 +32,7 @@ supabase/tests/
 
 ## Executar
 
-1. Em um projeto Supabase dedicado ao Pixel Barber, execute as migrações pendentes no SQL Editor, em ordem e uma vez cada. Em um ambiente que já está na Sprint 1 com cadastro por celular, aplique somente `20261121000002_booking_and_leaderboard.sql`.
+1. Em um projeto Supabase dedicado ao Pixel Barber, execute as migrações pendentes no SQL Editor, em ordem e uma vez cada. Em um ambiente existente, aplique somente as migrações pendentes.
 2. Copie `.env.example` para `.env.local`. Preencha a URL e a chave publicável do projeto.
 3. Habilite **Phone** nos provedores de autenticação do Supabase e configure o mínimo de 8 caracteres para a senha. Para validar a titularidade do celular, configure um provedor de SMS e habilite a confirmação por SMS.
 4. Com Node.js 22+, rode `npm ci` e `npm run dev`. Acesse `http://localhost:3000`. Use **Criar conta**, informe o celular com DDD, escolha um avatar e aceite os termos da versão de testes. Com confirmação habilitada, digite o código recebido por SMS. Nos próximos acessos, use o celular e a senha.
@@ -42,7 +42,7 @@ supabase/tests/
 
 ## Verificação por SMS com TextBee
 
-O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao TextBee, que usa o chip do Android cadastrado. O cadastro e o reenvio usam a tela de confirmação existente, também nos apps nativos.
+O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao TextBee, que usa o chip do Android cadastrado. O cadastro, o reenvio e a alteração de senha por SMS funcionam também nos apps nativos. A alteração está disponível em **Esqueci minha senha** e em **Editar perfil**.
 
 1. Cadastre um Android com chip ativo no TextBee, conceda permissão de SMS e mantenha o aparelho online. Gere uma chave de API e copie o ID do aparelho no painel. [Configuração do TextBee](https://textbee.dev/docs/getting-started/setting-up-textbee)
 2. No Supabase, em **Authentication → Hooks**, crie o **Send SMS** do tipo HTTP com a URL do seu ambiente seguida de `/api/auth/send-sms`. Gere o segredo no painel. Ative o hook após publicar o endpoint com as variáveis configuradas. [Send SMS Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-sms-hook)
@@ -50,13 +50,30 @@ O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao Te
 4. No Supabase, habilite o provedor **Phone** e a confirmação por SMS. Use seis dígitos para o código, como na tela de cadastro, e revise os limites de envio de SMS. [Autenticação por celular](https://supabase.com/docs/guides/auth/phone-login)
 5. Cadastre um número novo, confirme com o código recebido e entre com celular e senha. Para testar o reenvio, repita com outro cadastro ou solicite outro código antes de confirmar, após o intervalo de envio do Supabase. Se o SMS atrasar, confira o histórico de envio no TextBee e a conexão do Android. [Status de envio no TextBee](https://textbee.dev/docs/sending-sms/sending-sms)
 
+## Administração e pontos
+
+Aplique `20261123000011_point_expiration_type.sql` e confirme a transação antes de aplicar `20261123000012_club_operations.sql`. Em seguida, aplique `20261123000013_mural_photos.sql`, que provisiona o bucket privado do mural. Depois, publique a aplicação. Para liberar acesso, crie e confirme uma conta normal, copie o UID em **Authentication → Users** e execute no SQL Editor do Supabase:
+
+```sql
+insert into public.club_admins (user_id) values ('UID-DA-CONTA')
+on conflict do nothing;
+```
+
+Entre em `/admin` com o celular e a senha da conta autorizada. O painel exibe as métricas da semana, a agenda por data, os avisos, os barbeiros e as sugestões enviadas pelo mural. Cada nova postagem pode levar até quatro fotos JPG, PNG ou WebP de 6 MB cada, legenda e a marcação de um cliente pelo avatar. No mural, a marcação mostra o primeiro nome e o avatar. Registre presença e falta depois do horário de término, em ordem de agendamento por cliente.
+
+- O ranking começa às segundas-feiras à meia-noite, no horário de Recife. Ele soma os créditos da semana e desconta as penalidades dos agendamentos daquela semana. Resgates e expirações afetam o saldo da carteira.
+- A sequência de faltas aplica 20%, 30%, 40% e, a partir da quarta falta consecutiva, 50%, com limite acumulado de 50% por semana. A base são os créditos da semana do agendamento já registrados ao marcar a falta. Uma presença encerra a sequência. O débito na carteira é limitado ao saldo disponível.
+- Cada crédito vale 90 dias por padrão. A validade está em `public.club_point_rules.validity_days`. Débitos consomem primeiro os créditos mais antigos. O saldo é atualizado ao entrar, ao voltar ao app, nas consultas periódicas e nas movimentações. A expiração aparece no extrato.
+
+Para testar as regras e as permissões em um banco descartável, execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/club_operations.sql`.
+
 ## Contratos do banco
 
 - O celular é o identificador de login. Números brasileiros informados com DDD recebem o prefixo `+55`. Contas anteriores cadastradas só com e-mail precisam ter um celular associado no Supabase Auth para entrar pela nova tela. As credenciais ficam no Supabase Auth. O gatilho grava o nome, o avatar e o aceite versionado, com timestamp do banco. O navegador só pode alterar nome e avatar na tabela de perfis.
 - A consulta `get_available_slots` devolve horários de início em blocos de 30 minutos a partir das 09h, com fechamento às 19h no horário de Brasília. A RPC `create_appointment` valida o início e calcula o fim pela duração do serviço. O banco impede sobreposições tanto para o barbeiro quanto para o cliente. A RPC `cancel_appointment` exige titularidade e aceita cancelamentos com pelo menos 15 minutos de antecedência.
-- A RPC paginada `get_leaderboard` mostra posição, primeiro nome, avatar e pontos aos clientes autenticados. A agenda só mostra ao cliente os próprios agendamentos.
-- A RPC `post_points` é restrita ao backend. Ela serializa alterações por cliente e usa uma chave de evento para evitar créditos ou débitos duplicados. A penalidade de falta usa até o saldo disponível. As regras que autorizam cada ganho, perda ou resgate pertencem aos futuros fluxos de negócio.
-- Produtos físicos têm preço em reais e cosméticos têm preço em pontos. Os carrinhos, o checkout, a edição de perfil, os avisos e o suporte ficam para as próximas entregas.
+- A RPC paginada `get_leaderboard` mostra posição, primeiro nome, avatar e pontos da semana aos clientes autenticados. A agenda só mostra ao cliente os próprios agendamentos.
+- A RPC `post_points` é restrita ao backend. Ela serializa alterações por cliente e usa uma chave de evento para evitar créditos ou débitos duplicados. A penalidade de falta usa até o saldo disponível. As regras de expiração, resgate e presença são aplicadas no banco.
+- Produtos físicos têm preço em reais e cosméticos têm preço em pontos. Os carrinhos, o checkout e o suporte ficam para as próximas entregas.
 - O texto de consentimento acompanha a versão de testes. Para disponibilizar a aplicação ao público, substitua-o pelos documentos da barbearia e atualize a versão no código e no gatilho.
 
 ## Validação da Sprint 2

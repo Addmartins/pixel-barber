@@ -13,7 +13,7 @@ begin
   insert into auth.users(id, phone, raw_user_meta_data) values
   (buyer, '5581111111111', '{"nome":"Loja Tester","avatar_skin":"fade","consent_terms":true,"consent_version":"2026-11-21-phone-preview"}'),
   (peer, '5581222222222', '{"nome":"Loja Peer","avatar_skin":"fade","consent_terms":true,"consent_version":"2026-11-21-phone-preview"}');
-  update public.clients set points_balance = 500 where id = buyer;
+  perform public.post_points(buyer, 500, 'CORTE', 'Fixture saldo da loja', 'fixture-loja');
   select id into strict snap from public.store_products where cosmetic_code = 'snapback';
   select id into strict boina from public.store_products where cosmetic_code = 'boina';
   select id into strict navalha from public.store_products where cosmetic_code = 'navalha';
@@ -33,7 +33,7 @@ begin
   if not public.equip_avatar_item(snap, true) then raise exception 'Equip failed'; end if;
   if (select points_balance from public.buy_avatar_item(boina)) <> 50 then raise exception 'Second debit failed'; end if;
   if (select count(*) from public.client_inventory where is_equipped) <> 1 then raise exception 'Slot conflict'; end if;
-  if (select equipped_cosmetics from public.get_leaderboard() where display_name='Loja' and points_balance=50) is distinct from array['boina'] then raise exception 'Ranking mismatch'; end if;
+  if (select equipped_cosmetics from public.get_leaderboard() where display_name='Loja' and points_balance=500) is distinct from array['boina'] then raise exception 'Ranking mismatch'; end if;
   begin
     perform public.buy_avatar_item(navalha);
     raise exception 'Insufficient points accepted';

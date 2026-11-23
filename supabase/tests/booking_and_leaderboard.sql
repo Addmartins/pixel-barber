@@ -24,7 +24,8 @@ begin
   insert into auth.users (id, phone, raw_user_meta_data) values
     (client_a, '5590000010101', profile_metadata || '{"nome":"Sprint Dois Cliente A"}'),
     (client_b, '5590000010102', profile_metadata || '{"nome":"Teste Cliente B"}');
-  update public.clients set points_balance = 101 where id = client_a;
+  perform public.post_points(client_a, 101, 'CORTE', 'Fixture ranking A', 'fixture-ranking-a');
+  perform public.post_points(client_b, 50, 'CORTE', 'Fixture ranking B', 'fixture-ranking-b');
 
   select id into strict barber_a from public.barbers where nome = 'Mestre Navalha' limit 1;
   select id into strict barber_b from public.barbers where nome = 'Du Corte' limit 1;

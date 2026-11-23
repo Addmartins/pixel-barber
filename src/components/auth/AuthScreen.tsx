@@ -9,6 +9,7 @@ import { normalizePhone } from "@/lib/phone";
 import type { EquippedCosmetic } from "@/lib/store";
 import { AvatarPicker } from "./AvatarPicker";
 import { ProfileEditor } from "./ProfileEditor";
+import { PasswordReset } from "./PasswordReset";
 import { WalletDialogs } from "./WalletDialogs";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
@@ -46,12 +47,14 @@ export function AuthScreen() {
   const [demoDetails, setDemoDetails] = useState<Pick<Profile, "nome" | "avatar_skin">>(demoProfile);
   const [demoBalance, setDemoBalance] = useState(demoProfile.points_balance);
   const [equipped, setEquipped] = useState<{ owner: string; cosmetics: EquippedCosmetic[] } | null>(null);
+  const [recovery, setRecovery] = useState<{ phone: string }>();
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profileError, setProfileError] = useState(false);
   const userId = session?.user.id;
+  const userPhone = session?.user.phone;
   const cosmeticsOwner = demo ? "demo" : userId;
   const updateCosmetics = useCallback((cosmetics: EquippedCosmetic[]) => {
     if (cosmeticsOwner) setEquipped({ owner: cosmeticsOwner, cosmetics });
@@ -77,6 +80,7 @@ export function AuthScreen() {
 
     void (async () => {
       try {
+        await supabase.rpc("get_current_points_balance");
         const { data, error: failure } = await supabase.from("clients")
           .select("id,nome,avatar_skin,level,points_balance").eq("id", userId).single();
         if (!active) return;
@@ -89,6 +93,36 @@ export function AuthScreen() {
 
     return () => { active = false; };
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    let pending = false;
+    async function refresh() {
+      if (document.hidden || pending) return;
+      pending = true;
+      try {
+        const result = await getSupabase()?.rpc("get_current_points_balance");
+        if (active && result && !result.error) {
+          setProfile((current) => current && current.id === userId ? { ...current, points_balance: result.data } : current);
+        }
+      } catch { /* The next refresh can retry. */ }
+      finally { pending = false; }
+    }
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [userId]);
+
+  function startRecovery(phone = "") {
+    setError("");
+    setMessage("");
+    setRecovery({ phone });
+  }
 
   function changeMode(nextMode: typeof mode) {
     setMode(nextMode);
@@ -210,7 +244,7 @@ export function AuthScreen() {
   }
 
   const currentProfile = demo ? { ...demoProfile, ...demoDetails, points_balance: demoBalance } : profile?.id === userId ? profile : null;
-  const signedIn = demo || Boolean(session);
+  const signedIn = !recovery && (demo || Boolean(session));
 
   return (
     <main className={signedIn && currentProfile ? "device-shell has-bottom-nav" : "device-shell"}>
@@ -229,6 +263,7 @@ export function AuthScreen() {
           {signedIn && currentProfile && (
             <div className="masthead-account">
               <ProfileEditor key={cosmeticsOwner} profile={currentProfile} onSave={saveProfile}
+                onChangePassword={userPhone && !demo ? () => startRecovery("+" + userPhone.replace(/^\+/, "")) : undefined}
                 cosmetics={equipped?.owner === cosmeticsOwner ? equipped?.cosmetics : undefined} />
               <div className="masthead-profile">
                 <h2>Olá, {currentProfile.nome}!</h2>
@@ -240,7 +275,9 @@ export function AuthScreen() {
         </header>
 
         <div className={signedIn ? "min-w-0" : "card-modern auth-card"}>
-          {signedIn ? (
+          {recovery ? <PasswordReset initialPhone={recovery.phone} onCancel={() => setRecovery(undefined)}
+            onSuccess={() => { setRecovery(undefined); setMessage("Senha alterada."); }} />
+            : signedIn ? (
             <section className="space-y-4" aria-label="Painel do cliente">
               {currentProfile ? (
                 <>
@@ -321,6 +358,8 @@ export function AuthScreen() {
                 </button>
               </form>
 
+              {mode === "login" && <button type="button" className="secondary mt-3 w-full" disabled={busy}
+                onClick={() => startRecovery()}>Esqueci minha senha</button>}
               <button className="secondary mt-3 flex w-full items-center justify-center gap-2" disabled={busy} onClick={() => {
                 setError("");
                 setMessage("");
@@ -328,6 +367,8 @@ export function AuthScreen() {
               }}>
                 <Gamepad2 size={20} aria-hidden="true" /> Experimentar demonstração
               </button>
+              <a href={process.env.NEXT_PUBLIC_BACKEND_ORIGIN ? "/admin.html" : "/admin"}
+                className="muted mt-4 block text-center text-sm underline">Acesso administrativo</a>
             </>
           )}
           {error && <p className="feedback error" role="alert">{error}</p>}

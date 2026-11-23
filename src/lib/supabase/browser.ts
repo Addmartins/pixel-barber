@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Attendance, ClubAppointment, ClubMetrics, ClubNotice, ClubSuggestion, MuralTag } from "../club";
 import type { AvatarId } from "../avatars";
 import type { Barber, Service, Slot } from "../booking";
 import type { Difficulty, GameCode, GameRecord, GameResult } from "../games/types";
@@ -18,7 +19,7 @@ type ClientRow = {
 };
 
 type CatalogTable<Row> = { Row: Row; Insert: never; Update: never; Relationships: [] };
-type AppointmentStatus = "AGENDADO" | "CONCLUIDO" | "CANCELADO" | "NO_SHOW";
+type AppointmentStatus = Attendance;
 type AppointmentRow = {
   id: string;
   client_id: string;
@@ -31,7 +32,7 @@ type AppointmentRow = {
   status: AppointmentStatus;
   cancelled_at: string | null;
 };
-export type PointType = "LOGIN" | "JOGO" | "CORTE" | "COMPRA" | "FALTA_NO_SHOW" | "RESGATE_AVATAR";
+export type PointType = "LOGIN" | "JOGO" | "CORTE" | "COMPRA" | "FALTA_NO_SHOW" | "RESGATE_AVATAR" | "EXPIRACAO";
 export type PointEntry = {
   id: string; client_id: string; quantidade: number; tipo: PointType; descricao: string; event_key: string; created_at: string;
 };
@@ -55,7 +56,14 @@ export type Database = {
         cosmetic_slot: CosmeticProduct["cosmetic_slot"] | null; rarity: CosmeticProduct["rarity"] | null;
       }>;
       client_inventory: CatalogTable<InventoryItem & { id: string; client_id: string; acquired_at: string }>;
-      barbers: CatalogTable<Barber>;
+      barbers: { Row: Barber; Insert: Pick<Barber, "nome" | "especialidade">; Update: never; Relationships: [] };
+      club_notices: CatalogTable<Pick<ClubNotice, "id" | "title" | "body" | "created_at" | "photo_paths">>;
+      club_suggestions: {
+        Row: ClubSuggestion;
+        Insert: Pick<ClubSuggestion, "client_id" | "body">;
+        Update: Pick<ClubSuggestion, "reviewed_at">;
+        Relationships: [];
+      };
       services: CatalogTable<Service>;
       appointments: {
         Row: AppointmentRow;
@@ -69,6 +77,14 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      get_mural_notices: { Args: Record<PropertyKey, never>; Returns: ClubNotice[] };
+      find_mural_clients: { Args: { p_query: string }; Returns: MuralTag[] };
+      publish_mural_notice: { Args: { p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };
+      is_club_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      get_current_points_balance: { Args: Record<PropertyKey, never>; Returns: number };
+      get_club_metrics: { Args: Record<PropertyKey, never>; Returns: ClubMetrics[] };
+      get_club_appointments: { Args: { p_day: string }; Returns: ClubAppointment[] };
+      set_club_attendance: { Args: { p_id: string; p_status: Attendance }; Returns: boolean };
       get_available_slots: { Args: { p_barber_id: string; p_service_id: string; p_date: string }; Returns: Slot[] };
       create_appointment: { Args: { p_barber_id: string; p_service_id: string; p_starts_at: string }; Returns: string };
       cancel_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
@@ -92,4 +108,18 @@ export function getSupabase() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return null;
   return client ??= createClient<Database>(url, key);
+}
+
+export function createRecoveryClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return null;
+  return createClient<Database>(url, key, {
+    auth: {
+      storageKey: "pixel-barber-password-recovery",
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
 }

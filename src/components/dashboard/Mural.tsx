@@ -82,10 +82,10 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
       </section>
 
       <section aria-labelledby={rankingId}>
-        <h2 id={rankingId}>Pódio Top 3</h2>
+        <h2 id={rankingId}>Ranking semanal · Top 3</h2>
         {error && <p className="error mt-2" role="alert">{error}</p>}
         {ranking.length === 0 ? (
-          !error && <p className="muted mt-2" role="status">{loading ? "Carregando o ranking…" : "Ainda não há avatares no ranking."}</p>
+          !error && <p className="muted mt-2" role="status">{loading ? "Carregando o ranking…" : "Ainda não há pontos no ranking desta semana."}</p>
         ) : (
           <>
             <ol className={styles.podium}>
@@ -114,7 +114,7 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
         <dialog ref={dialog} className={styles.dialog} aria-labelledby={dialogTitleId}
           onClose={() => openButton.current?.focus()}>
           <header className={styles.dialogHeader}>
-            <h2 id={dialogTitleId}>Classificação completa</h2>
+            <h2 id={dialogTitleId}>Classificação semanal</h2>
             <form method="dialog">
               <button type="submit" className="secondary" autoFocus>Fechar</button>
             </form>
