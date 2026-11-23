@@ -136,7 +136,17 @@ O servidor reconstitui a partida para validar o placar. Os registros antigos e a
 
 ## Loja do Avatar
 
-A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 65 itens, incluindo 30 peças de moda. Camisas e vestidos, shorts e bermudas, bonés e tênis podem ser combinados no provador. A camisa do River Plate permite escolher um número de 0 a 99 e salvá-lo após o resgate. Os exclusivos custam de 1.100 a 1.850 PTS. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
+A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 65 itens, incluindo 30 peças de moda. Camisas e vestidos, shorts e bermudas, bonés e tênis podem ser combinados no provador. A camisa do River Plate permite escolher um número de 0 a 99 e salvá-lo após o resgate. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
+
+Os **Exclusivos de lançamento** podem ser resgatados por 90 dias a partir da aplicação da migração `20261123000021_launch_redemption_window.sql`, enquanto houver estoque. Os itens resgatados continuam disponíveis no guarda-roupa depois do fim da campanha.
+
+| Exclusivo de lançamento | Pontos |
+| --- | ---: |
+| Tesoura Prisma | 1.100 |
+| Chapéu do Fundador | 1.250 |
+| Avental Primeira Edição | 1.400 |
+| Trono da Inauguração | 1.600 |
+| Aura Letreiro Neon | 1.850 |
 
 Aplique `20261121000005_avatar_store.sql`, `20261122000007_avatar_collection.sql`, `20261122000008_launch_collection.sql`, `20261122000009_avatar_fashion.sql` e `20261122000010_avatar_shirt_number.sql` na ordem das migrações. O endpoint `POST /api/store/avatar/buy` aceita apenas `product_id` e usa a sessão do cliente. O banco consulta preço e estoque do catálogo e registra o débito, a aquisição e o equipamento na mesma transação. A demonstração usa 1.000 PTS fictícios e guarda as compras até sair ou atualizar a página.
 
