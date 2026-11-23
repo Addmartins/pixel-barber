@@ -80,7 +80,7 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
           ))}</div>}
       </section>
       <section className="card-modern space-y-3" aria-labelledby="portfolio-title">
-        <h2 id="portfolio-title">Portfólio do barbeiro</h2>
+        <h2 id="portfolio-title">Portfólio dos barbeiros</h2>
         {albumError ? <p className="error" role="alert">Não foi possível carregar os álbuns.</p>
           : !albums ? <p className="muted" role="status">Carregando álbuns…</p>
           : !albums.length ? <p className="muted">Nenhum álbum publicado.</p>

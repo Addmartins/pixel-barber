@@ -1,9 +1,5 @@
-.mural {
-  display: grid;
-  gap: 1.5rem;
-}
+.mural { display: grid; }
 
-.gallery,
 .podium {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -11,37 +7,8 @@
   margin-block: .8rem;
 }
 
-.gallery {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .75rem;
-}
-
-@media (min-width: 560px) {
-  .gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
-.cut {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 1rem;
-  overflow: hidden;
-  box-shadow: var(--surface-shadow);
-}
-
-.portrait {
-  display: grid;
-  place-items: end center;
-  min-height: 9rem;
-  padding: .75rem .25rem;
-  background-image: radial-gradient(ellipse at 50% 38%, rgb(255 255 255 / 16%), transparent 68%),
-    linear-gradient(transparent, rgb(11 13 19 / 55%));
-}
-
 .medal { display: grid; }
 
-.cutName,
 .podiumLabel {
   display: grid;
   align-content: center;
@@ -49,15 +16,6 @@
   padding: .25rem;
   overflow-wrap: anywhere;
   text-align: center;
-}
-
-.cutName {
-  flex: 1;
-  border-top: 1px solid var(--line);
-  background: var(--surface);
-  font-size: .875rem;
-  font-weight: 700;
-  line-height: 1.2;
 }
 
 .podiumEntry {

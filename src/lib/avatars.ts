@@ -6,4 +6,4 @@ export const avatars = [
 ] as const;
 
 export type AvatarId = (typeof avatars)[number]["id"];
-export const consentVersion = "2026-11-21-phone-preview";
+export const consentVersion = "2026-11-23-termos";

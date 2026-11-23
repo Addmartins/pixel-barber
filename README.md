@@ -35,7 +35,7 @@ supabase/tests/
 1. Em um projeto Supabase dedicado ao Pixel Barber, execute as migrações pendentes no SQL Editor, em ordem e uma vez cada. Em um ambiente existente, aplique somente as migrações pendentes.
 2. Copie `.env.example` para `.env.local`. Preencha a URL e a chave publicável do projeto.
 3. Habilite **Phone** nos provedores de autenticação do Supabase e configure o mínimo de 8 caracteres para a senha. Para validar a titularidade do celular, configure um provedor de SMS e habilite a confirmação por SMS.
-4. Com Node.js 22+, rode `npm ci` e `npm run dev`. Acesse `http://localhost:3000`. Use **Criar conta**, informe o celular com DDD, escolha um avatar e aceite os termos da versão de testes. Com confirmação habilitada, digite o código recebido por SMS. Nos próximos acessos, use o celular e a senha.
+4. Com Node.js 22+, rode `npm ci` e `npm run dev`. Acesse `http://localhost:3000`. Use **Criar conta**, informe o celular com DDD, escolha um avatar e aceite os Termos de Uso da Aplicação. Com confirmação habilitada, digite o código recebido por SMS. Nos próximos acessos, use o celular e a senha.
 5. **Experimentar demonstração** abre um perfil local com agenda e ranking de exemplo. As reservas de demonstração duram até sair da sessão ou atualizar a página.
 
 `npm run typecheck` verifica a tipagem. `npm run build` gera a compilação de produção.
@@ -74,7 +74,7 @@ Para testar as regras e as permissões em um banco descartável, execute `psql -
 - A RPC paginada `get_leaderboard` mostra posição, primeiro nome, avatar e pontos da semana aos clientes autenticados. A agenda só mostra ao cliente os próprios agendamentos.
 - A RPC `post_points` é restrita ao backend. Ela serializa alterações por cliente e usa uma chave de evento para evitar créditos ou débitos duplicados. A penalidade de falta usa até o saldo disponível. As regras de expiração, resgate e presença são aplicadas no banco.
 - Produtos físicos têm preço em reais e cosméticos têm preço em pontos. Os carrinhos, o checkout e o suporte ficam para as próximas entregas.
-- O texto de consentimento acompanha a versão de testes. Para disponibilizar a aplicação ao público, substitua-o pelos documentos da barbearia e atualize a versão no código e no gatilho.
+- Os Termos de Uso da Aplicação ficam em `/termos`. Aplique `20261123000017_app_terms.sql` para registrar a versão atual dos termos no perfil. O cadastro mantém a compatibilidade com o backend anterior durante a publicação.
 
 ## Validação da Sprint 2
 

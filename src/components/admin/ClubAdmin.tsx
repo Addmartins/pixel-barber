@@ -176,7 +176,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       </section>}
 
       {section === "notices" && <section className="card-modern space-y-4">
-        <h2>{portfolio ? "Portfólio do barbeiro" : "Quadro de avisos"}</h2>
+        <h2>{portfolio ? "Portfólio dos barbeiros" : "Quadro de avisos"}</h2>
         <div className="mode-switch grid grid-cols-2 gap-2" aria-label="Tipo de publicação">
           <button type="button" aria-pressed={!portfolio} disabled={busy} onClick={() => { setPortfolio(false); setPostPage(0); }}>Avisos</button>
           <button type="button" aria-pressed={portfolio} disabled={busy} onClick={() => { setPortfolio(true); setPostPage(0); }}>Álbuns</button>

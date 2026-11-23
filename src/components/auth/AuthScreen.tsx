@@ -14,6 +14,10 @@ import { WalletDialogs } from "./WalletDialogs";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
 type Profile = { nome: string; avatar_skin: AvatarId; level: number; points_balance: number };
+const termsPath = process.env.NEXT_PUBLIC_BACKEND_ORIGIN
+  ? new URL("/termos", process.env.NEXT_PUBLIC_BACKEND_ORIGIN).href
+  : "/termos";
+
 const demoProfile: Profile = { nome: "Visitante", avatar_skin: "fade", level: 1, points_balance: 1000 };
 
 function signupError(code: string | undefined) {
@@ -153,7 +157,7 @@ export function AuthScreen() {
     const password = String(fields.get("password") ?? "");
     const nome = String(fields.get("nome") ?? "").trim();
     if (mode === "register" && (nome.length < 2 || fields.get("consent") !== "on")) {
-      setError("Informe seu nome e aceite os termos e a política de privacidade.");
+      setError("Informe seu nome e aceite os Termos de Uso da Aplicação.");
       return;
     }
 
@@ -171,7 +175,11 @@ export function AuthScreen() {
           password,
           options: {
             channel: "sms",
-            data: { nome, avatar_skin: avatar, consent_terms: true, consent_version: consentVersion },
+            data: {
+              nome, avatar_skin: avatar, consent_terms: true,
+              // Older database triggers still expect the original signup protocol version.
+              consent_version: "2026-11-21-phone-preview", app_terms_version: consentVersion,
+            },
           },
         });
         if (failure) setError(signupError(failure.code));
@@ -343,14 +351,9 @@ export function AuthScreen() {
                   <>
                     <AvatarPicker value={avatar} onChange={setAvatar} />
 
-                    <details className="terms">
-                      <summary>Termos e política de privacidade</summary>
-                      <p>Esta versão de testes usa seu nome, celular e avatar para criar sua conta e exibir seu perfil. O Supabase processa as credenciais de acesso. Quando a confirmação por SMS está habilitada, o provedor de SMS recebe o número para enviar o código. A data e a versão do aceite ficam registradas no perfil.</p>
-                      <p>Use a conta somente para testar o Pixel Barber. Para pedir acesso, correção ou exclusão de dados, procure o responsável que disponibilizou este ambiente de testes.</p>
-                    </details>
                     <label className="flex items-start gap-3 text-sm">
                       <input className="mt-0.5 size-5 shrink-0 accent-teal-400" name="consent" type="checkbox" required />
-                      <span>Li e aceito os Termos de Uso e a Política de Privacidade desta versão de testes.</span>
+                      <span>Li e aceito os <a className="underline" href={termsPath} target="_blank" rel="noopener">Termos de Uso da Aplicação</a>.</span>
                     </label>
                   </>
                 )}
@@ -383,6 +386,9 @@ export function AuthScreen() {
           {error && <p className="feedback error" role="alert">{error}</p>}
           {message && <p className="feedback" role="status">{message}</p>}
         </div>
+        <footer className="text-center text-sm">
+          <a className="muted underline" href={termsPath}>Termos de Uso da Aplicação</a>
+        </footer>
       </div>
     </main>
   );

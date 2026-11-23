@@ -59,7 +59,6 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
   loadingMore?: boolean;
   onLoadMore?: () => void;
 }) {
-  const muralId = useId();
   const rankingId = useId();
   const dialogTitleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -67,20 +66,6 @@ export function Mural({ ranking, loading = false, error, hasMore = false, loadin
 
   return (
     <div className={styles.mural}>
-      <section aria-labelledby={muralId}>
-        <h2 id={muralId}>Mural de cortes</h2>
-        <ul className={styles.gallery}>
-          {avatars.map(({ id, name, backdrop }) => (
-            <li key={id} className={styles.cut}>
-              <div className={styles.portrait} style={{ backgroundColor: backdrop }}>
-                <AvatarRenderer skinId={id} size={64} />
-              </div>
-              <span className={styles.cutName}>{name}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
       <section aria-labelledby={rankingId}>
         <h2 id={rankingId}>Ranking semanal · Top 3</h2>
         {error && <p className="error mt-2" role="alert">{error}</p>}
