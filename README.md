@@ -138,7 +138,7 @@ O servidor reconstitui a partida para validar o placar. Os registros antigos e a
 
 A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 65 itens, incluindo 30 peças de moda. Camisas e vestidos, shorts e bermudas, bonés e tênis podem ser combinados no provador. A camisa do River Plate permite escolher um número de 0 a 99 e salvá-lo após o resgate. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
 
-Os **Exclusivos de lançamento** podem ser resgatados por 90 dias a partir da aplicação da migração `20261123000021_launch_redemption_window.sql`, enquanto houver estoque. Os itens resgatados continuam disponíveis no guarda-roupa depois do fim da campanha.
+Os **Exclusivos de lançamento** podem ser resgatados por 90 dias a partir da ativação da campanha, enquanto houver estoque. Aplique `20261123000021_launch_redemption_window.sql` e depois `20261123000022_restore_launch_catalog.sql`. A segunda migração restaura os exclusivos ausentes e usa o prazo da campanha existente. Se o catálogo ainda não tiver exclusivos, a contagem começa quando eles são inseridos. Os itens resgatados continuam disponíveis no guarda-roupa depois do fim da campanha.
 
 | Exclusivo de lançamento | Pontos |
 | --- | ---: |

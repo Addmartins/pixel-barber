@@ -79,7 +79,11 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
         }}>
           <Gamepad2 size={18} aria-hidden="true" /> Pixel Boy
         </button>
-        <button type="button" aria-pressed={section === "store"} onClick={() => { setStoreOpened(true); setSection("store"); }}>
+        <button type="button" aria-pressed={section === "store"} onClick={() => {
+          if (section !== "store") void shop.reload();
+          setStoreOpened(true);
+          setSection("store");
+        }}>
           <ShoppingBag size={18} aria-hidden="true" /> Loja
         </button>
         <button type="button" aria-pressed={section === "mural"} onClick={() => {

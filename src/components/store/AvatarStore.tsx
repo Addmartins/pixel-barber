@@ -189,7 +189,10 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
 
       <div className={styles.filters} role="group" aria-label="Raridade e guarda-roupa">
         {filters.map(([key, label]) => (
-          <button type="button" key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>
+          <button type="button" key={key} aria-pressed={filter === key} onClick={() => {
+            setFilter(key);
+            if (key === "EXCLUSIVO") setSlot("all");
+          }}>{label}</button>
         ))}
       </div>
 
