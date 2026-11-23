@@ -158,6 +158,17 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     void mutate(() => db.from("barbers").update(updates).eq("id", barber.id).select("id").single());
   }
 
+  function deleteBarber(barber: Barber) {
+    if (!db || busy || !window.confirm(`Excluir o cadastro de ${barber.nome}?`)) return;
+    void mutate(async () => {
+      const result = await db.from("barbers").delete().eq("id", barber.id).select("id").single();
+      if (result.error?.code === "23503") {
+        return { error: { code: "PT409", message: "Este barbeiro tem agendamentos vinculados e não pode ser excluído." } };
+      }
+      return result;
+    });
+  }
+
   if (!db) return null;
   return (
     <div className="space-y-4">
@@ -278,6 +289,9 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
               </label>
               <button type="submit" className="secondary" disabled={busy}>Salvar dados</button>
             </form>}
+            <button type="button" className="secondary" disabled={busy} onClick={() => deleteBarber(barber)}>
+              Excluir barbeiro
+            </button>
           </li>
         ))}</ul>}
       </section>}
