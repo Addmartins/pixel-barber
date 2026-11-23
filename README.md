@@ -13,15 +13,15 @@ O Pixel Barber é um clube de fidelidade para barbearias. Clientes escolhem o se
 
 ### Telas do app
 
-Capturas da interface web em tamanho de celular. Agendamento, mural e Pixel Boy mostram dados de demonstração.
+Capturas da interface web em tamanho de celular com dados fictícios.
 
 | Acesso ao clube | Agendamento |
 | --- | --- |
 | <img src="docs/screenshots/acesso.webp" alt="Tela de login e entrada na demonstração" width="280"> | <img src="docs/screenshots/agendamento.webp" alt="Agendamento com seleção de serviço" width="280"> |
 
-| Mural e ranking | Pixel Boy |
-| --- | --- |
-| <img src="docs/screenshots/mural.webp" alt="Mural do clube com ranking semanal" width="280"> | <img src="docs/screenshots/pixel-boy.webp" alt="Seleção de cartuchos do Pixel Boy" width="280"> |
+| Quadro de avisos e Mural de Cortes | Ranking semanal | Pixel Boy |
+| --- | --- | --- |
+| <img src="docs/screenshots/mural.webp" alt="Quadro de avisos com duas publicações e Mural de Cortes por barbeiro" width="280"> | <img src="docs/screenshots/ranking.webp" alt="Ranking semanal com pódio e classificação por pontos" width="280"> | <img src="docs/screenshots/pixel-boy.webp" alt="Seleção de cartuchos do Pixel Boy" width="280"> |
 
 ### Projeto
 
@@ -77,6 +77,16 @@ O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao Te
 
 ## Administração e pontos
 
+As capturas do painel administrativo usam dados fictícios.
+
+| Agenda | Publicações |
+| --- | --- |
+| <img src="docs/screenshots/admin-agenda.webp" alt="Painel administrativo com métricas semanais e agendamentos" width="280"> | <img src="docs/screenshots/admin-publicacoes.webp" alt="Formulário administrativo de publicação de álbuns por barbeiro" width="280"> |
+
+| Barbeiros | Sugestões |
+| --- | --- |
+| <img src="docs/screenshots/admin-barbeiros.webp" alt="Cadastro de barbeiros com edição dos dados e botão Excluir barbeiro" width="280"> | <img src="docs/screenshots/admin-sugestoes.webp" alt="Sugestões dos clientes e ação para marcar como revisadas" width="280"> |
+
 Aplique `20261123000011_point_expiration_type.sql` e confirme a transação antes de aplicar `20261123000012_club_operations.sql`. Em seguida, aplique `20261123000013_mural_photos.sql`, que provisiona o bucket privado do mural. Aplique também `20261123000014_welcome_points.sql` para creditar 150 pontos ao confirmar o celular de novas contas. Aplique `20261123000015_mural_portfolio.sql` para separar o quadro de avisos do portfólio. Depois, publique a aplicação. Para liberar acesso, crie e confirme uma conta normal, copie o UID em **Authentication → Users** e execute no SQL Editor do Supabase:
 
 ```sql
@@ -87,6 +97,7 @@ on conflict do nothing;
 Entre em `/admin` com o celular e a senha da conta autorizada. O painel exibe as métricas da semana, a agenda por data, os avisos, os barbeiros e as sugestões enviadas pelo mural. O quadro exibe até dois avisos ativos lado a lado. O Mural de Cortes mostra dois álbuns por vez em cada coluna de barbeiro. Aplique `20261123000019_cut_mural_barbers.sql` para habilitar as colunas e o vínculo dos álbuns. Em **Barbeiros**, adicione o link HTTPS da foto. Em **Publicações → Álbuns**, escolha o barbeiro ao publicar ou vincule um álbum anterior pelo seletor do próprio álbum. Cada álbum pode ter até quatro fotos JPG, PNG ou WebP de 6 MB cada, legenda e a marcação de um cliente pelo avatar. No mural, a marcação mostra o primeiro nome e o avatar. Registre presença e falta depois do horário de término, em ordem de agendamento por cliente.
 
 - O ranking começa às segundas-feiras à meia-noite, no horário de Recife. Ele soma os créditos da semana e desconta as penalidades dos agendamentos daquela semana. Resgates e expirações afetam o saldo da carteira.
+- Aplique `20261123000020_barber_delete.sql` para habilitar **Excluir barbeiro** no painel. Cadastros com agendamentos vinculados ficam protegidos contra exclusão.
 - A sequência de faltas aplica 20%, 30%, 40% e, a partir da quarta falta consecutiva, 50%, com limite acumulado de 50% por semana. A base são os créditos da semana do agendamento já registrados ao marcar a falta. Uma presença encerra a sequência. O débito na carteira é limitado ao saldo disponível.
 - Cada crédito vale 90 dias por padrão. A validade está em `public.club_point_rules.validity_days`. Débitos consomem primeiro os créditos mais antigos. O saldo é atualizado ao entrar, ao voltar ao app, nas consultas periódicas e nas movimentações. A expiração aparece no extrato.
 

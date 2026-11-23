@@ -45,7 +45,7 @@ function signupError(code: string | undefined) {
 export function AuthScreen() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [avatar, setAvatar] = useState<AvatarId>("fade");
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>();
   const [profile, setProfile] = useState<(Profile & { id: string }) | null>(null);
   const [demoEntry, setDemoEntry] = useState<"booking" | "arcade" | null>(null);
   const demo = demoEntry !== null;
@@ -71,7 +71,10 @@ export function AuthScreen() {
 
   useEffect(() => {
     const supabase = getSupabase();
-    if (!supabase) return;
+    if (!supabase) {
+      setSession(null);
+      return;
+    }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
     });
@@ -148,8 +151,10 @@ export function AuthScreen() {
       return;
     }
 
-    const fields = new FormData(event.currentTarget);
-    const phone = normalizePhone(String(fields.get("phone") ?? ""));
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const phoneInput = form.elements.namedItem("phone") as HTMLInputElement;
+    const phone = normalizePhone(phoneInput.value);
     if (!phone) {
       setError("Informe um celular com DDD ou use o formato internacional com + e código do país.");
       return;
@@ -161,6 +166,7 @@ export function AuthScreen() {
       return;
     }
 
+    phoneInput.value = phone;
     setBusy(true);
     try {
       if (mode === "login") {
@@ -284,7 +290,8 @@ export function AuthScreen() {
         </header>
 
         <div className={signedIn ? "min-w-0" : "card-modern auth-card"}>
-          {recovery ? <PasswordReset initialPhone={recovery.phone} onCancel={() => setRecovery(undefined)}
+          {session === undefined ? <p role="status">Verificando sessão…</p>
+            : recovery ? <PasswordReset initialPhone={recovery.phone} onCancel={() => setRecovery(undefined)}
             onSuccess={() => { setRecovery(undefined); setMessage("Senha alterada."); }} />
             : signedIn ? (
             <section className="space-y-4" aria-label="Painel do cliente">
@@ -329,14 +336,14 @@ export function AuthScreen() {
                 <button type="button" aria-pressed={mode === "register"} onClick={() => changeMode("register")} disabled={busy}>Criar conta</button>
               </div>
 
-              <form key={mode} onSubmit={submit} className="mt-6 space-y-4">
+              <form key={mode} method="post" onSubmit={submit} className="mt-6 space-y-4">
                 <h2>{mode === "register" ? "Crie seu perfil" : "Entre no clube"}</h2>
                 {mode === "register" && (
                   <label className="field">Nome <input name="nome" autoComplete="name" required minLength={2} maxLength={80} /></label>
                 )}
                 <label className="field">
                   Celular
-                  <input name="phone" type="tel" inputMode="tel" autoComplete={mode === "login" ? "username" : "tel"}
+                  <input name="phone" type="text" inputMode="tel" autoComplete="username"
                     placeholder="(81) 99999-9999" maxLength={30} required />
                   <span className="muted text-sm">Use o DDD ou informe o número com código do país.</span>
                 </label>

@@ -178,7 +178,7 @@ h2 { font-size: 1.25rem; overflow-wrap: anywhere; }
 }
 .profile-avatar:hover { border-color: var(--accent); }
 .profile-avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.profile-avatar .pixel-avatar { width: 1.125rem; }
+.profile-avatar .pixel-avatar { width: 100%; aspect-ratio: 1; }
 .terms { color: var(--muted); font-size: .875rem; }
 .terms summary { cursor: pointer; text-decoration: underline; }
 .terms p { margin-top: .65rem; }
