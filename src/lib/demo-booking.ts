@@ -7,8 +7,8 @@ const services: Service[] = [
   { id: "combo", nome: "Combo", duracao_minutos: 55, preco_reais: 75, pontos_recompensa: 15 },
 ];
 const barbers: Barber[] = [
-  { id: "navalha", nome: "Mestre Navalha", especialidade: "Barba e acabamento", foto_pixel: null },
-  { id: "du-corte", nome: "Du Corte", especialidade: "Degradês e fades", foto_pixel: null },
+  { id: "navalha", nome: "Mestre Navalha", especialidade: "Barba e acabamento", foto_pixel: null, endereco: null },
+  { id: "du-corte", nome: "Du Corte", especialidade: "Degradês e fades", foto_pixel: null, endereco: null },
 ];
 
 export const demoRanking: RankingEntry[] = [

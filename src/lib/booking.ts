@@ -6,7 +6,7 @@ export type Service = {
   pontos_recompensa: number;
 };
 
-export type Barber = { id: string; nome: string; especialidade: string; foto_pixel: string | null };
+export type Barber = { id: string; nome: string; especialidade: string; foto_pixel: string | null; endereco: string | null };
 export type Slot = { starts_at: string; available: boolean };
 export type Appointment = { id: string; starts_at: string; serviceName: string; barberName: string };
 export type BookingApi = {

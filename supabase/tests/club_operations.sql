@@ -50,6 +50,16 @@ begin
   perform set_config('request.jwt.claim.sub', admin_id::text, true);
   if not public.is_club_admin() then raise exception 'Administrador sem acesso'; end if;
   insert into public.barbers (nome, especialidade) values ('Barbeiro Teste', 'Corte') returning id into barber_id;
+  update public.barbers set endereco = 'Rua do Teste, 10' where id = barber_id;
+  perform set_config('request.jwt.claim.sub', client_id::text, true);
+  if (select endereco from public.barbers where id = barber_id) is distinct from 'Rua do Teste, 10' then
+    raise exception 'Endereço indisponível para o agendamento';
+  end if;
+  update public.barbers set endereco = null where id = barber_id;
+  if found then raise exception 'Cliente alterou endereço de barbeiro'; end if;
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  update public.barbers set endereco = null where id = barber_id;
+  if not found then raise exception 'Administrador não removeu endereço de barbeiro'; end if;
   perform public.publish_mural_notice('Aviso', 'Teste', '{}');
   if (select pending_suggestions from public.get_club_metrics()) <> 1 then raise exception 'Métrica de sugestões incorreta'; end if;
   update public.club_suggestions set reviewed_at = now() where body = 'Sugestão de teste';

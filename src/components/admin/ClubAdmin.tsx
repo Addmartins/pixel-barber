@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { brasiliaDate } from "@/lib/booking";
+import type { Barber } from "@/lib/booking";
 import { attendanceLabel, clubDateTime, muralBucket, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 import { NoticePost } from "@/components/dashboard/NoticePost";
@@ -19,7 +20,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [notices, setNotices] = useState<ClubNotice[]>([]);
   const [suggestions, setSuggestions] = useState<ClubSuggestion[]>([]);
-  const [barbers, setBarbers] = useState<{ id: string; nome: string; especialidade: string }[]>([]);
+  const [barbers, setBarbers] = useState<Pick<Barber, "id" | "nome" | "especialidade" | "endereco">[]>([]);
   const [reviewed, setReviewed] = useState(false);
   const [suggestionPage, setSuggestionPage] = useState(0);
   const [hasMoreSuggestions, setHasMoreSuggestions] = useState(false);
@@ -62,7 +63,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
             break;
           }
           case "barbers": {
-            const result = await client.from("barbers").select("id,nome,especialidade").order("nome");
+            const result = await client.from("barbers").select("*").order("nome");
             if (result.error) throw result.error;
             if (active) setBarbers(result.data);
             break;
@@ -113,11 +114,23 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     const fields = new FormData(form);
     const name = String(fields.get("name") ?? "").trim();
     const detail = String(fields.get("detail") ?? "").trim();
+    const address = String(fields.get("address") ?? "").trim() || null;
     if (!name || !detail) {
-      setError("Preencha todos os campos.");
+      setError("Preencha o nome e a especialidade.");
       return;
     }
-    void mutate(() => db.from("barbers").insert({ nome: name, especialidade: detail }), form);
+    void mutate(() => db.from("barbers").insert({
+      nome: name,
+      especialidade: detail,
+      ...(address ? { endereco: address } : {}),
+    }), form);
+  }
+
+  function saveBarberAddress(event: FormEvent<HTMLFormElement>, barberId: string) {
+    event.preventDefault();
+    if (!db) return;
+    const address = String(new FormData(event.currentTarget).get("address") ?? "").trim() || null;
+    void mutate(() => db.from("barbers").update({ endereco: address }).eq("id", barberId).select("id").single());
   }
 
   if (!db) return null;
@@ -211,10 +224,20 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         <form className="space-y-3" onSubmit={submitBarber}>
           <label className="field">Nome <input name="name" maxLength={80} required /></label>
           <label className="field">Especialidade <input name="detail" maxLength={100} required /></label>
+          {(barbers.length === 0 || barbers[0].endereco !== undefined) &&
+            <label className="field">Endereço de atendimento (opcional) <input name="address" maxLength={240} /></label>}
           <button className="primary" disabled={busy}>Adicionar barbeiro</button>
         </form>
         {!loading && !loadError && <ul className="space-y-2">{barbers.map((barber) => (
-          <li key={barber.id}>{barber.nome} <span className="muted">· {barber.especialidade}</span></li>
+          <li key={barber.id} className="space-y-2 border-t border-white/10 pt-3">
+            <p>{barber.nome} <span className="muted">· {barber.especialidade}</span></p>
+            {barber.endereco !== undefined && <form className="space-y-2" onSubmit={(event) => saveBarberAddress(event, barber.id)}>
+              <label className="field">Endereço de atendimento (opcional)
+                <input name="address" defaultValue={barber.endereco ?? ""} maxLength={240} disabled={busy} />
+              </label>
+              <button type="submit" className="secondary" disabled={busy}>Salvar endereço</button>
+            </form>}
+          </li>
         ))}</ul>}
       </section>}
 

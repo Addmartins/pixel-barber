@@ -228,6 +228,7 @@ export function Booking({ api }: { api: BookingApi }) {
                   <span className="booking-choice">
                     <strong>{option.nome}</strong>
                     <span className="muted">{option.especialidade}</span>
+                    {option.endereco && <span className="muted break-words">{option.endereco}</span>}
                   </span>
                 </label>
               ))}
@@ -237,6 +238,7 @@ export function Booking({ api }: { api: BookingApi }) {
         {step === 2 && (
           <div className="booking-schedule">
             <p className="muted">{service?.nome} · {barber?.nome}</p>
+            {barber?.endereco && <p className="muted break-words">{barber.endereco}</p>}
             <label className="field">
               Data
               <input type="date" min={today} value={date} disabled={busy}

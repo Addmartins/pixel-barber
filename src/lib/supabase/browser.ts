@@ -56,7 +56,12 @@ export type Database = {
         cosmetic_slot: CosmeticProduct["cosmetic_slot"] | null; rarity: CosmeticProduct["rarity"] | null;
       }>;
       client_inventory: CatalogTable<InventoryItem & { id: string; client_id: string; acquired_at: string }>;
-      barbers: { Row: Barber; Insert: Pick<Barber, "nome" | "especialidade">; Update: never; Relationships: [] };
+      barbers: {
+        Row: Barber;
+        Insert: Pick<Barber, "nome" | "especialidade"> & Partial<Pick<Barber, "endereco">>;
+        Update: Partial<Pick<Barber, "endereco">>;
+        Relationships: [];
+      };
       club_notices: CatalogTable<Pick<ClubNotice, "id" | "title" | "body" | "created_at" | "photo_paths">>;
       club_suggestions: {
         Row: ClubSuggestion;
