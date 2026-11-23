@@ -74,12 +74,13 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
                 ids.length ? client.from("club_notices").select("id,barber_id").in("id", ids)
                   : client.from("club_notices").select("id,barber_id").limit(0),
               ]);
-              if (catalog.error || (assignments.error && assignments.error.code !== "42703")) {
+              const assignmentError = assignments.error?.code;
+              if (catalog.error || (assignments.error && assignmentError !== "42703" && assignmentError !== "42501")) {
                 throw catalog.error ?? assignments.error;
               }
               if (active) {
                 setBarbers(catalog.data);
-                setSupportsAlbumBarbers(!assignments.error);
+                setSupportsAlbumBarbers(assignmentError !== "42703");
                 setAlbumBarbers(Object.fromEntries((assignments.data ?? []).map(({ id, barber_id }) => [id, barber_id])));
               }
             }
@@ -317,7 +318,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         {!loading && !loadError && notices.map((notice) => (
           <article key={notice.id} className="space-y-2 border-t border-white/10 pt-3">
             <NoticePost notice={notice} />
-            {portfolio && supportsAlbumBarbers && <form className="space-y-2" onSubmit={(event) => {
+            {portfolio && albumBarbers[notice.id] !== undefined && <form className="space-y-2" onSubmit={(event) => {
               event.preventDefault();
               const barberId = String(new FormData(event.currentTarget).get("albumBarber") ?? "") || null;
               void mutate(() => db.from("club_notices").update({ barber_id: barberId }).eq("id", notice.id).select("id").single());
