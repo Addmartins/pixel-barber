@@ -1,5 +1,6 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAppUpdates } from "./useAppUpdates";
 
@@ -21,14 +22,14 @@ export function AppConnectivity() {
 
   if (!offline && !update) return null;
   return (
-    <div className="device-notice" role="status">
+    <div className={offline ? "device-notice" : "device-notice device-update"} role="status">
       {offline ? <span>Sem conexão. Reconecte-se para acessar sua conta, a agenda e os pontos.</span>
         : update?.platform === "web" ? <>
-          <span>Nova versão disponível.</span>
+          <span><Download size={18} aria-hidden="true" /> Nova versão disponível</span>
           <button type="button" onClick={() => window.location.reload()}>Atualizar agora</button>
         </> : update?.platform === "android" ? <>
-          <span>Pixel Barber {update.version} disponível.</span>
-          <a href={update.href} target="_blank" rel="noopener noreferrer">Baixar APK</a>
+          <span><Download size={18} aria-hidden="true" /> Atualização {update.version} disponível</span>
+          <a href={update.href} target="_blank" rel="noopener noreferrer">Baixar atualização</a>
         </> : null}
     </div>
   );

@@ -6,7 +6,7 @@ import { deviceApi } from "@/lib/device/api";
 import current from "@/lib/device/release.json";
 
 type Update = { platform: "web" } | { platform: "android"; href: string; version: string };
-const checkEveryMs = 5 * 60 * 1000;
+const checkEveryMs = 60_000;
 
 export function useAppUpdates() {
   const [update, setUpdate] = useState<Update | null>(null);
@@ -33,10 +33,15 @@ export function useAppUpdates() {
       lastCheckedAt = Date.now();
       checking = true;
 
+      const request = new AbortController();
+      const abortRequest = () => request.abort();
+      lifetime.signal.addEventListener("abort", abortRequest, { once: true });
+      const timeout = window.setTimeout(abortRequest, 8_000);
+
       try {
         const endpoint = deviceApi("/api/release");
         const response = await fetch(`${endpoint}?at=${lastCheckedAt}`, {
-          cache: "no-store", signal: lifetime.signal,
+          cache: "no-store", signal: request.signal,
         });
         if (!response.ok) return;
         const release = await response.json();
@@ -47,7 +52,7 @@ export function useAppUpdates() {
           void registration?.update().catch(() => {});
         } else if (Number.isInteger(release.androidVersionCode) && release.androidVersionCode > current.androidVersionCode &&
                    release.androidDownload === current.androidDownload && typeof release.androidVersionName === "string") {
-          const href = new URL(endpoint).origin + current.androidDownload;
+          const href = new URL(current.androidDownload, new URL(endpoint, window.location.origin)).href;
           setUpdate({ platform: "android", href, version: release.androidVersionName });
         } else {
           setUpdate(null);
@@ -55,6 +60,8 @@ export function useAppUpdates() {
       } catch {
         // Offline or unreachable host. The next foreground or timer retries.
       } finally {
+        window.clearTimeout(timeout);
+        lifetime.signal.removeEventListener("abort", abortRequest);
         checking = false;
       }
     }

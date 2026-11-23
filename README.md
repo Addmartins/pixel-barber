@@ -52,7 +52,7 @@ O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao Te
 
 ## Administração e pontos
 
-Aplique `20261123000011_point_expiration_type.sql` e confirme a transação antes de aplicar `20261123000012_club_operations.sql`. Em seguida, aplique `20261123000013_mural_photos.sql`, que provisiona o bucket privado do mural. Depois, publique a aplicação. Para liberar acesso, crie e confirme uma conta normal, copie o UID em **Authentication → Users** e execute no SQL Editor do Supabase:
+Aplique `20261123000011_point_expiration_type.sql` e confirme a transação antes de aplicar `20261123000012_club_operations.sql`. Em seguida, aplique `20261123000013_mural_photos.sql`, que provisiona o bucket privado do mural. Aplique também `20261123000014_welcome_points.sql` para creditar 150 pontos ao confirmar o celular de novas contas. Depois, publique a aplicação. Para liberar acesso, crie e confirme uma conta normal, copie o UID em **Authentication → Users** e execute no SQL Editor do Supabase:
 
 ```sql
 insert into public.club_admins (user_id) values ('UID-DA-CONTA')
@@ -152,6 +152,6 @@ A primeira abertura autenticada do dia conta para a sequência, pelo horário de
 
 ### Atualizações do app
 
-O PWA consulta a versão publicada ao abrir, voltar ao primeiro plano e a cada cinco minutos. Quando encontra uma versão nova, mostra **Atualizar agora**; a próxima abertura online também carrega a publicação atual. O service worker continua usando a rede para a página e as APIs, e guarda somente a tela offline.
+O PWA consulta a versão publicada ao abrir, voltar ao primeiro plano e a cada minuto com o app aberto. Quando encontra uma versão nova, mostra **Atualizar agora**; a próxima abertura online também carrega a publicação atual. O service worker continua usando a rede para a página e as APIs, e guarda somente a tela offline.
 
 No Android nativo, o app compara o código de versão instalado com `GET /api/release` e mostra o link da versão mais recente. O Android pede confirmação para instalar um APK fora da loja. Para publicar um novo APK, incremente `androidVersionCode` em `src/lib/device/release.json`, compile com a mesma assinatura e substitua `public/downloads/pixel-barber-android-debug.apk` na mesma publicação.

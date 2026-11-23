@@ -35,7 +35,7 @@ export function NoticePost({ notice }: { notice: ClubNotice }) {
         {notice.photo_paths.map((path, index) => photos[path] && (
           // Private photos are loaded through the authenticated Storage client.
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="max-h-96 w-full rounded-lg object-contain" key={path} src={photos[path]} loading="lazy" decoding="async"
+          <img className="aspect-square w-full rounded-lg bg-black/20 object-cover object-center" key={path} src={photos[path]} loading="lazy" decoding="async"
             alt={notice.title + (notice.photo_paths.length > 1 ? ` — foto ${index + 1}` : "")} />
         ))}
       </div>}

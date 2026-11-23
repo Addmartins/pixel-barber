@@ -344,12 +344,20 @@ html, body {
   font-weight: 700;
   text-align: center;
 }
+.device-update {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.device-update span { display: inline-flex; align-items: center; gap: .4rem; }
+.device-update :is(button, a) { background: #12141a; color: #fff; }
+
 .device-notice :is(button, a) {
   padding: .4rem .65rem;
   border: 1px solid #12141a;
   border-radius: .5rem;
   text-decoration: underline;
-  min-height: 36px;
+  min-height: 44px;
 }
 
 .wallet-dialog {
