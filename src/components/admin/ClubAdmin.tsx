@@ -1,14 +1,22 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { brasiliaDate } from "@/lib/booking";
 import type { Barber } from "@/lib/booking";
-import { attendanceLabel, clubDateTime, muralBucket, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
+import { attendanceLabel, clubDateTime, muralBucket, muralPhotoBytes, muralPhotoFormats, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 import { NoticePost } from "@/components/dashboard/NoticePost";
 import { CutMuralTitle } from "@/components/CutMuralTitle";
+import { BarberAddress } from "@/components/BarberAddress";
 import { MuralComposer } from "./MuralComposer";
 
 const sections = { agenda: "Agenda", notices: "Publicações", barbers: "Barbeiros", suggestions: "Sugestões" } as const;
 type Section = keyof typeof sections;
+const barberPhotosBucket = "barber-photos";
+
+function BarberPhotoInput({ disabled }: { disabled: boolean }) {
+  return <label className="field">Enviar foto (JPG, PNG ou WebP, até 6 MB)
+    <input type="file" name="photoFile" accept={Object.keys(muralPhotoFormats).join(",")} disabled={disabled} />
+  </label>;
+}
 
 export function ClubAdmin({ accountId }: { accountId: string }) {
   const [section, setSection] = useState<Section>("agenda");
@@ -30,6 +38,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
+  const [publicationStatus, setPublicationStatus] = useState("");
   const [loadError, setLoadError] = useState("");
   const db = getSupabase();
 
@@ -125,6 +134,45 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     finally { setBusy(false); }
   }
 
+  function saveBarberPhoto(
+    fields: FormData,
+    save: (uploadedPhoto?: string) => PromiseLike<{ error: { code?: string; message: string } | null }>,
+    form: HTMLFormElement,
+  ) {
+    if (!db) return;
+    const file = fields.get("photoFile");
+    if (!(file instanceof File) || file.size === 0) {
+      void mutate(() => save(), form);
+      return;
+    }
+    const extension = muralPhotoFormats[file.type];
+    if (!extension || file.size > muralPhotoBytes) {
+      setError("Escolha uma foto JPG, PNG ou WebP de até 6 MB.");
+      return;
+    }
+
+    void mutate(async () => {
+      const storage = db.storage.from(barberPhotosBucket);
+      const path = `${crypto.randomUUID()}.${extension}`;
+      const upload = await storage.upload(path, file, { contentType: file.type });
+      if (upload.error) {
+        return { error: { code: "PT409", message: "Não foi possível enviar a foto. Tente novamente." } };
+      }
+      const result = await save(storage.getPublicUrl(path).data.publicUrl);
+      if (result.error) await storage.remove([path]).catch(() => undefined);
+      return result;
+    }, form);
+  }
+
+  async function removeBarberPhoto(url: string | null) {
+    if (!db || !url) return;
+    const storage = db.storage.from(barberPhotosBucket);
+    const path = url.split("/").pop() ?? "";
+    if (/^[0-9a-f-]{36}\.(jpg|png|webp)$/.test(path) && storage.getPublicUrl(path).data.publicUrl === url) {
+      await storage.remove([path]).catch(() => undefined);
+    }
+  }
+
   function submitBarber(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!db) return;
@@ -137,34 +185,64 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       setError("Preencha o nome e a especialidade.");
       return;
     }
-    void mutate(() => db.from("barbers").insert({
+    saveBarberPhoto(fields, (uploadedPhoto) => db.from("barbers").insert({
       nome: name,
       especialidade: detail,
       ...(address ? { endereco: address } : {}),
+      ...(uploadedPhoto ? { foto_pixel: uploadedPhoto } : {}),
     }), form);
   }
 
   function saveBarberDetails(event: FormEvent<HTMLFormElement>, barber: Barber) {
     event.preventDefault();
     if (!db) return;
-    const fields = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const fields = new FormData(form);
     const address = String(fields.get("address") ?? "").trim() || null;
     const photo = String(fields.get("photo") ?? "").trim() || null;
     if (photo && photo !== barber.foto_pixel && !/^https:\/\//i.test(photo)) {
       setError("Use um link HTTPS para a foto.");
       return;
     }
-    const updates = photo === barber.foto_pixel ? { endereco: address } : { endereco: address, foto_pixel: photo };
-    void mutate(() => db.from("barbers").update(updates).eq("id", barber.id).select("id").single());
+    saveBarberPhoto(fields, async (uploadedPhoto) => {
+      const nextPhoto = uploadedPhoto ?? photo;
+      const updates = nextPhoto === barber.foto_pixel ? { endereco: address } : { endereco: address, foto_pixel: nextPhoto };
+      const result = await db.from("barbers").update(updates).eq("id", barber.id).select("id").single();
+      if (!result.error && nextPhoto !== barber.foto_pixel) await removeBarberPhoto(barber.foto_pixel);
+      return result;
+    }, form);
   }
 
   function deleteBarber(barber: Barber) {
     if (!db || busy || !window.confirm(`Excluir o cadastro de ${barber.nome}?`)) return;
     void mutate(async () => {
-      const result = await db.from("barbers").delete().eq("id", barber.id).select("id").single();
+      const result = await db.from("barbers").delete().eq("id", barber.id).select("foto_pixel").single();
       if (result.error?.code === "23503") {
         return { error: { code: "PT409", message: "Este barbeiro tem agendamentos vinculados e não pode ser excluído." } };
       }
+      if (!result.error) await removeBarberPhoto(result.data.foto_pixel);
+      return result;
+    });
+  }
+
+  function deletePublication(notice: ClubNotice) {
+    const label = portfolio ? "álbum" : "aviso";
+    if (!db || busy || !window.confirm(`Excluir este ${label}?`)) return;
+    setPublicationStatus("");
+    void mutate(async () => {
+      const result = await db.from("club_notices").delete().eq("id", notice.id).select("photo_paths").single();
+      if (result.error) return result;
+
+      const paths = result.data.photo_paths;
+      let status = "Publicação excluída.";
+      if (paths.length > 0) {
+        const cleaned = await db.storage.from(muralBucket).remove(paths)
+          .then(({ data, error }) => !error && data.length === paths.length)
+          .catch(() => false);
+        if (!cleaned) status += " A limpeza dos arquivos de imagem ficou incompleta.";
+      }
+      setPublicationStatus(status);
+      if (postPage > 0 && notices.length === 1 && !hasMorePosts) setPostPage((current) => current - 1);
       return result;
     });
   }
@@ -188,7 +266,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       <nav className="mode-switch grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Administração">
         {(Object.keys(sections) as Section[]).map((key) => (
           <button type="button" key={key} aria-pressed={section === key} disabled={busy}
-            onClick={() => { setSection(key); setError(""); }}>{sections[key]}</button>
+            onClick={() => { setSection(key); setError(""); setPublicationStatus(""); }}>{sections[key]}</button>
         ))}
       </nav>
 
@@ -227,9 +305,10 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
 
       {section === "notices" && <section className="card-modern space-y-4">
         <h2>{portfolio ? <CutMuralTitle /> : "Quadro de avisos"}</h2>
+        {publicationStatus && <p role="status">{publicationStatus}</p>}
         <div className="mode-switch grid grid-cols-2 gap-2" aria-label="Tipo de publicação">
-          <button type="button" aria-pressed={!portfolio} disabled={busy} onClick={() => { setPortfolio(false); setPostPage(0); }}>Avisos</button>
-          <button type="button" aria-pressed={portfolio} disabled={busy} onClick={() => { setPortfolio(true); setPostPage(0); }}>Álbuns</button>
+          <button type="button" aria-pressed={!portfolio} disabled={busy} onClick={() => { setPortfolio(false); setPostPage(0); setPublicationStatus(""); }}>Avisos</button>
+          <button type="button" aria-pressed={portfolio} disabled={busy} onClick={() => { setPortfolio(true); setPostPage(0); setPublicationStatus(""); }}>Álbuns</button>
         </div>
         {!portfolio && !loading && !loadError && notices.length >= 2
           ? <p className="muted">O quadro já tem dois avisos. Remova um para publicar outro.</p>
@@ -251,15 +330,9 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
               </label>
               <button type="submit" className="secondary" disabled={busy}>Salvar barbeiro do álbum</button>
             </form>}
-            <button type="button" className="secondary" disabled={busy}
-              onClick={() => {
-                if (!window.confirm("Remover esta postagem do mural?")) return;
-                void mutate(async () => {
-                  const result = await db.from("club_notices").delete().eq("id", notice.id);
-                  if (!result.error && notice.photo_paths.length) await db.storage.from(muralBucket).remove(notice.photo_paths).catch(() => undefined);
-                  return result;
-                });
-              }}>Remover {portfolio ? "álbum" : "aviso"}</button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => deletePublication(notice)}>
+              Excluir {portfolio ? "álbum" : "aviso"}
+            </button>
           </article>
         ))}
         {portfolio && !loading && !loadError && (postPage > 0 || hasMorePosts) && <div className="flex gap-2">
@@ -275,18 +348,22 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
           <label className="field">Especialidade <input name="detail" maxLength={100} required /></label>
           {(barbers.length === 0 || barbers[0].endereco !== undefined) &&
             <label className="field">Endereço de atendimento (opcional) <input name="address" maxLength={240} /></label>}
+          <BarberPhotoInput disabled={busy} />
           <button className="primary" disabled={busy}>Adicionar barbeiro</button>
         </form>
         {!loading && !loadError && <ul className="space-y-2">{barbers.map((barber) => (
           <li key={barber.id} className="space-y-2 border-t border-white/10 pt-3">
             <p>{barber.nome} <span className="muted">· {barber.especialidade}</span></p>
-            {barber.endereco !== undefined && <form className="space-y-2" onSubmit={(event) => saveBarberDetails(event, barber)}>
+            {barber.endereco && <BarberAddress address={barber.endereco} />}
+            {barber.endereco !== undefined && <form key={JSON.stringify([barber.endereco, barber.foto_pixel])}
+              className="space-y-2" onSubmit={(event) => saveBarberDetails(event, barber)}>
               <label className="field">Endereço de atendimento (opcional)
                 <input name="address" defaultValue={barber.endereco ?? ""} maxLength={240} disabled={busy} />
               </label>
               <label className="field">Link HTTPS da foto (opcional)
                 <input inputMode="url" name="photo" defaultValue={barber.foto_pixel ?? ""} maxLength={2048} disabled={busy} />
               </label>
+              <BarberPhotoInput disabled={busy} />
               <button type="submit" className="secondary" disabled={busy}>Salvar dados</button>
             </form>}
             <button type="button" className="secondary" disabled={busy} onClick={() => deleteBarber(barber)}>

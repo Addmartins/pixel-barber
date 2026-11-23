@@ -23,6 +23,12 @@ Capturas da interface web em tamanho de celular com dados fictícios.
 | --- | --- | --- |
 | <img src="docs/screenshots/mural.webp" alt="Quadro de avisos com duas publicações e Mural de Cortes por barbeiro" width="280"> | <img src="docs/screenshots/ranking.webp" alt="Ranking semanal com pódio e classificação por pontos" width="280"> | <img src="docs/screenshots/pixel-boy.webp" alt="Seleção de cartuchos do Pixel Boy" width="280"> |
 
+### Pixel Boy em partida
+
+| Bombas de Espuma | Órbita Pixel | Itens do Salão |
+| --- | --- | --- |
+| <img src="docs/screenshots/bombas-de-espuma.webp" alt="Partida de Bombas de Espuma com robôs e caixas na arena" width="280"> | <img src="docs/screenshots/orbita-pixel.webp" alt="Partida de Órbita Pixel com a nave diante de inimigos" width="280"> | <img src="docs/screenshots/itens-do-salao.webp" alt="Tabuleiro de Itens do Salão com peças coloridas" width="280"> |
+
 ### Projeto
 
 Next.js 14 App Router, TypeScript, Tailwind CSS, Lucide e Supabase. O Capacitor empacota o app para Android e iOS.

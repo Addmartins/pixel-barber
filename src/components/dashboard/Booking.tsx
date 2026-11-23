@@ -2,6 +2,7 @@
 
 import { CalendarDays, Clock3 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BarberAddress } from "@/components/BarberAddress";
 import {
   appointmentDate, appointmentTime, BookingConflict, brasiliaDate,
   cancellationWindowMs, countdown, currency, type Appointment, type Barber,
@@ -222,15 +223,17 @@ export function Booking({ api }: { api: BookingApi }) {
             {!catalog.barbers.length && <p className="muted">Nenhum barbeiro disponível.</p>}
             <div className="booking-options">
               {catalog.barbers.map((option) => (
-                <label key={option.id} className="booking-option">
-                  <input className="sr-only" type="radio" name="barber" checked={barber?.id === option.id}
-                    onChange={() => { setBarber(option); setStartsAt(""); clearFeedback(); }} />
-                  <span className="booking-choice">
-                    <strong>{option.nome}</strong>
-                    <span className="muted">{option.especialidade}</span>
-                    {option.endereco && <span className="muted break-words">{option.endereco}</span>}
-                  </span>
-                </label>
+                <div key={option.id} className="space-y-1">
+                  <label className="booking-option block">
+                    <input className="sr-only" type="radio" name="barber" checked={barber?.id === option.id}
+                      onChange={() => { setBarber(option); setStartsAt(""); clearFeedback(); }} />
+                    <span className="booking-choice">
+                      <strong>{option.nome}</strong>
+                      <span className="muted">{option.especialidade}</span>
+                    </span>
+                  </label>
+                  {option.endereco && <BarberAddress address={option.endereco} />}
+                </div>
               ))}
             </div>
           </fieldset>
@@ -238,7 +241,7 @@ export function Booking({ api }: { api: BookingApi }) {
         {step === 2 && (
           <div className="booking-schedule">
             <p className="muted">{service?.nome} · {barber?.nome}</p>
-            {barber?.endereco && <p className="muted break-words">{barber.endereco}</p>}
+            {barber?.endereco && <p><BarberAddress address={barber.endereco} /></p>}
             <label className="field">
               Data
               <input type="date" min={today} value={date} disabled={busy}

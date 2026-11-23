@@ -58,7 +58,7 @@ export type Database = {
       client_inventory: CatalogTable<InventoryItem & { id: string; client_id: string; acquired_at: string }>;
       barbers: {
         Row: Barber;
-        Insert: Pick<Barber, "nome" | "especialidade"> & Partial<Pick<Barber, "endereco">>;
+        Insert: Pick<Barber, "nome" | "especialidade"> & Partial<Pick<Barber, "endereco" | "foto_pixel">>;
         Update: Partial<Pick<Barber, "endereco" | "foto_pixel">>;
         Relationships: [];
       };
