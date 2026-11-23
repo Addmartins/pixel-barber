@@ -3,8 +3,9 @@ import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import { muralBucket, muralPhotoBytes, muralPhotoFormats, muralPhotoLimit, type MuralTag } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 
-export function MuralComposer({ accountId, disabled, onBusy, onPublished }: {
+export function MuralComposer({ accountId, portfolio, disabled, onBusy, onPublished }: {
   accountId: string;
+  portfolio: boolean;
   disabled: boolean;
   onBusy: (busy: boolean) => void;
   onPublished: () => void;
@@ -41,8 +42,8 @@ export function MuralComposer({ accountId, disabled, onBusy, onPublished }: {
     const title = String(fields.get("title") ?? "").trim();
     const caption = String(fields.get("caption") ?? "").trim();
     const files = fields.getAll("photos").filter((value): value is File => value instanceof File && value.size > 0);
-    if (!title || (!caption && !files.length)) {
-      setError("Preencha o título e adicione uma foto ou legenda.");
+    if (!title || (portfolio ? !files.length : !caption)) {
+      setError(portfolio ? "Adicione um título e pelo menos uma foto." : "Preencha o título e o aviso.");
       return;
     }
     if (files.length > muralPhotoLimit || files.some((file) => !muralPhotoFormats[file.type] || file.size > muralPhotoBytes)) {
@@ -70,9 +71,11 @@ export function MuralComposer({ accountId, disabled, onBusy, onPublished }: {
       setQuery("");
       setOptions(undefined);
       onPublished();
-    } catch {
+    } catch (failure) {
       if (paths.length) await storage.remove(paths).catch(() => undefined);
-      setError("Não foi possível publicar. Confira o mural antes de tentar novamente.");
+      setError(failure && typeof failure === "object" && "code" in failure && failure.code === "PT409"
+        ? "O quadro já tem dois avisos. Remova um antes de publicar outro."
+        : "Não foi possível publicar. Confira o mural antes de tentar novamente.");
     } finally {
       onBusy(false);
       setPublishing(false);
@@ -83,10 +86,14 @@ export function MuralComposer({ accountId, disabled, onBusy, onPublished }: {
     <form className="space-y-4" onSubmit={(event) => void publish(event)}>
       <fieldset className="space-y-3" disabled={disabled}>
         <label className="field">Título <input name="title" maxLength={100} required /></label>
-        <label className="field">Fotos <input name="photos" type="file" accept={Object.keys(muralPhotoFormats).join(",")} multiple /></label>
-        <p className="muted text-sm">Até 4 fotos JPG, PNG ou WebP, de até 6 MB cada.</p>
-        <label className="field">Legenda <textarea name="caption" maxLength={1000} rows={3} /></label>
-        <div className="space-y-2">
+        {portfolio && <>
+          <label className="field">Fotos <input name="photos" type="file" accept={Object.keys(muralPhotoFormats).join(",")} multiple required /></label>
+          <p className="muted text-sm">Até 4 fotos JPG, PNG ou WebP, de até 6 MB cada.</p>
+        </>}
+        <label className="field">{portfolio ? "Legenda" : "Aviso"}
+          <textarea name="caption" maxLength={1000} rows={3} required={!portfolio} />
+        </label>
+        {portfolio && <div className="space-y-2">
           {tag ? <div className="flex flex-wrap items-center gap-2">
             <AvatarRenderer skinId={tag.avatar_skin} size={32} /><span>{tag.nome}</span>
             <button type="button" className="secondary" onClick={() => { setTag(undefined); setQuery(""); }}>Remover marcação</button>
@@ -108,8 +115,8 @@ export function MuralComposer({ accountId, disabled, onBusy, onPublished }: {
               </li>
             ))}</ul>}
           </>}
-        </div>
-        <button type="submit" className="primary">{publishing ? "Publicando…" : "Publicar no mural"}</button>
+        </div>}
+        <button type="submit" className="primary">{publishing ? "Publicando…" : portfolio ? "Publicar álbum" : "Publicar aviso"}</button>
       </fieldset>
       {error && <p className="error" role="alert">{error}</p>}
     </form>

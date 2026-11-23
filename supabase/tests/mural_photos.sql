@@ -6,6 +6,7 @@ declare
   client_id uuid := gen_random_uuid();
   photo_path text := admin_id::text || '/' || gen_random_uuid()::text || '.jpg';
   post_id uuid;
+  notice_id uuid;
   meta jsonb := '{"avatar_skin":"fade","consent_terms":true,"consent_version":"2026-11-21-phone-preview"}';
 begin
   insert into auth.users (id, phone, raw_user_meta_data) values
@@ -38,10 +39,21 @@ begin
   end if;
 
   perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  notice_id := public.publish_mural_notice('Primeiro aviso', 'Teste', '{}');
+  perform public.publish_mural_notice('Segundo aviso', 'Teste', '{}');
+  begin
+    perform public.publish_mural_notice('Terceiro aviso', 'Teste', '{}');
+    raise exception 'Terceiro aviso foi aceito';
+  exception when sqlstate 'PT409' then null;
+  end;
   post_id := public.publish_mural_notice('Corte da semana', 'Legenda', array[photo_path], client_id);
   delete from storage.objects where name = photo_path;
   if found then raise exception 'Storage permitiu apagar foto publicada'; end if;
   perform set_config('request.jwt.claim.sub', client_id::text, true);
+  if (select count(*) from public.get_club_posts(false)) <> 2
+    or (select count(*) from public.get_club_posts(true)) <> 1 then
+    raise exception 'Quadro e portfólio não retornaram suas próprias publicações';
+  end if;
   if not exists (select 1 from public.get_mural_notices()
     where id = post_id and body = 'Legenda' and tagged_name = 'Cliente' and tagged_avatar = 'bigode'
       and photo_paths = array[photo_path]) then
@@ -52,6 +64,8 @@ begin
   end if;
 
   perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  delete from public.club_notices where id = notice_id;
+  perform public.publish_mural_notice('Aviso substituto', 'Teste', '{}');
   delete from public.club_notices where id = post_id;
   delete from storage.objects where name = photo_path;
   if not found then raise exception 'Foto órfã não pôde ser limpa'; end if;

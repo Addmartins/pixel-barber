@@ -5,7 +5,7 @@ import { getSupabase } from "@/lib/supabase/browser";
 import { NoticePost } from "@/components/dashboard/NoticePost";
 import { MuralComposer } from "./MuralComposer";
 
-const sections = { agenda: "Agenda", notices: "Avisos", barbers: "Barbeiros", suggestions: "Sugestões" } as const;
+const sections = { agenda: "Agenda", notices: "Publicações", barbers: "Barbeiros", suggestions: "Sugestões" } as const;
 type Section = keyof typeof sections;
 
 export function ClubAdmin({ accountId }: { accountId: string }) {
@@ -13,6 +13,9 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [day, setDay] = useState(() => brasiliaDate(Date.now()));
   const [metrics, setMetrics] = useState<ClubMetrics>();
   const [appointments, setAppointments] = useState<ClubAppointment[]>([]);
+  const [portfolio, setPortfolio] = useState(false);
+  const [postPage, setPostPage] = useState(0);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
   const [notices, setNotices] = useState<ClubNotice[]>([]);
   const [suggestions, setSuggestions] = useState<ClubSuggestion[]>([]);
   const [barbers, setBarbers] = useState<{ id: string; nome: string; especialidade: string }[]>([]);
@@ -47,9 +50,14 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
             break;
           }
           case "notices": {
-            const result = await client.rpc("get_mural_notices");
+            const result = await client.rpc("get_club_posts", {
+              p_portfolio: portfolio, p_limit: portfolio ? 9 : 2, p_offset: portfolio ? postPage * 8 : 0,
+            });
             if (result.error) throw result.error;
-            if (active) setNotices(result.data);
+            if (active) {
+              setNotices(result.data.slice(0, portfolio ? 8 : 2));
+              setHasMorePosts(portfolio && result.data.length > 8);
+            }
             break;
           }
           case "barbers": {
@@ -79,7 +87,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     }
     void load();
     return () => { active = false; };
-  }, [db, day, reviewed, revision, section, suggestionPage]);
+  }, [db, day, portfolio, postPage, reviewed, revision, section, suggestionPage]);
 
   async function mutate(action: () => PromiseLike<{ error: { code?: string; message: string } | null }>, form?: HTMLFormElement) {
     if (busy) return;
@@ -168,8 +176,15 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       </section>}
 
       {section === "notices" && <section className="card-modern space-y-4">
-        <h2>Quadro de avisos</h2>
-        <MuralComposer accountId={accountId} disabled={busy} onBusy={setBusy} onPublished={() => setRevision((current) => current + 1)} />
+        <h2>{portfolio ? "Portfólio do barbeiro" : "Quadro de avisos"}</h2>
+        <div className="mode-switch grid grid-cols-2 gap-2" aria-label="Tipo de publicação">
+          <button type="button" aria-pressed={!portfolio} disabled={busy} onClick={() => { setPortfolio(false); setPostPage(0); }}>Avisos</button>
+          <button type="button" aria-pressed={portfolio} disabled={busy} onClick={() => { setPortfolio(true); setPostPage(0); }}>Álbuns</button>
+        </div>
+        {!portfolio && !loading && !loadError && notices.length >= 2
+          ? <p className="muted">O quadro já tem dois avisos. Remova um para publicar outro.</p>
+          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} disabled={busy}
+            onBusy={setBusy} onPublished={() => { setPostPage(0); setRevision((current) => current + 1); }} />}
         {!loading && !loadError && notices.map((notice) => (
           <article key={notice.id} className="space-y-2 border-t border-white/10 pt-3">
             <NoticePost notice={notice} />
@@ -181,9 +196,13 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
                   if (!result.error && notice.photo_paths.length) await db.storage.from(muralBucket).remove(notice.photo_paths).catch(() => undefined);
                   return result;
                 });
-              }}>Remover aviso</button>
+              }}>Remover {portfolio ? "álbum" : "aviso"}</button>
           </article>
         ))}
+        {portfolio && !loading && !loadError && (postPage > 0 || hasMorePosts) && <div className="flex gap-2">
+          {postPage > 0 && <button type="button" className="secondary" disabled={busy} onClick={() => setPostPage(postPage - 1)}>Anterior</button>}
+          {hasMorePosts && <button type="button" className="secondary" disabled={busy} onClick={() => setPostPage(postPage + 1)}>Próxima</button>}
+        </div>}
       </section>}
 
       {section === "barbers" && <section className="card-modern space-y-4">

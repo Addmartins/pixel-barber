@@ -77,6 +77,7 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      get_club_posts: { Args: { p_portfolio: boolean; p_limit?: number; p_offset?: number }; Returns: ClubNotice[] };
       get_mural_notices: { Args: Record<PropertyKey, never>; Returns: ClubNotice[] };
       find_mural_clients: { Args: { p_query: string }; Returns: MuralTag[] };
       publish_mural_notice: { Args: { p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };
