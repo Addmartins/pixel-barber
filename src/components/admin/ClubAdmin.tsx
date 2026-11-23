@@ -3,6 +3,7 @@ import { brasiliaDate } from "@/lib/booking";
 import { attendanceLabel, clubDateTime, muralBucket, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 import { NoticePost } from "@/components/dashboard/NoticePost";
+import { CutMuralTitle } from "@/components/CutMuralTitle";
 import { MuralComposer } from "./MuralComposer";
 
 const sections = { agenda: "Agenda", notices: "Publicações", barbers: "Barbeiros", suggestions: "Sugestões" } as const;
@@ -176,7 +177,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       </section>}
 
       {section === "notices" && <section className="card-modern space-y-4">
-        <h2>{portfolio ? "Portfólio dos barbeiros" : "Quadro de avisos"}</h2>
+        <h2>{portfolio ? <CutMuralTitle /> : "Quadro de avisos"}</h2>
         <div className="mode-switch grid grid-cols-2 gap-2" aria-label="Tipo de publicação">
           <button type="button" aria-pressed={!portfolio} disabled={busy} onClick={() => { setPortfolio(false); setPostPage(0); }}>Avisos</button>
           <button type="button" aria-pressed={portfolio} disabled={busy} onClick={() => { setPortfolio(true); setPostPage(0); }}>Álbuns</button>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { NoticePost } from "./NoticePost";
+import { CutMuralTitle } from "@/components/CutMuralTitle";
 import { type ClubNotice } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 
@@ -80,7 +81,7 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
           ))}</div>}
       </section>
       <section className="card-modern space-y-3" aria-labelledby="portfolio-title">
-        <h2 id="portfolio-title">Portfólio dos barbeiros</h2>
+        <h2 id="portfolio-title"><CutMuralTitle /></h2>
         {albumError ? <p className="error" role="alert">Não foi possível carregar os álbuns.</p>
           : !albums ? <p className="muted" role="status">Carregando álbuns…</p>
           : !albums.length ? <p className="muted">Nenhum álbum publicado.</p>
@@ -98,7 +99,7 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
           {albumPage > 0 && <button type="button" className="secondary" onClick={() => setAlbumPage(albumPage - 1)}>Álbuns anteriores</button>}
           {hasMoreAlbums && <button type="button" className="secondary" onClick={() => setAlbumPage(albumPage + 1)}>Mais álbuns</button>}
         </div>}
-        <dialog ref={dialog} className="wallet-dialog" aria-label={selectedAlbum?.title ?? "Álbum do portfólio"} onClose={() => setSelectedAlbum(undefined)}>
+        <dialog ref={dialog} className="wallet-dialog" aria-label={selectedAlbum?.title ?? "Álbum do mural de cortes"} onClose={() => setSelectedAlbum(undefined)}>
           <button type="button" className="secondary justify-self-end" onClick={() => dialog.current?.close()}>Fechar</button>
           {selectedAlbum && <NoticePost notice={selectedAlbum} />}
         </dialog>
