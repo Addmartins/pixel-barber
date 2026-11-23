@@ -1,6 +1,31 @@
 # Pixel Barber
 
-Clube de barbearia em Next.js 14 App Router, TypeScript estrito, Tailwind CSS, Lucide e Supabase.
+O Pixel Barber é um clube de fidelidade para barbearias. Clientes escolhem o serviço e o barbeiro, reservam um horário e acompanham seus pontos. O Pixel Boy inclui sete minijogos em estilo 16-bit e pode ser jogado sem cadastro.
+
+[Abrir o Pixel Barber](https://pixel-barber.vercel.app) · [Baixar para Android](https://pixel-barber.vercel.app/downloads/pixel-barber-android-debug.apk) · [Guia de instalação em PDF](public/downloads/cartaz-pixel-barber.pdf)
+
+### O que dá para fazer
+
+- Agendar corte, barba ou combo e acompanhar as próximas reservas.
+- Acumular pontos, consultar o extrato e trocar pontos por itens para o avatar.
+- Ver avisos, portfólio de cortes e classificação semanal no mural.
+- Gerenciar a agenda, os barbeiros e o mural pelo painel administrativo.
+
+### Telas do app
+
+Capturas da interface web em tamanho de celular. Agendamento, mural e Pixel Boy mostram dados de demonstração.
+
+| Acesso ao clube | Agendamento |
+| --- | --- |
+| <img src="docs/screenshots/acesso.webp" alt="Tela de login e entrada na demonstração" width="280"> | <img src="docs/screenshots/agendamento.webp" alt="Agendamento com seleção de serviço" width="280"> |
+
+| Mural e ranking | Pixel Boy |
+| --- | --- |
+| <img src="docs/screenshots/mural.webp" alt="Mural do clube com ranking semanal" width="280"> | <img src="docs/screenshots/pixel-boy.webp" alt="Seleção de cartuchos do Pixel Boy" width="280"> |
+
+### Projeto
+
+Next.js 14 App Router, TypeScript, Tailwind CSS, Lucide e Supabase. O Capacitor empacota o app para Android e iOS.
 
 ```text
 src/
@@ -154,4 +179,8 @@ A primeira abertura autenticada do dia conta para a sequência, pelo horário de
 
 O PWA consulta a versão publicada ao abrir, voltar ao primeiro plano e a cada minuto com o app aberto. Quando encontra uma versão nova, mostra **Atualizar agora**; a próxima abertura online também carrega a publicação atual. O service worker continua usando a rede para a página e as APIs, e guarda somente a tela offline.
 
-No Android nativo, o app compara o código de versão instalado com `GET /api/release` e mostra o link da versão mais recente. O Android pede confirmação para instalar um APK fora da loja. Para publicar um novo APK, incremente `androidVersionCode` em `src/lib/device/release.json`, compile com a mesma assinatura e substitua `public/downloads/pixel-barber-android-debug.apk` na mesma publicação.
+No Android nativo, o app compara o código de versão instalado com `GET /api/release` e mostra o link da versão mais recente. O Android pede confirmação para instalar um APK fora da loja. O pacote exige Android 7.0 ou superior (API 24) e usa o Android System WebView do aparelho.
+
+Para preparar uma atualização, incremente `androidVersionCode` e atualize `androidVersionName` em `src/lib/device/release.json`. Rode `node scripts/build-mobile.mjs` e `npx cap sync android`. Compile com `./gradlew assembleRelease` em `android/`, alinhe o APK com `zipalign` e assine com o mesmo certificado da versão distribuída para preservar a atualização sobre instalações existentes. O arquivo público mantém o caminho `public/downloads/pixel-barber-android-debug.apk` usado nos links e no cartaz.
+
+Antes de publicar o APK e os metadados juntos, teste instalação limpa e atualização sobre a versão anterior em um aparelho. Confirme abertura, login por SMS, agendamento e Pixel Boy. Confira o layout no Android 16 com as barras de navegação do sistema.

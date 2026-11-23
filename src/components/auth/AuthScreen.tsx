@@ -388,6 +388,14 @@ export function AuthScreen() {
         </div>
         <footer className="text-center text-sm">
           <a className="muted underline" href={termsPath}>Termos de Uso da Aplicação</a>
+          <nav className="muted mt-2" aria-label="Contato do desenvolvedor">
+            <p>Contato do desenvolvedor</p>
+            <ul className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1">
+              <li><a className="underline" href="https://www.linkedin.com/in/addhyel-martins/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+              <li><a className="underline" href="https://github.com/Addmartins" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+              <li><a className="underline" href="mailto:addhyeldev@gmail.com">addhyeldev@gmail.com</a></li>
+            </ul>
+          </nav>
         </footer>
       </div>
     </main>
