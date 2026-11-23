@@ -15,7 +15,8 @@ create policy barber_photos_admin_read on storage.objects for select to authenti
 create policy barber_photos_admin_delete on storage.objects for delete to authenticated
   using (bucket_id = 'barber-photos' and (select public.is_club_admin()) and not exists (
     select 1 from public.barbers b
-    where ends_with(b.foto_pixel, '/storage/v1/object/public/barber-photos/' || storage.objects.name)
+    where pg_catalog.right(b.foto_pixel, pg_catalog.length('/storage/v1/object/public/barber-photos/' || storage.objects.name))
+      = '/storage/v1/object/public/barber-photos/' || storage.objects.name
   ));
 
 commit;
