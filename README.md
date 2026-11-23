@@ -40,6 +40,16 @@ supabase/tests/
 
 `npm run typecheck` verifica a tipagem. `npm run build` gera a compilação de produção.
 
+## Verificação por SMS com TextBee
+
+O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao TextBee, que usa o chip do Android cadastrado. O cadastro e o reenvio usam a tela de confirmação existente, também nos apps nativos.
+
+1. Cadastre um Android com chip ativo no TextBee, conceda permissão de SMS e mantenha o aparelho online. Gere uma chave de API e copie o ID do aparelho no painel. [Configuração do TextBee](https://textbee.dev/docs/getting-started/setting-up-textbee)
+2. No Supabase, em **Authentication → Hooks**, crie o **Send SMS** do tipo HTTP com a URL do seu ambiente seguida de `/api/auth/send-sms`. Gere o segredo no painel. Ative o hook após publicar o endpoint com as variáveis configuradas. [Send SMS Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-sms-hook)
+3. Na Vercel, adicione `SEND_SMS_HOOK_SECRET` com o valor completo gerado pelo Supabase (incluindo `v1,whsec_`), `TEXTBEE_API_KEY` e `TEXTBEE_DEVICE_ID` às variáveis privadas do ambiente. Publique novamente com essas variáveis.
+4. No Supabase, habilite o provedor **Phone** e a confirmação por SMS. Use seis dígitos para o código, como na tela de cadastro, e revise os limites de envio de SMS. [Autenticação por celular](https://supabase.com/docs/guides/auth/phone-login)
+5. Cadastre um número novo, confirme com o código recebido e entre com celular e senha. Para testar o reenvio, repita com outro cadastro ou solicite outro código antes de confirmar, após o intervalo de envio do Supabase. Se o SMS atrasar, confira o histórico de envio no TextBee e a conexão do Android. [Status de envio no TextBee](https://textbee.dev/docs/sending-sms/sending-sms)
+
 ## Contratos do banco
 
 - O celular é o identificador de login. Números brasileiros informados com DDD recebem o prefixo `+55`. Contas anteriores cadastradas só com e-mail precisam ter um celular associado no Supabase Auth para entrar pela nova tela. As credenciais ficam no Supabase Auth. O gatilho grava o nome, o avatar e o aceite versionado, com timestamp do banco. O navegador só pode alterar nome e avatar na tabela de perfis.
