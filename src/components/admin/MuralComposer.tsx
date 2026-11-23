@@ -3,9 +3,10 @@ import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
 import { muralBucket, muralPhotoBytes, muralPhotoFormats, muralPhotoLimit, type MuralTag } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 
-export function MuralComposer({ accountId, portfolio, disabled, onBusy, onPublished }: {
+export function MuralComposer({ accountId, portfolio, barbers, disabled, onBusy, onPublished }: {
   accountId: string;
   portfolio: boolean;
+  barbers: { id: string; nome: string }[];
   disabled: boolean;
   onBusy: (busy: boolean) => void;
   onPublished: () => void;
@@ -40,6 +41,11 @@ export function MuralComposer({ accountId, portfolio, disabled, onBusy, onPublis
     const form = event.currentTarget;
     const fields = new FormData(form);
     const title = String(fields.get("title") ?? "").trim();
+    const barberId = String(fields.get("barber") ?? "");
+    if (portfolio && !barberId) {
+      setError("Selecione o barbeiro responsável pelo álbum.");
+      return;
+    }
     const caption = String(fields.get("caption") ?? "").trim();
     const files = fields.getAll("photos").filter((value): value is File => value instanceof File && value.size > 0);
     if (!title || (portfolio ? !files.length : !caption)) {
@@ -62,9 +68,10 @@ export function MuralComposer({ accountId, portfolio, disabled, onBusy, onPublis
         const upload = await storage.upload(path, file, { contentType: file.type });
         if (upload.error) throw upload.error;
       }
-      const result = await db.rpc("publish_mural_notice", {
-        p_title: title, p_caption: caption, p_photos: paths, p_tagged_client: tag?.id,
-      });
+      const args = { p_title: title, p_caption: caption, p_photos: paths, p_tagged_client: tag?.id };
+      const result = await (portfolio
+        ? db.rpc("publish_cut_album", { ...args, p_barber_id: barberId })
+        : db.rpc("publish_mural_notice", args));
       if (result.error) throw result.error;
       form.reset();
       setTag(undefined);
@@ -87,6 +94,12 @@ export function MuralComposer({ accountId, portfolio, disabled, onBusy, onPublis
       <fieldset className="space-y-3" disabled={disabled}>
         <label className="field">Título <input name="title" maxLength={100} required /></label>
         {portfolio && <>
+          <label className="field">Barbeiro
+            <select name="barber" defaultValue="" required>
+              <option value="" disabled>Selecione um barbeiro</option>
+              {barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.nome}</option>)}
+            </select>
+          </label>
           <label className="field">Fotos <input name="photos" type="file" accept={Object.keys(muralPhotoFormats).join(",")} multiple required /></label>
           <p className="muted text-sm">Até 4 fotos JPG, PNG ou WebP, de até 6 MB cada.</p>
         </>}

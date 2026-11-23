@@ -20,7 +20,8 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [notices, setNotices] = useState<ClubNotice[]>([]);
   const [suggestions, setSuggestions] = useState<ClubSuggestion[]>([]);
-  const [barbers, setBarbers] = useState<Pick<Barber, "id" | "nome" | "especialidade" | "endereco">[]>([]);
+  const [albumBarbers, setAlbumBarbers] = useState<Record<string, string | null>>({});
+  const [barbers, setBarbers] = useState<Barber[]>([]);
   const [reviewed, setReviewed] = useState(false);
   const [suggestionPage, setSuggestionPage] = useState(0);
   const [hasMoreSuggestions, setHasMoreSuggestions] = useState(false);
@@ -56,6 +57,18 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
               p_portfolio: portfolio, p_limit: portfolio ? 9 : 2, p_offset: portfolio ? postPage * 8 : 0,
             });
             if (result.error) throw result.error;
+            if (portfolio) {
+              const ids = result.data.slice(0, 8).map(({ id }) => id);
+              const [catalog, assignments] = await Promise.all([
+                client.from("barbers").select("*").order("nome"),
+                ids.length ? client.from("club_notices").select("id,barber_id").in("id", ids) : null,
+              ]);
+              if (catalog.error || assignments?.error) throw catalog.error ?? assignments?.error;
+              if (active) {
+                setBarbers(catalog.data);
+                setAlbumBarbers(Object.fromEntries((assignments?.data ?? []).map(({ id, barber_id }) => [id, barber_id])));
+              }
+            }
             if (active) {
               setNotices(result.data.slice(0, portfolio ? 8 : 2));
               setHasMorePosts(portfolio && result.data.length > 8);
@@ -126,11 +139,17 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     }), form);
   }
 
-  function saveBarberAddress(event: FormEvent<HTMLFormElement>, barberId: string) {
+  function saveBarberDetails(event: FormEvent<HTMLFormElement>, barberId: string) {
     event.preventDefault();
     if (!db) return;
-    const address = String(new FormData(event.currentTarget).get("address") ?? "").trim() || null;
-    void mutate(() => db.from("barbers").update({ endereco: address }).eq("id", barberId).select("id").single());
+    const fields = new FormData(event.currentTarget);
+    const address = String(fields.get("address") ?? "").trim() || null;
+    const photo = String(fields.get("photo") ?? "").trim() || null;
+    if (photo && !/^https:\/\//i.test(photo)) {
+      setError("Use um link HTTPS para a foto.");
+      return;
+    }
+    void mutate(() => db.from("barbers").update({ endereco: address, foto_pixel: photo }).eq("id", barberId).select("id").single());
   }
 
   if (!db) return null;
@@ -197,11 +216,24 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         </div>
         {!portfolio && !loading && !loadError && notices.length >= 2
           ? <p className="muted">O quadro já tem dois avisos. Remova um para publicar outro.</p>
-          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} disabled={busy}
+          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} barbers={barbers} disabled={busy || (portfolio && (loading || Boolean(loadError)))}
             onBusy={setBusy} onPublished={() => { setPostPage(0); setRevision((current) => current + 1); }} />}
         {!loading && !loadError && notices.map((notice) => (
           <article key={notice.id} className="space-y-2 border-t border-white/10 pt-3">
             <NoticePost notice={notice} />
+            {portfolio && <form className="space-y-2" onSubmit={(event) => {
+              event.preventDefault();
+              const barberId = String(new FormData(event.currentTarget).get("albumBarber") ?? "") || null;
+              void mutate(() => db.from("club_notices").update({ barber_id: barberId }).eq("id", notice.id).select("id").single());
+            }}>
+              <label className="field">Barbeiro do álbum
+                <select name="albumBarber" defaultValue={albumBarbers[notice.id] ?? ""} disabled={busy}>
+                  <option value="">Sem barbeiro vinculado</option>
+                  {barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.nome}</option>)}
+                </select>
+              </label>
+              <button type="submit" className="secondary" disabled={busy}>Salvar barbeiro do álbum</button>
+            </form>}
             <button type="button" className="secondary" disabled={busy}
               onClick={() => {
                 if (!window.confirm("Remover esta postagem do mural?")) return;
@@ -231,11 +263,14 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         {!loading && !loadError && <ul className="space-y-2">{barbers.map((barber) => (
           <li key={barber.id} className="space-y-2 border-t border-white/10 pt-3">
             <p>{barber.nome} <span className="muted">· {barber.especialidade}</span></p>
-            {barber.endereco !== undefined && <form className="space-y-2" onSubmit={(event) => saveBarberAddress(event, barber.id)}>
+            {barber.endereco !== undefined && <form className="space-y-2" onSubmit={(event) => saveBarberDetails(event, barber.id)}>
               <label className="field">Endereço de atendimento (opcional)
                 <input name="address" defaultValue={barber.endereco ?? ""} maxLength={240} disabled={busy} />
               </label>
-              <button type="submit" className="secondary" disabled={busy}>Salvar endereço</button>
+              <label className="field">Link HTTPS da foto (opcional)
+                <input type="url" name="photo" defaultValue={barber.foto_pixel ?? ""} maxLength={2048} disabled={busy} />
+              </label>
+              <button type="submit" className="secondary" disabled={busy}>Salvar dados</button>
             </form>}
           </li>
         ))}</ul>}

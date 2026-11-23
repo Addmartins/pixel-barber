@@ -59,10 +59,15 @@ export type Database = {
       barbers: {
         Row: Barber;
         Insert: Pick<Barber, "nome" | "especialidade"> & Partial<Pick<Barber, "endereco">>;
-        Update: Partial<Pick<Barber, "endereco">>;
+        Update: Partial<Pick<Barber, "endereco" | "foto_pixel">>;
         Relationships: [];
       };
-      club_notices: CatalogTable<Pick<ClubNotice, "id" | "title" | "body" | "created_at" | "photo_paths">>;
+      club_notices: {
+        Row: Pick<ClubNotice, "id" | "title" | "body" | "created_at" | "photo_paths"> & { barber_id: string | null };
+        Insert: never;
+        Update: { barber_id: string | null };
+        Relationships: [];
+      };
       club_suggestions: {
         Row: ClubSuggestion;
         Insert: Pick<ClubSuggestion, "client_id" | "body">;
@@ -83,6 +88,8 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       get_club_posts: { Args: { p_portfolio: boolean; p_limit?: number; p_offset?: number }; Returns: ClubNotice[] };
+      get_cut_albums: { Args: { p_barber_id: string | null; p_limit?: number; p_offset?: number }; Returns: ClubNotice[] };
+      publish_cut_album: { Args: { p_barber_id: string; p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };
       get_mural_notices: { Args: Record<PropertyKey, never>; Returns: ClubNotice[] };
       find_mural_clients: { Args: { p_query: string }; Returns: MuralTag[] };
       publish_mural_notice: { Args: { p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };

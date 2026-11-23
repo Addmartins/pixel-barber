@@ -34,7 +34,7 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2>4. Uso responsável e publicações</h2>
           <p>Use a aplicação para fins legítimos, respeite os demais clientes e a equipe e evite tentativas de manipular agendamentos, jogos, resgates ou pontos. A barbearia pode revisar lançamentos e limitar o acesso diante de fraude ou abuso, com possibilidade de solicitar revisão pelo atendimento.</p>
-          <p>O mural reúne avisos e o portfólio dos barbeiros. A publicação de fotos identificáveis de clientes deve contar com autorização específica. Caso queira pedir a remoção de uma foto ou marcação, procure o atendimento da barbearia.</p>
+          <p>O Mural de Cortes reúne álbuns dos barbeiros. A publicação de fotos identificáveis de clientes deve contar com autorização específica. Caso queira pedir a remoção de uma foto ou marcação, procure o atendimento da barbearia.</p>
         </section>
         <section className="space-y-2">
           <h2>5. Dados usados na aplicação</h2>

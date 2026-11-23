@@ -78,6 +78,7 @@ h2 { font-size: 1.25rem; overflow-wrap: anywhere; }
   align-items: center;
   gap: .75rem;
 }
+.masthead-account > .profile-avatar { align-self: flex-start; }
 .masthead-profile { flex: 1; min-width: 0; }
 .masthead-profile h2 { font-size: 1rem; }
 .masthead-signout {
