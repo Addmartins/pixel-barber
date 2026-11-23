@@ -13,8 +13,9 @@ import { createGame } from "@/lib/games";
 import { finishRun, getArcadeStats, startRun } from "@/lib/games/client";
 import {
   A, canvasHeight, canvasWidth, difficulties, DOWN, gameVersion, LEFT, multipliers, orbitVersion, RIGHT, roundSeconds, ticksPerSecond, UP,
-  isGameCode, type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
+  isGameCode, type ArcadeHistoryEntry, type Difficulty, type GameCode, type GameResult, type GameState, type InputChange, type Run,
 } from "@/lib/games/types";
+import { ArcadeHistory } from "./ArcadeHistory";
 import { WaitingRoom } from "./WaitingRoom";
 import { GameBoyFrame } from "./GameBoyFrame";
 import { SummitArt, WhiskerArt, SproutArt } from "./RetroCartArt";
@@ -91,6 +92,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
   cosmetics: EquippedCosmetic[];
   onBalance: (balance: number) => void;
 }) {
+  const [demoHistory, setDemoHistory] = useState<ArcadeHistoryEntry[]>([]);
   const [roomOpen, setRoomOpen] = useState(false);
   const [completed, setCompleted] = useState<GameCode[]>([]);
   const [selected, setSelected] = useState<GameCode>("NAVALHA_RUSH");
@@ -333,8 +335,16 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
       completeMission(run!.game, score);
       setMenuOpen(true);
       setPhase("finished");
-      if (demo) setBest((previous) => ({ ...previous, [run!.game]: Math.max(previous[run!.game] ?? 0, Math.round(score * multipliers[run!.difficulty])) }));
-      else {
+      if (demo) {
+        const displayScore = Math.round(score * multipliers[run!.difficulty]);
+        const entry: ArcadeHistoryEntry = {
+          id: run!.id, game_code: run!.game, difficulty: run!.difficulty, display_score: displayScore,
+          won: status === "won", points_awarded: 0, duration_seconds: Math.ceil(ticks / ticksPerSecond),
+          created_at: new Date().toISOString(),
+        };
+        setBest((previous) => ({ ...previous, [run!.game]: Math.max(previous[run!.game] ?? 0, displayScore) }));
+        setDemoHistory((previous) => [entry, ...previous].slice(0, 50));
+      } else {
         const finished = { run: run!, snapshot: { score, status, ticks }, changes };
         setPending(finished);
         void save(finished);
@@ -359,7 +369,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
     setPhase("starting");
     try {
       const next: Run = demo
-        ? { id: "demo", seed: 1 + Math.floor(Math.random() * 2147483646), game: selected, difficulty, engineVersion: selected === "ORBITA_PIXEL" ? orbitVersion : gameVersion }
+        ? { id: crypto.randomUUID(), seed: 1 + Math.floor(Math.random() * 2147483646), game: selected, difficulty, engineVersion: selected === "ORBITA_PIXEL" ? orbitVersion : gameVersion }
         : await startRun(selected, difficulty);
       setRun(next);
       setPhase("playing");
@@ -444,6 +454,7 @@ export function Arcade({ demo, visible, onBalance, avatar, cosmetics, clientId }
         <button type="button" aria-pressed={!roomOpen} onClick={() => setRoomOpen(false)}>Cartuchos</button>
         <button type="button" aria-pressed={roomOpen} onClick={() => setRoomOpen(true)}>Sala de Espera</button>
       </div>
+      <ArcadeHistory demo={demo} demoEntries={demoHistory} games={cartridges} levels={levels} />
       {roomOpen ? <WaitingRoom visible={visible} /> : <>
       <header className="arcade-adventure">
         <div className="arcade-adventure-avatar"><AvatarRenderer skinId={avatar} cosmetics={cosmetics} size={36} /></div>

@@ -48,7 +48,7 @@ begin
       exception when invalid_parameter_value then null;
       end;
     end if;
-    select * into strict result from public.finish_arcade_run(player, run_id, final_score, game_ticks, 2, i = 4);
+    select * into strict result from public.finish_arcade_run_with_score(player, run_id, final_score, game_ticks, 2, i = 4, final_score * 10);
     total_awarded := total_awarded + result.points_awarded;
     if result.points_awarded <> (case when i < 4 then final_score else 0 end) or
        result.credited_today <> least(i, 3) then
@@ -58,7 +58,7 @@ begin
   if result.high_score <> 400 or result.points_balance <> 762 then
     raise exception 'The fourth run must count toward the record only';
   end if;
-  select * into strict result from public.finish_arcade_run(player, run_id, 100, 60, 2, false);
+  select * into strict result from public.finish_arcade_run_with_score(player, run_id, 100, 60, 2, false, 1000);
   if result.score <> 400 or result.points_balance <> total_awarded or
      (select count(*) from public.point_ledger where client_id = player and tipo = 'JOGO') <> 3 then
     raise exception 'Retry must return the saved score and preserve ledger and balance';
@@ -76,7 +76,11 @@ begin
      or not exists (select 1 from public.get_leaderboard() where points_balance = 762 and mastered_games = array['TORRE_FADE']) then
     raise exception 'Authenticated stats or ranking did not include updated results';
   end if;
+  if (select count(*) from public.get_arcade_history()) <> 4 or not exists (
+    select 1 from public.get_arcade_history(1) where display_score = 4000 and points_awarded = 0 and won
+  ) then raise exception 'History changed the saved result or omitted a round without credits'; end if;
   perform set_config('request.jwt.claim.sub', opponent::text, true);
+  if exists (select 1 from public.get_arcade_history()) then raise exception 'History exposed another account'; end if;
   if exists (select 1 from public.game_scores) or exists (select 1 from public.get_arcade_stats() where high_score <> 0) then
     raise exception 'Another user can read private game scores';
   end if;

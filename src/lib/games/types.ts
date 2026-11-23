@@ -52,6 +52,16 @@ export type Game<S extends GameState = GameState> = {
 export type InputChange = [tick: number, mask: number];
 export type Run = { id: string; seed: number; game: GameCode; difficulty: Difficulty; engineVersion?: EngineVersion };
 export type GameRecord = { game_code: GameCode; high_score: number };
+export type ArcadeHistoryEntry = {
+  id: string;
+  game_code: GameCode;
+  difficulty: Difficulty;
+  display_score: number | null;
+  points_awarded: number;
+  duration_seconds: number;
+  created_at: string;
+  won: boolean;
+};
 export type ArcadeStats = { records: GameRecord[]; credited_today: number };
 export type GameResult = {
   score: number;

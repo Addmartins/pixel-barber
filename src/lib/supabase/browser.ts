@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Attendance, ClubAppointment, ClubMetrics, ClubNotice, ClubSuggestion, MuralTag } from "../club";
 import type { AvatarId } from "../avatars";
 import type { Barber, Service, Slot } from "../booking";
-import type { Difficulty, GameCode, GameRecord, GameResult } from "../games/types";
+import type { ArcadeHistoryEntry, Difficulty, GameCode, GameRecord, GameResult } from "../games/types";
 
 import type { CosmeticCode, CosmeticProduct, InventoryItem } from "../store";
 
@@ -91,6 +91,8 @@ export type Database = {
       cancel_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       start_arcade_run: { Args: { p_client_id: string; p_game_code: GameCode; p_engine_version: number; p_difficulty: Difficulty }; Returns: { id: string; seed: number }[] };
       finish_arcade_run: { Args: { p_client_id: string; p_session_id: string; p_score: number; p_ticks: number; p_engine_version: number; p_won: boolean }; Returns: GameResult[] };
+      finish_arcade_run_with_score: { Args: { p_client_id: string; p_session_id: string; p_score: number; p_ticks: number; p_engine_version: number; p_won: boolean; p_display_score: number }; Returns: GameResult[] };
+      get_arcade_history: { Args: { p_limit?: number; p_before_at?: string; p_before_id?: string }; Returns: ArcadeHistoryEntry[] };
       get_arcade_stats: { Args: Record<PropertyKey, never>; Returns: (GameRecord & { credited_today: number })[] };
       buy_avatar_item: { Args: { p_product_id: string }; Returns: { points_balance: number }[] };
       equip_avatar_item: { Args: { p_product_id: string; p_equipped: boolean }; Returns: boolean };

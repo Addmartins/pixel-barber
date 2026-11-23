@@ -109,11 +109,20 @@ export async function POST(request: Request) {
   if (!result) return failure("A partida enviada está incompleta ou inconsistente.", 422);
 
   const bonus = dailyMultiplier(parseDailyLogin(auth.user.app_metadata.pixel_daily_login), loginDay());
-  const { data, error } = await supabase.rpc("finish_arcade_run", {
+  const displayScore = Math.round(result.score * multipliers[run.difficulty]);
+  const argumentsForResult = {
     p_client_id: client, p_session_id: sessionId, p_score: gameCredit(result.score, run.difficulty, bonus),
     p_ticks: input.ticks, p_engine_version: run.engine_version, p_won: result.status === "won",
+  };
+  let response = await supabase.rpc("finish_arcade_run_with_score", {
+    ...argumentsForResult, p_display_score: displayScore,
   }).single();
+  // Keep credit and save working while the history migration reaches production.
+  if (response.error?.code === "PGRST202") {
+    response = await supabase.rpc("finish_arcade_run", argumentsForResult).single();
+  }
+  const { data, error } = response;
   if (error?.code === "22023") return failure("A duração da partida não pôde ser validada ou a sessão expirou.", 422);
   if (error || !data) return failure("Não foi possível salvar. Tente enviar o resultado novamente.", 503);
-  return Response.json({ ...data, score: Math.round(result.score * multipliers[run.difficulty]) });
+  return Response.json({ ...data, score: displayScore });
 }

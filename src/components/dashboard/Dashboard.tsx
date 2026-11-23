@@ -16,16 +16,17 @@ import { NoticeBoard } from "./NoticeBoard";
 
 const pageSize = 50;
 
-export function Dashboard({ clientId, name, avatar, balance, onPointsBalance, onCosmetics }: {
+export function Dashboard({ clientId, name, avatar, balance, initialSection = "booking", onPointsBalance, onCosmetics }: {
   clientId?: string;
   name: string;
   avatar: AvatarId;
   balance: number;
+  initialSection?: "booking" | "arcade";
   onPointsBalance: (balance: number) => void;
   onCosmetics: (cosmetics: EquippedCosmetic[]) => void;
 }) {
-  const [section, setSection] = useState<"booking" | "mural" | "arcade" | "store">("booking");
-  const [arcadeOpened, setArcadeOpened] = useState(false);
+  const [section, setSection] = useState<"booking" | "mural" | "arcade" | "store">(initialSection);
+  const [arcadeOpened, setArcadeOpened] = useState(initialSection === "arcade");
   const [storeOpened, setStoreOpened] = useState(false);
   const api = useMemo(() => clientId ? createBookingApi(clientId) : createDemoBookingApi(), [clientId]);
   const [ranking, setRanking] = useState<RankingEntry[]>(clientId ? [] : demoRanking);

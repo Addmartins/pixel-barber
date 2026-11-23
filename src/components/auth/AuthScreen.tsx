@@ -43,7 +43,8 @@ export function AuthScreen() {
   const [avatar, setAvatar] = useState<AvatarId>("fade");
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<(Profile & { id: string }) | null>(null);
-  const [demo, setDemo] = useState(false);
+  const [demoEntry, setDemoEntry] = useState<"booking" | "arcade" | null>(null);
+  const demo = demoEntry !== null;
   const [demoDetails, setDemoDetails] = useState<Pick<Profile, "nome" | "avatar_skin">>(demoProfile);
   const [demoBalance, setDemoBalance] = useState(demoProfile.points_balance);
   const [equipped, setEquipped] = useState<{ owner: string; cosmetics: EquippedCosmetic[] } | null>(null);
@@ -211,7 +212,7 @@ export function AuthScreen() {
     setMessage("");
     setError("");
     if (demo) {
-      setDemo(false);
+      setDemoEntry(null);
       setDemoDetails(demoProfile);
       setDemoBalance(demoProfile.points_balance);
       setEquipped(null);
@@ -282,7 +283,7 @@ export function AuthScreen() {
               {currentProfile ? (
                 <>
                   {demo && <p className="muted text-sm">Demonstração com dados de exemplo. As reservas duram até você sair ou atualizar a página.</p>}
-                  <Dashboard key={demo ? "demo" : userId} clientId={demo ? undefined : userId} name={currentProfile.nome} avatar={currentProfile.avatar_skin} balance={currentProfile.points_balance}
+                  <Dashboard key={demo ? "demo" : userId} initialSection={demoEntry ?? undefined} clientId={demo ? undefined : userId} name={currentProfile.nome} avatar={currentProfile.avatar_skin} balance={currentProfile.points_balance}
                     onPointsBalance={updatePointsBalance} onCosmetics={updateCosmetics} />
                 </>
               ) : (
@@ -363,9 +364,17 @@ export function AuthScreen() {
               <button className="secondary mt-3 flex w-full items-center justify-center gap-2" disabled={busy} onClick={() => {
                 setError("");
                 setMessage("");
-                setDemo(true);
+                setDemoEntry("booking");
               }}>
-                <Gamepad2 size={20} aria-hidden="true" /> Experimentar demonstração
+                Experimentar demonstração
+              </button>
+              <button type="button" className="secondary mt-2 flex w-full items-center justify-center gap-2" disabled={busy}
+                onClick={() => {
+                  setError("");
+                  setMessage("");
+                  setDemoEntry("arcade");
+                }}>
+                <Gamepad2 size={20} aria-hidden="true" /> Jogar Pixel Boy sem conta
               </button>
               <a href={process.env.NEXT_PUBLIC_BACKEND_ORIGIN ? "/admin.html" : "/admin"}
                 className="muted mt-4 block text-center text-sm underline">Acesso administrativo</a>

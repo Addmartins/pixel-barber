@@ -1,6 +1,6 @@
 import { deviceApi } from "../device/api";
 import { getSupabase } from "../supabase/browser";
-import { gameVersion, orbitVersion, type ArcadeStats, type Difficulty, type GameCode, type GameResult, type InputChange, type Run } from "./types";
+import { gameVersion, orbitVersion, type ArcadeHistoryEntry, type ArcadeStats, type Difficulty, type GameCode, type GameResult, type InputChange, type Run } from "./types";
 
 type Finish = { action: "finish"; id: string; ticks: number; changes: InputChange[] };
 
@@ -30,4 +30,13 @@ export async function getArcadeStats(): Promise<ArcadeStats> {
   const result = await getSupabase()?.rpc("get_arcade_stats");
   if (!result || result.error) throw new Error("Não foi possível atualizar os recordes pessoais.");
   return { records: result.data, credited_today: result.data[0]?.credited_today ?? 0 };
+}
+
+
+export async function getArcadeHistory(limit: number, before?: ArcadeHistoryEntry) {
+  const result = await getSupabase()?.rpc("get_arcade_history", {
+    p_limit: limit, p_before_at: before?.created_at, p_before_id: before?.id,
+  });
+  if (!result || result.error) throw new Error("Não foi possível carregar o histórico.");
+  return result.data;
 }

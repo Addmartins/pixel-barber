@@ -84,7 +84,7 @@ Antes de publicar uma compilação da Sprint 2 na Vercel, aplique a migração d
 
 ## Sprint Arcade
 
-O painel **Pixel Boy** reúne sete estações de uma aventura na barbearia. Cada missão tem uma meta própria e a conclusão é salva no aparelho para contas cadastradas. As estações podem ser jogadas em qualquer ordem. A demonstração roda sem Supabase e mantém os recordes durante a sessão local.
+O painel **Pixel Boy** reúne sete estações de uma aventura na barbearia. Cada missão tem uma meta própria e a conclusão é salva no aparelho para contas cadastradas. As estações podem ser jogadas em qualquer ordem. Use **Jogar Pixel Boy sem conta** na tela inicial para abrir os jogos no modo demonstração. **Histórico de partidas** mostra as partidas concluídas dos cartuchos, inclusive as que ficaram sem crédito. Aplique `20261123000016_arcade_history.sql` para ver as partidas da conta e gravar o placar completo das novas partidas. O histórico anterior mantém os dados que já estavam registrados. A demonstração roda sem Supabase e mantém os recordes durante a sessão local.
 
 O servidor inicia cada partida com uma semente e associa a sessão à conta autenticada. Ao fim, a API recebe os comandos e reproduz a partida a 60 passos por segundo para calcular o placar. O PostgreSQL compara a duração simulada ao tempo decorrido, salva a melhor marca e credita até três partidas com placar positivo por dia no horário de Brasília. O crédito e o lançamento no ledger são atômicos e o reenvio da mesma partida não duplica pontos. A reprodução verifica a coerência dos comandos, mas um bot ainda pode jogar seguindo as regras.
 
