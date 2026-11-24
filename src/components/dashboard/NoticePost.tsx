@@ -11,17 +11,27 @@ export function NoticePost({ notice, cover = false }: { notice: ClubNotice; cove
     const paths = cover ? notice.photo_paths.slice(0, 1) : notice.photo_paths;
     if (!paths.length) return;
     let active = true;
+    const urls: string[] = [];
     void (async () => {
       try {
-        const result = await getSupabase()?.storage.from(muralBucket).createSignedUrls(paths, 3600);
+        const storage = getSupabase()?.storage.from(muralBucket);
+        const photos = await Promise.all(paths.map(async (path) => {
+          const result = await storage?.download(path);
+          if (!active || !result?.data) return [];
+          const url = URL.createObjectURL(result.data);
+          urls.push(url);
+          return [[path, url]];
+        }));
         if (!active) return;
-        const entries = result?.data?.flatMap((photo) =>
-          photo.path && photo.signedUrl ? [[photo.path, photo.signedUrl]] : []) ?? [];
+        const entries = photos.flat();
         setPhotos(Object.fromEntries(entries));
         setError(entries.length !== paths.length);
       } catch { if (active) setError(true); }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
   }, [cover, notice.photo_paths]);
 
   const displayedPaths = cover ? notice.photo_paths.slice(0, 1) : notice.photo_paths;

@@ -94,6 +94,7 @@ export type Database = {
       find_mural_clients: { Args: { p_query: string }; Returns: MuralTag[] };
       publish_mural_notice: { Args: { p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };
       is_club_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      get_club_access_status: { Args: Record<PropertyKey, never>; Returns: { granted: boolean; expires_at: string | null }[] };
       has_club_access: { Args: Record<PropertyKey, never>; Returns: boolean };
       has_pending_club_access_request: { Args: Record<PropertyKey, never>; Returns: boolean };
       request_club_access: { Args: Record<PropertyKey, never>; Returns: boolean };
@@ -125,8 +126,8 @@ export type Database = {
         p_city: string; p_latitude: number; p_longitude: number; p_radius_km: number;
       }; Returns: boolean };
       verify_location_access: { Args: {
-        p_lat: number; p_lng: number;
-      }; Returns: { granted: boolean; distance_km: number; city: string }[] };
+        p_lat: number; p_lng: number; p_accuracy_m: number;
+      }; Returns: { granted: boolean; city: string }[] };
     };
     Enums: { appointment_status: AppointmentStatus };
     CompositeTypes: Record<string, never>;

@@ -93,6 +93,7 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     let active = true;
+    const urls: string[] = [];
     void (async () => {
       try {
         const db = getSupabase();
@@ -111,13 +112,19 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
           const path = barber.foto_pixel?.split("/").at(-1);
           if (!path || !/^[0-9a-f-]{36}\.(jpg|png|webp)$/.test(path)
             || storage.getPublicUrl(path).data.publicUrl !== barber.foto_pixel) return barber;
-          const { data } = await storage.createSignedUrl(path, 3600);
-          return { ...barber, foto_pixel: data?.signedUrl ?? null };
+          const { data } = await storage.download(path);
+          if (!active || !data) return { ...barber, foto_pixel: null };
+          const url = URL.createObjectURL(data);
+          urls.push(url);
+          return { ...barber, foto_pixel: url };
         }));
         if (active) setBarbers(barbers);
       } catch { if (active) setBarberError(true); }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
   }, []);
 
   function openAlbum(album: ClubNotice) {

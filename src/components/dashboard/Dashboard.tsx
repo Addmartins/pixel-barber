@@ -59,24 +59,34 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
   const [demoBooking, setDemoBooking] = useState(false);
   const demoApi = useMemo(() => createDemoBookingApi(), []);
 
+  const refreshAccess = useCallback(() => {
+    setAccessAttempt((previous) => previous + 1);
+  }, []);
+
   useEffect(() => {
     if (!clientId) return;
     let active = true;
     void (async () => {
       try {
-        const res = await getSupabase()?.rpc("has_club_access");
+        const response = await getSupabase()?.rpc("get_club_access_status");
         if (!active) return;
-        if (res && !res.error) {
-          setClubAccess({ checked: true, approved: Boolean(res.data) });
-        } else {
-          setClubAccess({ checked: true, approved: false });
-        }
+        const access = response?.data?.[0];
+        setClubAccess({ checked: true, approved: !response?.error && Boolean(access?.granted) });
       } catch {
         if (active) setClubAccess({ checked: true, approved: false });
       }
     })();
     return () => { active = false; };
-  }, [clientId, accessAttempt]);
+  }, [clientId, accessAttempt, section]);
+
+
+  useEffect(() => {
+    if (!clientId || clubAccess.approved) return;
+    setRanking([]);
+    setRankingOffset(0);
+    setHasMore(false);
+    setRequest({ offset: 0 });
+  }, [clientId, clubAccess.approved]);
 
   useEffect(() => {
     if (!clientId || section !== "mural" || !clubAccess.approved) return;
@@ -135,12 +145,9 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
           ) : clientId && !clubAccess.approved && !demoBooking ? (
             <LocationAccessGate
               clientId={clientId}
-              title="Agendamentos & Barbeiros"
-              description="Para visualizar os barbeiros reais e realizar agendamentos, o acesso é liberado por geolocalização física (clientes da região) ou aprovação do administrador."
-              onApproved={() => {
-                setClubAccess({ checked: true, approved: true });
-                setAccessAttempt((prev) => prev + 1);
-              }}
+              title="Agendamento com barbeiros"
+              description="Confirme que está na região da barbearia para ver os barbeiros e agendar. Fora da região, solicite aprovação."
+              onRefreshAccess={refreshAccess}
               onTestDemo={() => setDemoBooking(true)}
             />
           ) : (
@@ -165,12 +172,9 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
           ) : clientId && !clubAccess.approved ? (
             <LocationAccessGate
               clientId={clientId}
-              title="Mural, Álbuns & Classificação"
-              description="O mural de cortes, álbuns dos barbeiros e o ranking são exclusivos para clientes locais da barbearia ou membros com acesso aprovado."
-              onApproved={() => {
-                setClubAccess({ checked: true, approved: true });
-                setAccessAttempt((prev) => prev + 1);
-              }}
+              title="Mural, álbuns e ranking"
+              description="Confirme que está na região da barbearia para ver o mural, os álbuns e o ranking. Fora da região, solicite aprovação."
+              onRefreshAccess={refreshAccess}
             />
           ) : (
             <>

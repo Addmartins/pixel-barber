@@ -1,5 +1,6 @@
 "use client";
 
+import { Geolocation } from "@capacitor/geolocation";
 import { useEffect, useState, type FormEvent } from "react";
 import { MapPin, Navigation, Save } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/browser";
@@ -46,7 +47,7 @@ export function BarbershopLocationAdmin() {
     const lng = parseFloat(String(form.get("longitude") ?? ""));
     const radius = parseFloat(String(form.get("radius") ?? ""));
 
-    if (!city || isNaN(lat) || isNaN(lng) || isNaN(radius) || radius <= 0) {
+    if (!city || ![lat, lng, radius].every(Number.isFinite) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || radius < 1 || radius > 500) {
       setStatus({ error: true, text: "Preencha todos os campos com valores válidos." });
       return;
     }
@@ -74,33 +75,30 @@ export function BarbershopLocationAdmin() {
     }
   }
 
-  function useCurrentGps(form: HTMLFormElement) {
-    if (!navigator.geolocation) {
-      setStatus({ error: true, text: "Geolocalização não suportada pelo navegador." });
-      return;
+  async function useCurrentGps(form: HTMLFormElement) {
+    try {
+      const { coords } = await Geolocation.getCurrentPosition({
+        timeout: 10000, enableHighAccuracy: true, maximumAge: 0,
+      });
+      const latInput = form.elements.namedItem("latitude") as HTMLInputElement;
+      const lngInput = form.elements.namedItem("longitude") as HTMLInputElement;
+      latInput.value = coords.latitude.toFixed(6);
+      lngInput.value = coords.longitude.toFixed(6);
+      setStatus({ error: false, text: "Coordenadas capturadas. Salve para aplicar." });
+    } catch {
+      setStatus({ error: true, text: "Não foi possível obter a localização do aparelho." });
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const latInput = form.elements.namedItem("latitude") as HTMLInputElement | null;
-        const lngInput = form.elements.namedItem("longitude") as HTMLInputElement | null;
-        if (latInput) latInput.value = pos.coords.latitude.toFixed(6);
-        if (lngInput) lngInput.value = pos.coords.longitude.toFixed(6);
-        setStatus({ error: false, text: "Coordenadas GPS atuais capturadas! Clique em Salvar para aplicar." });
-      },
-      () => setStatus({ error: true, text: "Não foi possível obter a localização atual do GPS." })
-    );
   }
 
   return (
     <section className="card-modern space-y-4">
       <div className="flex items-center gap-2">
         <MapPin size={20} className="text-amber-400" />
-        <h2 className="text-base font-bold">Localização da Barbearia (Geofencing de Portfólio)</h2>
+        <h2 className="text-base font-bold">Região de atendimento</h2>
       </div>
 
       <p className="muted text-sm">
-        Clientes dentro do raio configurado têm acesso aos barbeiros e agendamento real. Visitantes de outras regiões vêem a demonstração de portfólio.
+        O raio define quem pode liberar o mural, o ranking e a agenda pela localização. Fora da área, o cliente pode solicitar acesso para sua aprovação.
       </p>
 
       {loading ? (
@@ -127,11 +125,11 @@ export function BarbershopLocationAdmin() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="field">
               Latitude
-              <input name="latitude" type="number" step="any" defaultValue={data?.latitude ?? -7.1195} required disabled={saving} />
+              <input name="latitude" type="number" step="any" min="-90" max="90" defaultValue={data?.latitude ?? -7.1195} required disabled={saving} />
             </label>
             <label className="field">
               Longitude
-              <input name="longitude" type="number" step="any" defaultValue={data?.longitude ?? -34.8450} required disabled={saving} />
+              <input name="longitude" type="number" step="any" min="-180" max="180" defaultValue={data?.longitude ?? -34.8450} required disabled={saving} />
             </label>
           </div>
 
@@ -155,7 +153,7 @@ export function BarbershopLocationAdmin() {
               type="button"
               className="secondary flex items-center gap-2 text-xs"
               disabled={saving}
-              onClick={(e) => useCurrentGps(e.currentTarget.form!)}
+              onClick={(e) => void useCurrentGps(e.currentTarget.form!)}
             >
               <Navigation size={14} />
               Usar meu GPS atual
