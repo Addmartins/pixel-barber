@@ -1,17 +1,28 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { brasiliaDate } from "@/lib/booking";
 import type { Barber } from "@/lib/booking";
-import { attendanceLabel, clubDateTime, muralBucket, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
+import { attendanceLabel, clubDateTime, muralBucket, muralPhotoAccept, muralPhotoBytes, muralPhotoFormats, muralPhotoType, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 import { NoticePost } from "@/components/dashboard/NoticePost";
 import { CutMuralTitle } from "@/components/CutMuralTitle";
+import { BarberAddress } from "@/components/BarberAddress";
+import { ClubAccessRequests } from "./ClubAccessRequests";
 import { MuralComposer } from "./MuralComposer";
+import { BarbershopLocationAdmin } from "./BarbershopLocationAdmin";
 
 const sections = { agenda: "Agenda", notices: "Publicações", barbers: "Barbeiros", suggestions: "Sugestões" } as const;
 type Section = keyof typeof sections;
+const barberPhotosBucket = "barber-photos";
+
+function BarberPhotoInput({ disabled }: { disabled: boolean }) {
+  return <label className="field">Enviar foto (JPG, PNG ou WebP, até 6 MB)
+    <input type="file" name="photoFile" accept={muralPhotoAccept} disabled={disabled} />
+  </label>;
+}
 
 export function ClubAdmin({ accountId }: { accountId: string }) {
   const [section, setSection] = useState<Section>("agenda");
+  const [agendaBarber, setAgendaBarber] = useState("");
   const [day, setDay] = useState(() => brasiliaDate(Date.now()));
   const [metrics, setMetrics] = useState<ClubMetrics>();
   const [appointments, setAppointments] = useState<ClubAppointment[]>([]);
@@ -20,7 +31,10 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [notices, setNotices] = useState<ClubNotice[]>([]);
   const [suggestions, setSuggestions] = useState<ClubSuggestion[]>([]);
-  const [barbers, setBarbers] = useState<Pick<Barber, "id" | "nome" | "especialidade" | "endereco">[]>([]);
+  const [supportsAlbumBarbers, setSupportsAlbumBarbers] = useState(true);
+  const [albumCatalogReady, setAlbumCatalogReady] = useState(false);
+  const [albumBarbers, setAlbumBarbers] = useState<Record<string, string | null>>({});
+  const [barbers, setBarbers] = useState<Barber[]>([]);
   const [reviewed, setReviewed] = useState(false);
   const [suggestionPage, setSuggestionPage] = useState(0);
   const [hasMoreSuggestions, setHasMoreSuggestions] = useState(false);
@@ -28,6 +42,8 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
+  const [agendaStatus, setAgendaStatus] = useState("");
+  const [publicationStatus, setPublicationStatus] = useState("");
   const [loadError, setLoadError] = useState("");
   const db = getSupabase();
 
@@ -38,23 +54,48 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     async function load() {
       setLoading(true);
       setLoadError("");
+      setAlbumCatalogReady(false);
       try {
         const metricsResult = await client.rpc("get_club_metrics");
         if (!active) return;
-        if (metricsResult.error) throw metricsResult.error;
-        setMetrics(metricsResult.data[0]);
+        if (!metricsResult.error) setMetrics(metricsResult.data[0]);
 
         switch (section) {
           case "agenda": {
-            const result = await client.rpc("get_club_appointments", { p_day: day });
-            if (result.error) throw result.error;
-            if (active) setAppointments(result.data);
+            const [result, catalog] = await Promise.all([
+              client.rpc("get_club_appointments", { p_day: day, ...(agendaBarber ? { p_barber_id: agendaBarber } : {}) }),
+              client.from("barbers").select("*").order("nome"),
+            ]);
+            if (result.error || catalog.error) throw result.error ?? catalog.error;
+            if (active) {
+              setAppointments(result.data);
+              setBarbers(catalog.data);
+            }
             break;
           }
           case "notices": {
-            const result = await client.rpc("get_club_posts", {
-              p_portfolio: portfolio, p_limit: portfolio ? 9 : 2, p_offset: portfolio ? postPage * 8 : 0,
-            });
+            const [result, catalog] = await Promise.all([
+              client.rpc("get_club_posts", {
+                p_portfolio: portfolio, p_limit: portfolio ? 9 : 2, p_offset: portfolio ? postPage * 8 : 0,
+              }),
+              portfolio ? client.from("barbers").select("*").order("nome") : null,
+            ]);
+            if (catalog?.error) throw catalog.error;
+            if (active && catalog) {
+              setBarbers(catalog.data);
+              setAlbumCatalogReady(true);
+              setSupportsAlbumBarbers(true);
+              setAlbumBarbers({});
+            }
+            if (portfolio) {
+              const ids = result.data?.slice(0, 8).map(({ id }) => id) ?? [];
+              const query = client.from("club_notices").select("id,barber_id");
+              const assignments = await (ids.length ? query.in("id", ids) : query.limit(0));
+              if (active) {
+                setSupportsAlbumBarbers(assignments.error?.code !== "42703");
+                setAlbumBarbers(Object.fromEntries((assignments.data ?? []).map(({ id, barber_id }) => [id, barber_id])));
+              }
+            }
             if (result.error) throw result.error;
             if (active) {
               setNotices(result.data.slice(0, portfolio ? 8 : 2));
@@ -89,7 +130,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     }
     void load();
     return () => { active = false; };
-  }, [db, day, portfolio, postPage, reviewed, revision, section, suggestionPage]);
+  }, [db, day, agendaBarber, portfolio, postPage, reviewed, revision, section, suggestionPage]);
 
   async function mutate(action: () => PromiseLike<{ error: { code?: string; message: string } | null }>, form?: HTMLFormElement) {
     if (busy) return;
@@ -107,6 +148,45 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     finally { setBusy(false); }
   }
 
+  function saveBarberPhoto(
+    fields: FormData,
+    save: (uploadedPhoto?: string) => PromiseLike<{ error: { code?: string; message: string } | null }>,
+    form: HTMLFormElement,
+  ) {
+    if (!db) return;
+    const file = fields.get("photoFile");
+    if (!(file instanceof File) || file.size === 0) {
+      void mutate(() => save(), form);
+      return;
+    }
+    const contentType = muralPhotoType(file);
+    if (!contentType || file.size > muralPhotoBytes) {
+      setError("Escolha uma foto JPG, PNG ou WebP de até 6 MB.");
+      return;
+    }
+
+    void mutate(async () => {
+      const storage = db.storage.from(barberPhotosBucket);
+      const path = `${crypto.randomUUID()}.${muralPhotoFormats[contentType]}`;
+      const upload = await storage.upload(path, file.slice(0, file.size, contentType), { contentType });
+      if (upload.error) {
+        return { error: { code: "PT409", message: "Não foi possível enviar a foto. Tente novamente." } };
+      }
+      const result = await save(storage.getPublicUrl(path).data.publicUrl);
+      if (result.error) await storage.remove([path]).catch(() => undefined);
+      return result;
+    }, form);
+  }
+
+  async function removeBarberPhoto(url: string | null) {
+    if (!db || !url) return;
+    const storage = db.storage.from(barberPhotosBucket);
+    const path = url.split("/").pop() ?? "";
+    if (/^[0-9a-f-]{36}\.(jpg|png|webp)$/.test(path) && storage.getPublicUrl(path).data.publicUrl === url) {
+      await storage.remove([path]).catch(() => undefined);
+    }
+  }
+
   function submitBarber(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!db) return;
@@ -119,23 +199,94 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       setError("Preencha o nome e a especialidade.");
       return;
     }
-    void mutate(() => db.from("barbers").insert({
+    saveBarberPhoto(fields, (uploadedPhoto) => db.from("barbers").insert({
       nome: name,
       especialidade: detail,
       ...(address ? { endereco: address } : {}),
+      ...(uploadedPhoto ? { foto_pixel: uploadedPhoto } : {}),
     }), form);
   }
 
-  function saveBarberAddress(event: FormEvent<HTMLFormElement>, barberId: string) {
+  function saveBarberDetails(event: FormEvent<HTMLFormElement>, barber: Barber) {
     event.preventDefault();
     if (!db) return;
-    const address = String(new FormData(event.currentTarget).get("address") ?? "").trim() || null;
-    void mutate(() => db.from("barbers").update({ endereco: address }).eq("id", barberId).select("id").single());
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const address = String(fields.get("address") ?? "").trim() || null;
+    const photo = String(fields.get("photo") ?? "").trim() || null;
+    if (photo && photo !== barber.foto_pixel && !/^https:\/\//i.test(photo)) {
+      setError("Use um link HTTPS para a foto.");
+      return;
+    }
+    saveBarberPhoto(fields, async (uploadedPhoto) => {
+      const nextPhoto = uploadedPhoto ?? photo;
+      const updates = nextPhoto === barber.foto_pixel ? { endereco: address } : { endereco: address, foto_pixel: nextPhoto };
+      const result = await db.from("barbers").update(updates).eq("id", barber.id).select("id").single();
+      if (!result.error && nextPhoto !== barber.foto_pixel) await removeBarberPhoto(barber.foto_pixel);
+      return result;
+    }, form);
+  }
+
+  function deleteBarber(barber: Barber) {
+    if (!db || busy || !window.confirm(`Excluir o cadastro de ${barber.nome}?`)) return;
+    void mutate(async () => {
+      const result = await db.from("barbers").delete().eq("id", barber.id).select("foto_pixel").single();
+      if (result.error?.code === "23503") {
+        return { error: { code: "PT409", message: "Este barbeiro ainda tem agendamentos em aberto. Abra a agenda dele para finalizar ou cancelar os atendimentos pendentes." } };
+      }
+      if (!result.error) {
+        setAgendaBarber((current) => current === barber.id ? "" : current);
+        await removeBarberPhoto(result.data.foto_pixel);
+      }
+      return result;
+    });
+  }
+
+  function openBarberAgenda(barberId: string) {
+    setAgendaBarber(barberId);
+    setAgendaStatus("");
+    setError("");
+    setSection("agenda");
+  }
+
+  function deleteAppointment(item: ClubAppointment) {
+    if (!db || busy || !window.confirm(`Excluir definitivamente o agendamento de ${item.client_name}?`)) return;
+    setAgendaStatus("");
+    void mutate(async () => {
+      const result = await db.rpc("delete_club_appointment", { p_appointment_id: item.id });
+      if (!result.error) {
+        setAgendaStatus(result.data ? "Agendamento excluído." : "O agendamento já foi atualizado.");
+      }
+      return result;
+    });
+  }
+
+  function deletePublication(notice: ClubNotice) {
+    const label = portfolio ? "álbum" : "aviso";
+    if (!db || busy || !window.confirm(`Excluir este ${label}?`)) return;
+    setPublicationStatus("");
+    void mutate(async () => {
+      const result = await db.from("club_notices").delete().eq("id", notice.id).select("photo_paths").single();
+      if (result.error) return result;
+
+      const paths = result.data.photo_paths;
+      let status = "Publicação excluída.";
+      if (paths.length > 0) {
+        const cleaned = await db.storage.from(muralBucket).remove(paths)
+          .then(({ data, error }) => !error && data.length === paths.length)
+          .catch(() => false);
+        if (!cleaned) status += " A limpeza dos arquivos de imagem ficou incompleta.";
+      }
+      setPublicationStatus(status);
+      if (postPage > 0 && notices.length === 1 && !hasMorePosts) setPostPage((current) => current - 1);
+      return result;
+    });
   }
 
   if (!db) return null;
   return (
     <div className="space-y-4">
+      <ClubAccessRequests />
       {metrics && <section className="card-modern space-y-3" aria-label="Métricas da semana">
         <h2>Métricas da semana</h2>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -152,7 +303,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       <nav className="mode-switch grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Administração">
         {(Object.keys(sections) as Section[]).map((key) => (
           <button type="button" key={key} aria-pressed={section === key} disabled={busy}
-            onClick={() => { setSection(key); setError(""); }}>{sections[key]}</button>
+            onClick={() => { setSection(key); setError(""); setAgendaStatus(""); setPublicationStatus(""); }}>{sections[key]}</button>
         ))}
       </nav>
 
@@ -164,19 +315,41 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
 
       {section === "agenda" && <section className="card-modern space-y-3">
         <h2>Agendamentos</h2>
+        {agendaStatus && <p role="status">{agendaStatus}</p>}
+        <label className="field">Agenda do barbeiro
+          <select value={agendaBarber} disabled={busy} onChange={(event) => openBarberAgenda(event.target.value)}>
+            <option value="">Todos os barbeiros</option>
+            {barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.nome}</option>)}
+          </select>
+        </label>
         <label className="field">Data <input type="date" value={day} disabled={busy}
-          onChange={(event) => { if (event.target.value) setDay(event.target.value); }} /></label>
+          onChange={(event) => { if (event.target.value) { setDay(event.target.value); setAgendaStatus(""); } }} /></label>
         {!loading && !loadError && (appointments.length ? <ul className="space-y-3">
           {appointments.map((item) => (
             <li key={item.id} className="border-t border-white/10 pt-3">
               <strong>{item.client_name}</strong>
               <p>{clubDateTime.format(new Date(item.starts_at))} · {item.service_name} · {item.barber_name}</p>
               <p className="muted">{attendanceLabel[item.status]}</p>
-              {item.status === "AGENDADO" && Date.parse(item.ends_at) <= Date.now() && <div className="mt-2 flex flex-wrap gap-2">
-                {(["CONCLUIDO", "NO_SHOW"] as const).map((status) => (
+              {(item.status === "AGENDADO" || item.status === "CANCELADO") &&
+                <button type="button" className="secondary mt-2" disabled={busy}
+                  onClick={() => deleteAppointment(item)}>Excluir agendamento</button>}
+              {item.status === "AGENDADO" && <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" className="secondary" disabled={busy} onClick={() => {
+                  if (!window.confirm(`Cancelar o agendamento de ${item.client_name} em ${clubDateTime.format(new Date(item.starts_at))}?`)) return;
+                  setAgendaStatus("");
+                  void mutate(async () => {
+                    const result = await db.rpc("cancel_club_appointment", { p_appointment_id: item.id });
+                    if (!result.error) {
+                      setAgendaStatus(result.data ? "Agendamento cancelado." : "O agendamento já foi atualizado.");
+                    }
+                    return result;
+                  });
+                }}>Cancelar agendamento</button>
+                {Date.parse(item.ends_at) <= Date.now() && (["CONCLUIDO", "NO_SHOW"] as const).map((status) => (
                   <button type="button" className="secondary" key={status} disabled={busy}
                     onClick={() => {
                       if (status === "NO_SHOW" && !window.confirm("Registrar falta e aplicar a regra de pontos?")) return;
+                      setAgendaStatus("");
                       void mutate(async () => {
                         const result = await db.rpc("set_club_attendance", { p_id: item.id, p_status: status });
                         return { error: result.error ?? (result.data ? null : { code: "PT409", message: "Este agendamento já foi atualizado ou ainda não terminou." }) };
@@ -191,26 +364,34 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
 
       {section === "notices" && <section className="card-modern space-y-4">
         <h2>{portfolio ? <CutMuralTitle /> : "Quadro de avisos"}</h2>
+        {publicationStatus && <p role="status">{publicationStatus}</p>}
         <div className="mode-switch grid grid-cols-2 gap-2" aria-label="Tipo de publicação">
-          <button type="button" aria-pressed={!portfolio} disabled={busy} onClick={() => { setPortfolio(false); setPostPage(0); }}>Avisos</button>
-          <button type="button" aria-pressed={portfolio} disabled={busy} onClick={() => { setPortfolio(true); setPostPage(0); }}>Álbuns</button>
+          <button type="button" aria-pressed={!portfolio} disabled={busy} onClick={() => { setPortfolio(false); setPostPage(0); setPublicationStatus(""); }}>Avisos</button>
+          <button type="button" aria-pressed={portfolio} disabled={busy} onClick={() => { setPortfolio(true); setPostPage(0); setPublicationStatus(""); }}>Álbuns</button>
         </div>
         {!portfolio && !loading && !loadError && notices.length >= 2
           ? <p className="muted">O quadro já tem dois avisos. Remova um para publicar outro.</p>
-          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} disabled={busy}
+          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} linkBarber={supportsAlbumBarbers} barbers={barbers} disabled={busy || (portfolio && (loading || !albumCatalogReady))}
             onBusy={setBusy} onPublished={() => { setPostPage(0); setRevision((current) => current + 1); }} />}
         {!loading && !loadError && notices.map((notice) => (
           <article key={notice.id} className="space-y-2 border-t border-white/10 pt-3">
             <NoticePost notice={notice} />
-            <button type="button" className="secondary" disabled={busy}
-              onClick={() => {
-                if (!window.confirm("Remover esta postagem do mural?")) return;
-                void mutate(async () => {
-                  const result = await db.from("club_notices").delete().eq("id", notice.id);
-                  if (!result.error && notice.photo_paths.length) await db.storage.from(muralBucket).remove(notice.photo_paths).catch(() => undefined);
-                  return result;
-                });
-              }}>Remover {portfolio ? "álbum" : "aviso"}</button>
+            {portfolio && albumBarbers[notice.id] !== undefined && <form className="space-y-2" onSubmit={(event) => {
+              event.preventDefault();
+              const barberId = String(new FormData(event.currentTarget).get("albumBarber") ?? "") || null;
+              void mutate(() => db.from("club_notices").update({ barber_id: barberId }).eq("id", notice.id).select("id").single());
+            }}>
+              <label className="field">Barbeiro do álbum
+                <select name="albumBarber" defaultValue={albumBarbers[notice.id] ?? ""} disabled={busy}>
+                  <option value="">Sem barbeiro vinculado</option>
+                  {barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.nome}</option>)}
+                </select>
+              </label>
+              <button type="submit" className="secondary" disabled={busy}>Salvar barbeiro do álbum</button>
+            </form>}
+            <button type="button" className="secondary" disabled={busy} onClick={() => deletePublication(notice)}>
+              Excluir {portfolio ? "álbum" : "aviso"}
+            </button>
           </article>
         ))}
         {portfolio && !loading && !loadError && (postPage > 0 || hasMorePosts) && <div className="flex gap-2">
@@ -219,27 +400,43 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         </div>}
       </section>}
 
-      {section === "barbers" && <section className="card-modern space-y-4">
-        <h2>Barbeiros</h2>
+      {section === "barbers" && <>
+        <BarbershopLocationAdmin />
+        <section className="card-modern space-y-4">
+          <h2>Barbeiros</h2>
         <form className="space-y-3" onSubmit={submitBarber}>
           <label className="field">Nome <input name="name" maxLength={80} required /></label>
           <label className="field">Especialidade <input name="detail" maxLength={100} required /></label>
           {(barbers.length === 0 || barbers[0].endereco !== undefined) &&
             <label className="field">Endereço de atendimento (opcional) <input name="address" maxLength={240} /></label>}
+          <BarberPhotoInput disabled={busy} />
           <button className="primary" disabled={busy}>Adicionar barbeiro</button>
         </form>
         {!loading && !loadError && <ul className="space-y-2">{barbers.map((barber) => (
           <li key={barber.id} className="space-y-2 border-t border-white/10 pt-3">
             <p>{barber.nome} <span className="muted">· {barber.especialidade}</span></p>
-            {barber.endereco !== undefined && <form className="space-y-2" onSubmit={(event) => saveBarberAddress(event, barber.id)}>
+            {barber.endereco && <BarberAddress address={barber.endereco} />}
+            {barber.endereco !== undefined && <form key={JSON.stringify([barber.endereco, barber.foto_pixel])}
+              className="space-y-2" onSubmit={(event) => saveBarberDetails(event, barber)}>
               <label className="field">Endereço de atendimento (opcional)
                 <input name="address" defaultValue={barber.endereco ?? ""} maxLength={240} disabled={busy} />
               </label>
-              <button type="submit" className="secondary" disabled={busy}>Salvar endereço</button>
+              <label className="field">Link HTTPS da foto (opcional)
+                <input inputMode="url" name="photo" defaultValue={barber.foto_pixel ?? ""} maxLength={2048} disabled={busy} />
+              </label>
+              <BarberPhotoInput disabled={busy} />
+              <button type="submit" className="secondary" disabled={busy}>Salvar dados</button>
             </form>}
+            <button type="button" className="secondary" disabled={busy} onClick={() => openBarberAgenda(barber.id)}>
+              Abrir agenda de {barber.nome}
+            </button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => deleteBarber(barber)}>
+              Excluir barbeiro
+            </button>
           </li>
         ))}</ul>}
-      </section>}
+        </section>
+      </>}
 
       {section === "suggestions" && <section className="card-modern space-y-4">
         <h2>Sugestões dos clientes</h2>

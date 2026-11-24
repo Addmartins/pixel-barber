@@ -12,6 +12,7 @@ interface AvatarProps {
   cosmetics?: readonly EquippedCosmetic[];
   size?: number;
   className?: string;
+  portrait?: boolean;
 }
 
 const placement: Record<CosmeticSlot, [number, number, number, number]> = {
@@ -57,7 +58,7 @@ function Accessory({ code, shirtNumber }: { code: CosmeticCode; shirtNumber?: nu
   );
 }
 
-export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }: AvatarProps) {
+export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className, portrait = false }: AvatarProps) {
   const skin = avatars.find(({ id }) => id === skinId) ?? avatars[0];
   const style = { "--avatar-size": `${size}px`, "--avatar-backdrop": skin.backdrop } as CSSProperties;
   const accessories = cosmetics.map(splitCosmetic);
@@ -66,7 +67,7 @@ export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }:
 
   const launchChair = cosmetics.includes("trono_inauguracao");
   const launchAura = cosmetics.includes("aura_letreiro");
-  const seated = launchChair || cosmetics.includes("cadeira_barbear");
+  const seated = !portrait && (launchChair || cosmetics.includes("cadeira_barbear"));
   const aura = launchAura || cosmetics.includes("aura_laminas");
   const fashionTop = accessories.find(({ code }) => isFashionCode(code) && cosmeticSlot(code) === "body");
   const dress = fashionTop?.code.startsWith("vestido_");
@@ -99,11 +100,11 @@ export function AvatarRenderer({ skinId, cosmetics = [], size = 64, className }:
 
   return (
     <span className={`pixel-avatar${className ? ` ${className}` : ""}`} style={style} aria-hidden="true">
-      <svg className="pixel-avatar-art" viewBox="0 0 32 64" shapeRendering="crispEdges" focusable="false"
+      <svg className="pixel-avatar-art" viewBox={portrait ? "-2 -3 36 36" : "0 0 32 64"} shapeRendering="crispEdges" focusable="false"
         data-pose={seated ? "seated" : "standing"}>
         {aura && <BladeAura launch={launchAura} />}
         {seated && <BarberChairBack launch={launchChair} />}
-        {(!seated || dress) && lower}
+        {!portrait && (!seated || dress) && lower}
         {seated ? <svg width="32" height={dress ? 55 : 49} viewBox={dress ? "0 0 32 55" : "0 0 32 49"} overflow="hidden">{upper}</svg> : upper}
         {seated && !dress && lower}
         {seated && <BarberChairArms launch={launchChair} />}

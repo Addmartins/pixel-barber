@@ -1,6 +1,37 @@
 # Pixel Barber
 
-Clube de barbearia em Next.js 14 App Router, TypeScript estrito, Tailwind CSS, Lucide e Supabase.
+O Pixel Barber é um clube de fidelidade para barbearias. Clientes escolhem o serviço e o barbeiro, reservam um horário e acompanham seus pontos. O Pixel Boy inclui sete minijogos em estilo 16-bit e pode ser jogado sem cadastro.
+
+[Abrir o Pixel Barber](https://pixel-barber.vercel.app) · [Baixar para Android](https://pixel-barber.vercel.app/downloads/pixel-barber-android-debug.apk) · [Guia de instalação em PDF](public/downloads/cartaz-pixel-barber.pdf)
+
+### O que dá para fazer
+
+- Agendar corte, barba ou combo e acompanhar as próximas reservas.
+- Acumular pontos, consultar o extrato e trocar pontos por itens para o avatar.
+- Ver avisos, álbuns do Mural de Cortes e classificação semanal no mural.
+- Gerenciar a agenda, os barbeiros e o mural pelo painel administrativo.
+
+### Telas do app
+
+Capturas da interface web em tamanho de celular com dados fictícios.
+
+| Acesso ao clube | Agendamento | Loja do Avatar |
+| --- | --- | --- |
+| <img src="docs/screenshots/acesso.webp" alt="Tela de login e entrada na demonstração" width="280"> | <img src="docs/screenshots/agendamento.webp" alt="Agendamento com seleção de serviço" width="280"> | <img src="docs/screenshots/loja.webp" alt="Loja do Avatar com saldo em pontos, provador e filtros do catálogo" width="280"> |
+
+| Quadro de avisos e Mural de Cortes | Ranking semanal | Pixel Boy |
+| --- | --- | --- |
+| <img src="docs/screenshots/mural.webp" alt="Quadro de avisos com duas publicações e Mural de Cortes por barbeiro" width="280"> | <img src="docs/screenshots/ranking.webp" alt="Ranking semanal com pódio e classificação por pontos" width="280"> | <img src="docs/screenshots/pixel-boy.webp" alt="Seleção de cartuchos do Pixel Boy" width="280"> |
+
+### Pixel Boy em partida
+
+| Bombas de Espuma | Órbita Pixel | Itens do Salão |
+| --- | --- | --- |
+| <img src="docs/screenshots/bombas-de-espuma.webp" alt="Partida de Bombas de Espuma com robôs e caixas na arena" width="280"> | <img src="docs/screenshots/orbita-pixel.webp" alt="Partida de Órbita Pixel com a nave diante de inimigos" width="280"> | <img src="docs/screenshots/itens-do-salao.webp" alt="Tabuleiro de Itens do Salão com peças coloridas" width="280"> |
+
+### Projeto
+
+Next.js 14 App Router, TypeScript, Tailwind CSS, Lucide e Supabase. O Capacitor empacota o app para Android e iOS.
 
 ```text
 src/
@@ -40,6 +71,12 @@ supabase/tests/
 
 `npm run typecheck` verifica a tipagem. `npm run build` gera a compilação de produção.
 
+### Acesso ao clube e demonstração
+
+A demonstração usa dados fictícios. O mural, a agenda, o catálogo de barbeiros e o ranking ficam disponíveis após a aprovação da conta.
+
+Aplique as migrações `20261123000025_club_access.sql` e `20261123000026_club_access_requests.sql` no Supabase antes de publicar o app. O cliente entra na conta e toca em **Solicitar acesso**. Ao entrar no painel, o administrador vê os pedidos em **Solicitações de acesso** e pode tocar em **Aceitar solicitação**. Depois da aprovação, o cliente toca em **Verificar acesso**.
+
 ## Verificação por SMS com TextBee
 
 O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao TextBee, que usa o chip do Android cadastrado. O cadastro, o reenvio e a alteração de senha por SMS funcionam também nos apps nativos. A alteração está disponível em **Esqueci minha senha** e em **Editar perfil**.
@@ -52,6 +89,16 @@ O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao Te
 
 ## Administração e pontos
 
+As capturas do painel administrativo usam dados fictícios.
+
+| Agenda | Publicações |
+| --- | --- |
+| <img src="docs/screenshots/admin-agenda.webp" alt="Painel administrativo com métricas semanais e agendamentos" width="280"> | <img src="docs/screenshots/admin-publicacoes.webp" alt="Formulário administrativo de publicação de álbuns por barbeiro" width="280"> |
+
+| Barbeiros | Sugestões |
+| --- | --- |
+| <img src="docs/screenshots/admin-barbeiros.webp" alt="Cadastro de barbeiros com edição dos dados e botão Excluir barbeiro" width="280"> | <img src="docs/screenshots/admin-sugestoes.webp" alt="Sugestões dos clientes e ação para marcar como revisadas" width="280"> |
+
 Aplique `20261123000011_point_expiration_type.sql` e confirme a transação antes de aplicar `20261123000012_club_operations.sql`. Em seguida, aplique `20261123000013_mural_photos.sql`, que provisiona o bucket privado do mural. Aplique também `20261123000014_welcome_points.sql` para creditar 150 pontos ao confirmar o celular de novas contas. Aplique `20261123000015_mural_portfolio.sql` para separar o quadro de avisos do portfólio. Depois, publique a aplicação. Para liberar acesso, crie e confirme uma conta normal, copie o UID em **Authentication → Users** e execute no SQL Editor do Supabase:
 
 ```sql
@@ -59,9 +106,10 @@ insert into public.club_admins (user_id) values ('UID-DA-CONTA')
 on conflict do nothing;
 ```
 
-Entre em `/admin` com o celular e a senha da conta autorizada. O painel exibe as métricas da semana, a agenda por data, os avisos, os barbeiros e as sugestões enviadas pelo mural. O quadro exibe até dois avisos ativos lado a lado. O portfólio exibe quatro álbuns por página em uma grade de duas colunas. Cada álbum pode ter até quatro fotos JPG, PNG ou WebP de 6 MB cada, legenda e a marcação de um cliente pelo avatar. No mural, a marcação mostra o primeiro nome e o avatar. Registre presença e falta depois do horário de término, em ordem de agendamento por cliente.
+Entre em `/admin` com o celular e a senha da conta autorizada. O painel exibe as métricas da semana, a agenda por data, os avisos, os barbeiros e as sugestões enviadas pelo mural. O quadro exibe até dois avisos ativos lado a lado. O Mural de Cortes mostra dois álbuns por vez em cada coluna de barbeiro. Aplique `20261123000019_cut_mural_barbers.sql` para habilitar as colunas e o vínculo dos álbuns. Em **Barbeiros**, adicione o link HTTPS da foto. Em **Publicações → Álbuns**, escolha o barbeiro ao publicar ou vincule um álbum anterior pelo seletor do próprio álbum. Cada álbum pode ter até quatro fotos JPG, PNG ou WebP de 6 MB cada, legenda e a marcação de um cliente pelo avatar. No mural, a marcação mostra o primeiro nome e o avatar. Registre presença e falta depois do horário de término, em ordem de agendamento por cliente.
 
 - O ranking começa às segundas-feiras à meia-noite, no horário de Recife. Ele soma os créditos da semana e desconta as penalidades dos agendamentos daquela semana. Resgates e expirações afetam o saldo da carteira.
+- Aplique `20261123000020_barber_delete.sql` para habilitar **Excluir barbeiro** no painel. Cadastros com agendamentos vinculados ficam protegidos contra exclusão.
 - A sequência de faltas aplica 20%, 30%, 40% e, a partir da quarta falta consecutiva, 50%, com limite acumulado de 50% por semana. A base são os créditos da semana do agendamento já registrados ao marcar a falta. Uma presença encerra a sequência. O débito na carteira é limitado ao saldo disponível.
 - Cada crédito vale 90 dias por padrão. A validade está em `public.club_point_rules.validity_days`. Débitos consomem primeiro os créditos mais antigos. O saldo é atualizado ao entrar, ao voltar ao app, nas consultas periódicas e nas movimentações. A expiração aparece no extrato.
 
@@ -100,7 +148,17 @@ O servidor reconstitui a partida para validar o placar. Os registros antigos e a
 
 ## Loja do Avatar
 
-A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 65 itens, incluindo 30 peças de moda. Camisas e vestidos, shorts e bermudas, bonés e tênis podem ser combinados no provador. A camisa do River Plate permite escolher um número de 0 a 99 e salvá-lo após o resgate. Os exclusivos custam de 1.100 a 1.850 PTS. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
+A aba **Loja** mostra o saldo em pontos, o provador e o guarda-roupa. A coleção tem 65 itens, incluindo 30 peças de moda. Camisas e vestidos, shorts e bermudas, bonés e tênis podem ser combinados no provador. A camisa do River Plate permite escolher um número de 0 a 99 e salvá-lo após o resgate. Os acessórios antigos adquiridos aparecem no guarda-roupa. O resgate equipa o item automaticamente. É possível desequipar e reequipar itens adquiridos sem custo. Cada espaço do avatar aceita um item equipado por vez. O mural e a classificação mostram os acessórios equipados.
+
+Os **Exclusivos de lançamento** podem ser resgatados por 90 dias a partir da ativação da campanha, enquanto houver estoque. Aplique `20261123000021_launch_redemption_window.sql` e depois `20261123000022_restore_launch_catalog.sql`. A segunda migração restaura os exclusivos ausentes e usa o prazo da campanha existente. Se o catálogo ainda não tiver exclusivos, a contagem começa quando eles são inseridos. Os itens resgatados continuam disponíveis no guarda-roupa depois do fim da campanha.
+
+| Exclusivo de lançamento | Pontos |
+| --- | ---: |
+| Tesoura Prisma | 1.100 |
+| Chapéu do Fundador | 1.250 |
+| Avental Primeira Edição | 1.400 |
+| Trono da Inauguração | 1.600 |
+| Aura Letreiro Neon | 1.850 |
 
 Aplique `20261121000005_avatar_store.sql`, `20261122000007_avatar_collection.sql`, `20261122000008_launch_collection.sql`, `20261122000009_avatar_fashion.sql` e `20261122000010_avatar_shirt_number.sql` na ordem das migrações. O endpoint `POST /api/store/avatar/buy` aceita apenas `product_id` e usa a sessão do cliente. O banco consulta preço e estoque do catálogo e registra o débito, a aquisição e o equipamento na mesma transação. A demonstração usa 1.000 PTS fictícios e guarda as compras até sair ou atualizar a página.
 
@@ -154,4 +212,8 @@ A primeira abertura autenticada do dia conta para a sequência, pelo horário de
 
 O PWA consulta a versão publicada ao abrir, voltar ao primeiro plano e a cada minuto com o app aberto. Quando encontra uma versão nova, mostra **Atualizar agora**; a próxima abertura online também carrega a publicação atual. O service worker continua usando a rede para a página e as APIs, e guarda somente a tela offline.
 
-No Android nativo, o app compara o código de versão instalado com `GET /api/release` e mostra o link da versão mais recente. O Android pede confirmação para instalar um APK fora da loja. Para publicar um novo APK, incremente `androidVersionCode` em `src/lib/device/release.json`, compile com a mesma assinatura e substitua `public/downloads/pixel-barber-android-debug.apk` na mesma publicação.
+No Android nativo, o app compara o código de versão instalado com `GET /api/release` e mostra o link da versão mais recente. O Android pede confirmação para instalar um APK fora da loja. O pacote exige Android 7.0 ou superior (API 24) e usa o Android System WebView do aparelho.
+
+Para preparar uma atualização, incremente `androidVersionCode` e atualize `androidVersionName` em `src/lib/device/release.json`. Rode `node scripts/build-mobile.mjs` e `npx cap sync android`. Compile com `./gradlew assembleRelease` em `android/`, alinhe o APK com `zipalign` e assine com o mesmo certificado da versão distribuída para preservar a atualização sobre instalações existentes. O arquivo público mantém o caminho `public/downloads/pixel-barber-android-debug.apk` usado nos links e no cartaz.
+
+Antes de publicar o APK e os metadados juntos, teste instalação limpa e atualização sobre a versão anterior em um aparelho. Confirme abertura, login por SMS, agendamento e Pixel Boy. Confira o layout no Android 16 com as barras de navegação do sistema.

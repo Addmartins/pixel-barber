@@ -45,7 +45,7 @@ function signupError(code: string | undefined) {
 export function AuthScreen() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [avatar, setAvatar] = useState<AvatarId>("fade");
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>();
   const [profile, setProfile] = useState<(Profile & { id: string }) | null>(null);
   const [demoEntry, setDemoEntry] = useState<"booking" | "arcade" | null>(null);
   const demo = demoEntry !== null;
@@ -58,6 +58,7 @@ export function AuthScreen() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profileError, setProfileError] = useState(false);
+  const [accessAttempt, setAccessAttempt] = useState(0);
   const userId = session?.user.id;
   const userPhone = session?.user.phone;
   const cosmeticsOwner = demo ? "demo" : userId;
@@ -71,7 +72,10 @@ export function AuthScreen() {
 
   useEffect(() => {
     const supabase = getSupabase();
-    if (!supabase) return;
+    if (!supabase) {
+      setSession(null);
+      return;
+    }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
     });
@@ -97,7 +101,7 @@ export function AuthScreen() {
     })();
 
     return () => { active = false; };
-  }, [userId]);
+  }, [userId, accessAttempt]);
 
   useEffect(() => {
     if (!userId) return;
@@ -148,8 +152,10 @@ export function AuthScreen() {
       return;
     }
 
-    const fields = new FormData(event.currentTarget);
-    const phone = normalizePhone(String(fields.get("phone") ?? ""));
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const phoneInput = form.elements.namedItem("phone") as HTMLInputElement;
+    const phone = normalizePhone(phoneInput.value);
     if (!phone) {
       setError("Informe um celular com DDD ou use o formato internacional com + e código do país.");
       return;
@@ -161,6 +167,7 @@ export function AuthScreen() {
       return;
     }
 
+    phoneInput.value = phone;
     setBusy(true);
     try {
       if (mode === "login") {
@@ -230,7 +237,10 @@ export function AuthScreen() {
     try {
       const result = await getSupabase()?.auth.signOut({ scope: "local" });
       if (result?.error) setError("Não foi possível encerrar a sessão. Tente novamente.");
-      else setProfile(null);
+      else {
+        setProfile(null);
+        setProfileError(false);
+      }
     } catch {
       setError("A conexão falhou. Tente novamente.");
     } finally {
@@ -252,7 +262,9 @@ export function AuthScreen() {
     setProfile((current) => current?.id === userId ? { ...current, ...data } : current);
   }
 
-  const currentProfile = demo ? { ...demoProfile, ...demoDetails, points_balance: demoBalance } : profile?.id === userId ? profile : null;
+  const currentProfile = demo
+    ? { ...demoProfile, ...demoDetails, points_balance: demoBalance }
+    : profile?.id === userId ? profile : null;
   const signedIn = !recovery && (demo || Boolean(session));
 
   return (
@@ -284,7 +296,8 @@ export function AuthScreen() {
         </header>
 
         <div className={signedIn ? "min-w-0" : "card-modern auth-card"}>
-          {recovery ? <PasswordReset initialPhone={recovery.phone} onCancel={() => setRecovery(undefined)}
+          {session === undefined ? <p role="status">Verificando sessão…</p>
+            : recovery ? <PasswordReset initialPhone={recovery.phone} onCancel={() => setRecovery(undefined)}
             onSuccess={() => { setRecovery(undefined); setMessage("Senha alterada."); }} />
             : signedIn ? (
             <section className="space-y-4" aria-label="Painel do cliente">
@@ -296,7 +309,19 @@ export function AuthScreen() {
                 </>
               ) : (
                 <>
-                  <p role="status">{profileError ? "Não foi possível carregar seu perfil. Saia e entre novamente para tentar de novo." : "Carregando seu perfil…"}</p>
+                  <p role="status">{profileError ? "Não foi possível carregar seu perfil." : "Carregando perfil…"}</p>
+                  {profileError && (
+                    <>
+                      <button type="button" className="secondary w-full" onClick={() => {
+                        setProfileError(false);
+                        setProfile(null);
+                        setAccessAttempt((attempt) => attempt + 1);
+                      }}>Tentar novamente</button>
+                      <button type="button" className="secondary w-full" onClick={() => setDemoEntry("booking")}>
+                        Experimentar demonstração
+                      </button>
+                    </>
+                  )}
                   <button type="button" className="secondary w-full" onClick={() => void leave()} disabled={busy}>Sair</button>
                 </>
               )}
@@ -329,14 +354,14 @@ export function AuthScreen() {
                 <button type="button" aria-pressed={mode === "register"} onClick={() => changeMode("register")} disabled={busy}>Criar conta</button>
               </div>
 
-              <form key={mode} onSubmit={submit} className="mt-6 space-y-4">
+              <form key={mode} method="post" onSubmit={submit} className="mt-6 space-y-4">
                 <h2>{mode === "register" ? "Crie seu perfil" : "Entre no clube"}</h2>
                 {mode === "register" && (
                   <label className="field">Nome <input name="nome" autoComplete="name" required minLength={2} maxLength={80} /></label>
                 )}
                 <label className="field">
                   Celular
-                  <input name="phone" type="tel" inputMode="tel" autoComplete={mode === "login" ? "username" : "tel"}
+                  <input name="phone" type="text" inputMode="tel" autoComplete="username"
                     placeholder="(81) 99999-9999" maxLength={30} required />
                   <span className="muted text-sm">Use o DDD ou informe o número com código do país.</span>
                 </label>
@@ -388,6 +413,14 @@ export function AuthScreen() {
         </div>
         <footer className="text-center text-sm">
           <a className="muted underline" href={termsPath}>Termos de Uso da Aplicação</a>
+          <nav className="muted mt-2" aria-label="Contato do desenvolvedor">
+            <p>Contato do desenvolvedor</p>
+            <ul className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1">
+              <li><a className="underline" href="https://www.linkedin.com/in/addhyel-martins/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+              <li><a className="underline" href="https://github.com/Addmartins" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+              <li><a className="underline" href="mailto:addhyeldev@gmail.com">addhyeldev@gmail.com</a></li>
+            </ul>
+          </nav>
         </footer>
       </div>
     </main>

@@ -16,6 +16,7 @@ declare
 begin
   insert into auth.users (id, phone, raw_user_meta_data) values
     (player, '5581999000221', metadata), (opponent, '5581999000222', metadata);
+  insert into public.club_members values (player), (opponent);
 
   for i in 1..4 loop
     code := (array['NAVALHA_RUSH', 'BARBA_FIGHTER', 'TORRE_FADE', 'TORRE_FADE'])[i];

@@ -31,6 +31,7 @@ export async function POST(request: Request) {
   switch (error?.code) {
     case "PT404": return Response.json({ error: "Acessório indisponível no catálogo." }, { status: 404 });
     case "PT409": return Response.json({ error: "Este acessório está esgotado." }, { status: 409 });
+    case "PT410": return Response.json({ error: "O período de resgate deste acessório terminou." }, { status: 410 });
     case "PT422": return Response.json({ error: "Seu saldo atual é insuficiente para o resgate." }, { status: 422 });
     case "PGRST301":
     case "PGRST303":

@@ -23,7 +23,8 @@ type AppointmentStatus = Attendance;
 type AppointmentRow = {
   id: string;
   client_id: string;
-  barber_id: string;
+  barber_id: string | null;
+  former_barber_name: string | null;
   service_id: string;
   starts_at: string;
   ends_at: string;
@@ -58,11 +59,16 @@ export type Database = {
       client_inventory: CatalogTable<InventoryItem & { id: string; client_id: string; acquired_at: string }>;
       barbers: {
         Row: Barber;
-        Insert: Pick<Barber, "nome" | "especialidade"> & Partial<Pick<Barber, "endereco">>;
-        Update: Partial<Pick<Barber, "endereco">>;
+        Insert: Pick<Barber, "nome" | "especialidade"> & Partial<Pick<Barber, "endereco" | "foto_pixel">>;
+        Update: Partial<Pick<Barber, "endereco" | "foto_pixel">>;
         Relationships: [];
       };
-      club_notices: CatalogTable<Pick<ClubNotice, "id" | "title" | "body" | "created_at" | "photo_paths">>;
+      club_notices: {
+        Row: Pick<ClubNotice, "id" | "title" | "body" | "created_at" | "photo_paths"> & { barber_id: string | null };
+        Insert: never;
+        Update: { barber_id: string | null };
+        Relationships: [];
+      };
       club_suggestions: {
         Row: ClubSuggestion;
         Insert: Pick<ClubSuggestion, "client_id" | "body">;
@@ -83,16 +89,28 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       get_club_posts: { Args: { p_portfolio: boolean; p_limit?: number; p_offset?: number }; Returns: ClubNotice[] };
+      get_cut_albums: { Args: { p_barber_id: string | null; p_limit?: number; p_offset?: number }; Returns: ClubNotice[] };
+      publish_cut_album: { Args: { p_barber_id: string; p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };
       get_mural_notices: { Args: Record<PropertyKey, never>; Returns: ClubNotice[] };
       find_mural_clients: { Args: { p_query: string }; Returns: MuralTag[] };
       publish_mural_notice: { Args: { p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };
       is_club_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      get_club_access_status: { Args: Record<PropertyKey, never>; Returns: { granted: boolean; expires_at: string | null }[] };
+      has_club_access: { Args: Record<PropertyKey, never>; Returns: boolean };
+      has_pending_club_access_request: { Args: Record<PropertyKey, never>; Returns: boolean };
+      request_club_access: { Args: Record<PropertyKey, never>; Returns: boolean };
+      get_club_access_requests: { Args: Record<PropertyKey, never>; Returns: {
+        user_id: string; nome: string; phone_ending: string | null; requested_at: string;
+      }[] };
+      approve_club_access: { Args: { p_user_id: string }; Returns: boolean };
       get_current_points_balance: { Args: Record<PropertyKey, never>; Returns: number };
       get_club_metrics: { Args: Record<PropertyKey, never>; Returns: ClubMetrics[] };
-      get_club_appointments: { Args: { p_day: string }; Returns: ClubAppointment[] };
+      get_club_appointments: { Args: { p_day: string; p_barber_id?: string }; Returns: ClubAppointment[] };
       set_club_attendance: { Args: { p_id: string; p_status: Attendance }; Returns: boolean };
       get_available_slots: { Args: { p_barber_id: string; p_service_id: string; p_date: string }; Returns: Slot[] };
       create_appointment: { Args: { p_barber_id: string; p_service_id: string; p_starts_at: string }; Returns: string };
+      delete_club_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
+      cancel_club_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       cancel_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       start_arcade_run: { Args: { p_client_id: string; p_game_code: GameCode; p_engine_version: number; p_difficulty: Difficulty }; Returns: { id: string; seed: number }[] };
       finish_arcade_run: { Args: { p_client_id: string; p_session_id: string; p_score: number; p_ticks: number; p_engine_version: number; p_won: boolean }; Returns: GameResult[] };
@@ -103,6 +121,15 @@ export type Database = {
       equip_avatar_item: { Args: { p_product_id: string; p_equipped: boolean }; Returns: boolean };
       set_avatar_shirt_number: { Args: { p_number: number }; Returns: number };
       get_leaderboard: { Args: { p_limit?: number; p_offset?: number }; Returns: RankingEntry[] };
+      get_barbershop_location: { Args: Record<PropertyKey, never>; Returns: {
+        city: string; latitude: number; longitude: number; radius_km: number;
+      }[] };
+      update_barbershop_location: { Args: {
+        p_city: string; p_latitude: number; p_longitude: number; p_radius_km: number;
+      }; Returns: boolean };
+      verify_location_access: { Args: {
+        p_lat: number; p_lng: number; p_accuracy_m: number;
+      }; Returns: { granted: boolean; city: string }[] };
     };
     Enums: { appointment_status: AppointmentStatus };
     CompositeTypes: Record<string, never>;

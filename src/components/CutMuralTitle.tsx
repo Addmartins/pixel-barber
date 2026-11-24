@@ -1,7 +1,7 @@
 export function CutMuralTitle() {
   return (
     <>
-      Mural dos cortes{" "}
+      Mural de Cortes{" "}
       <span aria-hidden="true" className="inline-flex gap-1 whitespace-nowrap align-[-0.12em]">
         <svg width="16" height="16" viewBox="0 0 8 8" shapeRendering="crispEdges">
           <path fill="#e2e8f0" d="M0 0h1v1H0zM7 0h1v1H7zM1 1h1v1H1zM6 1h1v1H6zM2 2h1v1H2zM5 2h1v1H5zM3 3h2v2H3zM2 5h1v1H2zM5 5h1v1H5z" />

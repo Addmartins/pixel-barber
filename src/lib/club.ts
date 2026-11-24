@@ -4,6 +4,18 @@ export const muralBucket = "club-mural";
 export const muralPhotoLimit = 4;
 export const muralPhotoBytes = 6 * 1024 * 1024;
 export const muralPhotoFormats: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+export const muralPhotoAccept = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
+
+export function muralPhotoType(file: File) {
+  if (file.type === "image/jpg") return "image/jpeg";
+  if (file.type && file.type !== "application/octet-stream") {
+    return Object.hasOwn(muralPhotoFormats, file.type) ? file.type : undefined;
+  }
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png" || extension === "webp") return `image/${extension}`;
+}
+
 export type MuralTag = { id: string; nome: string; avatar_skin: AvatarId };
 export type ClubNotice = {
   id: string; title: string; body: string; created_at: string; photo_paths: string[];

@@ -52,7 +52,7 @@ export function ProfileEditor({ profile, cosmetics, onSave, onChangePassword }: 
   return (
     <>
       <button type="button" className="profile-avatar" aria-label="Editar perfil" aria-haspopup="dialog" onClick={open}>
-        <AvatarRenderer skinId={profile.avatar_skin} cosmetics={cosmetics} />
+        <AvatarRenderer skinId={profile.avatar_skin} cosmetics={cosmetics} portrait />
       </button>
       <dialog ref={dialog} className="wallet-dialog" aria-labelledby={titleId}
         onCancel={(event) => { if (saving.current) event.preventDefault(); }}>

@@ -12,12 +12,12 @@ export async function loadAvatarShop(clientId: string) {
   const supabase = database();
   const [catalog, inventory] = await Promise.all([
     supabase.from("store_products")
-      .select("id,nome,preco_pontos,estoque,cosmetic_code,cosmetic_slot,rarity")
+      .select("*")
       .eq("categoria", "ACESSORIO_AVATAR").order("preco_pontos"),
     supabase.from("client_inventory").select("*").eq("client_id", clientId),
   ]);
   if (catalog.error || inventory.error) throw new Error("Não foi possível carregar a loja e o guarda-roupa.");
-  const products = catalog.data.filter((row): row is CosmeticProduct =>
+  const products = catalog.data.filter((row): row is CosmeticProduct & { categoria: string } =>
     isCosmeticCode(row.cosmetic_code) && row.preco_pontos !== null && row.cosmetic_slot !== null && row.rarity !== null);
   return { products, inventory: inventory.data.map(({ product_id, is_equipped, shirt_number }): InventoryItem => ({ product_id, is_equipped, shirt_number })) };
 }

@@ -13,6 +13,8 @@ import { splitCosmetic, type EquippedCosmetic } from "@/lib/store";
 import { Booking } from "./Booking";
 import { Mural } from "./Mural";
 import { NoticeBoard } from "./NoticeBoard";
+import { LocationAccessGate } from "@/components/location/LocationAccessGate";
+import { getSupabase } from "@/lib/supabase/browser";
 
 const pageSize = 50;
 
@@ -49,8 +51,45 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
     position: 0, display_name: name.split(/\s+/)[0], avatar_skin: avatar, points_balance: 0, equipped_cosmetics: outfit.map(item => item.code), shirt_number: outfit.find(item => item.shirtNumber !== undefined)?.shirtNumber,
   }].sort((a, b) => b.points_balance - a.points_balance).map((entry, index) => ({ ...entry, position: index + 1 }));
 
+  const [clubAccess, setClubAccess] = useState<{ checked: boolean; approved: boolean }>({
+    checked: !clientId,
+    approved: !clientId,
+  });
+  const [accessAttempt, setAccessAttempt] = useState(0);
+  const [demoBooking, setDemoBooking] = useState(false);
+  const demoApi = useMemo(() => createDemoBookingApi(), []);
+
+  const refreshAccess = useCallback(() => {
+    setAccessAttempt((previous) => previous + 1);
+  }, []);
+
   useEffect(() => {
-    if (!clientId || section !== "mural") return;
+    if (!clientId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await getSupabase()?.rpc("get_club_access_status");
+        if (!active) return;
+        const access = response?.data?.[0];
+        setClubAccess({ checked: true, approved: !response?.error && Boolean(access?.granted) });
+      } catch {
+        if (active) setClubAccess({ checked: true, approved: false });
+      }
+    })();
+    return () => { active = false; };
+  }, [clientId, accessAttempt, section]);
+
+
+  useEffect(() => {
+    if (!clientId || clubAccess.approved) return;
+    setRanking([]);
+    setRankingOffset(0);
+    setHasMore(false);
+    setRequest({ offset: 0 });
+  }, [clientId, clubAccess.approved]);
+
+  useEffect(() => {
+    if (!clientId || section !== "mural" || !clubAccess.approved) return;
     let active = true;
     setRankingBusy(true);
     setRankingError("");
@@ -65,7 +104,7 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
       if (active) setRankingBusy(false);
     });
     return () => { active = false; };
-  }, [clientId, request, section]);
+  }, [clientId, request, section, clubAccess.approved]);
 
   return (
     <div className="dashboard">
@@ -79,7 +118,11 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
         }}>
           <Gamepad2 size={18} aria-hidden="true" /> Pixel Boy
         </button>
-        <button type="button" aria-pressed={section === "store"} onClick={() => { setStoreOpened(true); setSection("store"); }}>
+        <button type="button" aria-pressed={section === "store"} onClick={() => {
+          if (section !== "store") void shop.reload();
+          setStoreOpened(true);
+          setSection("store");
+        }}>
           <ShoppingBag size={18} aria-hidden="true" /> Loja
         </button>
         <button type="button" aria-pressed={section === "mural"} onClick={() => {
@@ -95,15 +138,54 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
       {arcadeOpened && <div hidden={section !== "arcade"}>
         <Arcade clientId={clientId} avatar={avatar} cosmetics={shop.equipped} demo={!clientId} visible={section === "arcade"} onBalance={updateBalance} />
       </div>}
-      <div hidden={section !== "booking"}><Booking api={api} /></div>
+      {section === "booking" && (
+        <>
+          {clientId && !clubAccess.checked ? (
+            <p role="status">Verificando permissão de acesso…</p>
+          ) : clientId && !clubAccess.approved && !demoBooking ? (
+            <LocationAccessGate
+              clientId={clientId}
+              title="Agendamento com barbeiros"
+              description="Confirme que está na região da barbearia para ver os barbeiros e agendar. Fora da região, solicite aprovação."
+              onRefreshAccess={refreshAccess}
+              onTestDemo={() => setDemoBooking(true)}
+            />
+          ) : (
+            <div className="space-y-3">
+              {demoBooking && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
+                  <span className="muted">Modo demonstração (dados fictícios para teste de portfólio).</span>
+                  <button type="button" className="secondary text-xs" onClick={() => setDemoBooking(false)}>
+                    Voltar para solicitação
+                  </button>
+                </div>
+              )}
+              <Booking api={demoBooking ? demoApi : api} />
+            </div>
+          )}
+        </>
+      )}
       {section === "mural" && (
         <>
-          {clientId && <NoticeBoard clientId={clientId} />}
-          <Mural ranking={clientId ? ranking : demoLeaderboard} loading={rankingBusy && !ranking.length} error={rankingError}
-            loadingMore={rankingBusy && Boolean(ranking.length)} hasMore={hasMore}
-            onLoadMore={() => { if (!rankingBusy) setRequest({ offset: rankingOffset }); }} />
-          {rankingError && <button type="button" className="secondary mt-3"
-            onClick={() => setRequest({ offset: request.offset })}>Tentar classificação novamente</button>}
+          {clientId && !clubAccess.checked ? (
+            <p role="status">Verificando permissão de acesso…</p>
+          ) : clientId && !clubAccess.approved ? (
+            <LocationAccessGate
+              clientId={clientId}
+              title="Mural, álbuns e ranking"
+              description="Confirme que está na região da barbearia para ver o mural, os álbuns e o ranking. Fora da região, solicite aprovação."
+              onRefreshAccess={refreshAccess}
+            />
+          ) : (
+            <>
+              {clientId && <NoticeBoard clientId={clientId} />}
+              <Mural ranking={clientId ? ranking : demoLeaderboard} loading={rankingBusy && !ranking.length} error={rankingError}
+                loadingMore={rankingBusy && Boolean(ranking.length)} hasMore={hasMore}
+                onLoadMore={() => { if (!rankingBusy) setRequest({ offset: rankingOffset }); }} />
+              {rankingError && <button type="button" className="secondary mt-3"
+                onClick={() => setRequest({ offset: request.offset })}>Tentar classificação novamente</button>}
+            </>
+          )}
         </>
       )}
     </div>

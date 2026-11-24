@@ -8,6 +8,8 @@ import { customizableShirt, defaultShirtNumber, isShirtNumber, withShirtNumber, 
 import { CosmeticSprite } from "./CosmeticSprite";
 import styles from "./avatar-store.module.css";
 
+const campaignDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Recife" });
+
 const rarities = [
   ["COMUM", "Comuns"], ["RARO", "Raros"], ["LENDARIO", "Lendários"], ["EXCLUSIVO", "Exclusivos de lançamento"],
 ] as const;
@@ -187,7 +189,10 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
 
       <div className={styles.filters} role="group" aria-label="Raridade e guarda-roupa">
         {filters.map(([key, label]) => (
-          <button type="button" key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>
+          <button type="button" key={key} aria-pressed={filter === key} onClick={() => {
+            setFilter(key);
+            if (key === "EXCLUSIVO") setSlot("all");
+          }}>{label}</button>
         ))}
       </div>
 
@@ -222,8 +227,10 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
               const missing = Math.max(0, product.preco_pontos - balance);
               const action = status?.is_equipped ? "unequip" : status ? "equip" : "buy";
               const soldOut = !status && product.estoque <= 0;
-              const disabled = loading || Boolean(pendingId) || soldOut || (!status && missing > 0);
-              const actionLabel = status?.is_equipped ? "✓ Equipado" : status ? "Equipar" : soldOut ? "Esgotado"
+              const deadline = product.redemption_ends_at ? new Date(product.redemption_ends_at) : undefined;
+              const expired = !status && deadline !== undefined && deadline.getTime() <= Date.now();
+              const disabled = loading || Boolean(pendingId) || expired || soldOut || (!status && missing > 0);
+              const actionLabel = status?.is_equipped ? "✓ Equipado" : status ? "Equipar" : expired ? "Prazo encerrado" : soldOut ? "Esgotado"
                 : missing ? `Faltam ${points.format(missing)} PTS` : "Resgatar com pontos";
               return (
                 <li key={product.id} className={styles.item} data-rarity={product.rarity}>
@@ -236,6 +243,9 @@ export function AvatarStore({ avatar, balance, products, inventory, loading, err
                   <p className={styles.price}>
                     {status && filter === "wardrobe" ? "Adquirido" : <><span className={styles.coin} aria-hidden="true" /> {points.format(product.preco_pontos)} PTS</>}
                   </p>
+                  {!status && (deadline || (demo && rarity === "EXCLUSIVO")) && (
+                    <p className={styles.price}>{deadline ? `Até ${campaignDate.format(deadline)} (Recife)` : "Campanha de 90 dias"}</p>
+                  )}
                   <button type="button" className={styles.action} data-action={action} disabled={disabled}
                     title={status?.is_equipped ? "Desequipar acessório" : undefined}
                     aria-label={status?.is_equipped ? `Equipado. Desequipar ${product.nome}` : undefined}

@@ -51,14 +51,18 @@ export function AdminScreen() {
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const fields = new FormData(event.currentTarget);
-    const phone = normalizePhone(String(fields.get("phone") ?? ""));
+    if (busy) return;
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const phoneInput = form.elements.namedItem("phone") as HTMLInputElement;
+    const phone = normalizePhone(phoneInput.value);
     if (!phone) {
       setError("Informe um celular válido com DDD.");
       return;
     }
     setBusy(true);
     setError("");
+    phoneInput.value = phone;
     try {
       const result = await getSupabase()?.auth.signInWithPassword({ phone, password: String(fields.get("password") ?? "") });
       if (!result || result.error) {
@@ -103,10 +107,10 @@ export function AdminScreen() {
           }} />
         </div>}
         {access === "signed-out" && !recovering && (
-          <form className="card-modern space-y-4" onSubmit={signIn}>
+          <form method="post" className="card-modern space-y-4" onSubmit={signIn}>
             <h2>Entrar na administração</h2>
             {passwordChanged && <p role="status">Senha alterada. Entre com a nova senha.</p>}
-            <label className="field">Celular <input name="phone" type="tel" autoComplete="username" required /></label>
+            <label className="field">Celular <input name="phone" type="text" inputMode="tel" autoComplete="username" maxLength={30} required /></label>
             <label className="field">Senha <input name="password" type="password" autoComplete="current-password" required /></label>
             <button className="primary w-full" disabled={busy}>{busy ? "Entrando…" : "Entrar"}</button>
             <button className="secondary w-full" type="button" disabled={busy} onClick={() => {

@@ -21,6 +21,7 @@ export type CosmeticProduct = {
   cosmetic_code: CosmeticCode;
   cosmetic_slot: CosmeticSlot;
   rarity: Rarity;
+  redemption_ends_at?: string | null;
 };
 
 export type InventoryItem = { product_id: string; is_equipped: boolean; shirt_number?: number | null };
