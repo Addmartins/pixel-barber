@@ -1,6 +1,6 @@
 begin;
 
-create table club_private.location_access_sessions (
+create table if not exists club_private.location_access_sessions (
   user_id uuid not null references public.clients(id) on delete cascade,
   session_id text not null,
   location_updated_at timestamptz not null,
@@ -8,10 +8,13 @@ create table club_private.location_access_sessions (
   primary key (user_id, session_id)
 );
 
+alter table club_private.location_access_sessions
+  add column if not exists expires_at timestamptz;
+
 alter table club_private.location_access_sessions enable row level security;
 revoke all on club_private.location_access_sessions from public, anon, authenticated;
 
-create function public.get_club_access_status()
+create or replace function public.get_club_access_status()
 returns table (granted boolean, expires_at timestamptz)
 language sql stable security definer set search_path = ''
 as $$
@@ -78,7 +81,7 @@ $$;
 
 drop function public.verify_location_access(double precision, double precision);
 
-create function public.verify_location_access(
+create or replace function public.verify_location_access(
   p_lat double precision, p_lng double precision, p_accuracy_m double precision
 )
 returns table (granted boolean, city text)
@@ -146,10 +149,17 @@ alter policy club_mural_read on storage.objects
     )
   ));
 
-alter function public.cancel_appointment(uuid) set schema club_private;
+do $$
+begin
+  if to_regprocedure('public.cancel_appointment(uuid)') is not null
+    and to_regprocedure('club_private.cancel_appointment(uuid)') is null then
+    alter function public.cancel_appointment(uuid) set schema club_private;
+  end if;
+end;
+$$;
 revoke all on function club_private.cancel_appointment(uuid) from public, anon, authenticated;
 
-create function public.cancel_appointment(p_appointment_id uuid)
+create or replace function public.cancel_appointment(p_appointment_id uuid)
 returns boolean language plpgsql security definer set search_path = ''
 as $$
 begin
