@@ -13,7 +13,7 @@ import { splitCosmetic, type EquippedCosmetic } from "@/lib/store";
 import { Booking } from "./Booking";
 import { Mural } from "./Mural";
 import { NoticeBoard } from "./NoticeBoard";
-import { ClubAccessRequest } from "@/components/auth/ClubAccessRequest";
+import { LocationAccessGate } from "@/components/location/LocationAccessGate";
 import { getSupabase } from "@/lib/supabase/browser";
 
 const pageSize = 50;
@@ -133,33 +133,16 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
           {clientId && !clubAccess.checked ? (
             <p role="status">Verificando permissão de acesso…</p>
           ) : clientId && !clubAccess.approved && !demoBooking ? (
-            <div className="card-modern space-y-4 text-center">
-              <div className="space-y-1">
-                <h2 className="text-lg font-bold">Agendamentos & Barbeiros</h2>
-                <p className="muted text-sm">
-                  Para visualizar os barbeiros e realizar agendamentos, é necessário solicitar acesso.
-                  O administrador fará a liberação.
-                </p>
-              </div>
-              <ClubAccessRequest key={clientId} />
-              <button
-                type="button"
-                className="secondary w-full"
-                onClick={() => setAccessAttempt((prev) => prev + 1)}
-              >
-                Já solicitou? Verificar aprovação
-              </button>
-              <div className="border-t border-white/10 pt-3 space-y-2">
-                <p className="muted text-xs">Conhecendo o projeto pelo portfólio?</p>
-                <button
-                  type="button"
-                  className="secondary w-full"
-                  onClick={() => setDemoBooking(true)}
-                >
-                  Testar fluxo com barbearia de demonstração
-                </button>
-              </div>
-            </div>
+            <LocationAccessGate
+              clientId={clientId}
+              title="Agendamentos & Barbeiros"
+              description="Para visualizar os barbeiros reais e realizar agendamentos, o acesso é liberado por geolocalização física (clientes da região) ou aprovação do administrador."
+              onApproved={() => {
+                setClubAccess({ checked: true, approved: true });
+                setAccessAttempt((prev) => prev + 1);
+              }}
+              onTestDemo={() => setDemoBooking(true)}
+            />
           ) : (
             <div className="space-y-3">
               {demoBooking && (
@@ -180,23 +163,15 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
           {clientId && !clubAccess.checked ? (
             <p role="status">Verificando permissão de acesso…</p>
           ) : clientId && !clubAccess.approved ? (
-            <div className="card-modern space-y-4 text-center">
-              <div className="space-y-1">
-                <h2 className="text-lg font-bold">Mural, Álbuns & Classificação</h2>
-                <p className="muted text-sm">
-                  O acesso aos álbuns de cortes dos barbeiros, mural de publicações e ao ranking é exclusivo para membros liberados pelo administrador.
-                  Solicite o acesso abaixo para liberação.
-                </p>
-              </div>
-              <ClubAccessRequest key={clientId} />
-              <button
-                type="button"
-                className="secondary w-full"
-                onClick={() => setAccessAttempt((prev) => prev + 1)}
-              >
-                Já solicitou? Verificar aprovação
-              </button>
-            </div>
+            <LocationAccessGate
+              clientId={clientId}
+              title="Mural, Álbuns & Classificação"
+              description="O mural de cortes, álbuns dos barbeiros e o ranking são exclusivos para clientes locais da barbearia ou membros com acesso aprovado."
+              onApproved={() => {
+                setClubAccess({ checked: true, approved: true });
+                setAccessAttempt((prev) => prev + 1);
+              }}
+            />
           ) : (
             <>
               {clientId && <NoticeBoard clientId={clientId} />}

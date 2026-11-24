@@ -8,6 +8,7 @@ import { CutMuralTitle } from "@/components/CutMuralTitle";
 import { BarberAddress } from "@/components/BarberAddress";
 import { ClubAccessRequests } from "./ClubAccessRequests";
 import { MuralComposer } from "./MuralComposer";
+import { BarbershopLocationAdmin } from "./BarbershopLocationAdmin";
 
 const sections = { agenda: "Agenda", notices: "Publicações", barbers: "Barbeiros", suggestions: "Sugestões" } as const;
 type Section = keyof typeof sections;
@@ -358,8 +359,10 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         </div>}
       </section>}
 
-      {section === "barbers" && <section className="card-modern space-y-4">
-        <h2>Barbeiros</h2>
+      {section === "barbers" && <>
+        <BarbershopLocationAdmin />
+        <section className="card-modern space-y-4">
+          <h2>Barbeiros</h2>
         <form className="space-y-3" onSubmit={submitBarber}>
           <label className="field">Nome <input name="name" maxLength={80} required /></label>
           <label className="field">Especialidade <input name="detail" maxLength={100} required /></label>
@@ -388,7 +391,8 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
             </button>
           </li>
         ))}</ul>}
-      </section>}
+        </section>
+      </>}
 
       {section === "suggestions" && <section className="card-modern space-y-4">
         <h2>Sugestões dos clientes</h2>

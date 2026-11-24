@@ -118,6 +118,15 @@ export type Database = {
       equip_avatar_item: { Args: { p_product_id: string; p_equipped: boolean }; Returns: boolean };
       set_avatar_shirt_number: { Args: { p_number: number }; Returns: number };
       get_leaderboard: { Args: { p_limit?: number; p_offset?: number }; Returns: RankingEntry[] };
+      get_barbershop_location: { Args: Record<PropertyKey, never>; Returns: {
+        city: string; latitude: number; longitude: number; radius_km: number;
+      }[] };
+      update_barbershop_location: { Args: {
+        p_city: string; p_latitude: number; p_longitude: number; p_radius_km: number;
+      }; Returns: boolean };
+      verify_location_access: { Args: {
+        p_lat: number; p_lng: number;
+      }; Returns: { granted: boolean; distance_km: number; city: string }[] };
     };
     Enums: { appointment_status: AppointmentStatus };
     CompositeTypes: Record<string, never>;
