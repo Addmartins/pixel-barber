@@ -13,6 +13,8 @@ import { splitCosmetic, type EquippedCosmetic } from "@/lib/store";
 import { Booking } from "./Booking";
 import { Mural } from "./Mural";
 import { NoticeBoard } from "./NoticeBoard";
+import { ClubAccessRequest } from "@/components/auth/ClubAccessRequest";
+import { getSupabase } from "@/lib/supabase/browser";
 
 const pageSize = 50;
 
@@ -49,8 +51,33 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
     position: 0, display_name: name.split(/\s+/)[0], avatar_skin: avatar, points_balance: 0, equipped_cosmetics: outfit.map(item => item.code), shirt_number: outfit.find(item => item.shirtNumber !== undefined)?.shirtNumber,
   }].sort((a, b) => b.points_balance - a.points_balance).map((entry, index) => ({ ...entry, position: index + 1 }));
 
+  const [clubAccess, setClubAccess] = useState<{ checked: boolean; approved: boolean }>({
+    checked: !clientId,
+    approved: !clientId,
+  });
+  const [accessAttempt, setAccessAttempt] = useState(0);
+
   useEffect(() => {
     if (!clientId || section !== "mural") return;
+    let active = true;
+    void (async () => {
+      try {
+        const res = await getSupabase()?.rpc("has_club_access");
+        if (!active) return;
+        if (res && !res.error) {
+          setClubAccess({ checked: true, approved: Boolean(res.data) });
+        } else {
+          setClubAccess({ checked: true, approved: false });
+        }
+      } catch {
+        if (active) setClubAccess({ checked: true, approved: false });
+      }
+    })();
+    return () => { active = false; };
+  }, [clientId, section, accessAttempt]);
+
+  useEffect(() => {
+    if (!clientId || section !== "mural" || !clubAccess.approved) return;
     let active = true;
     setRankingBusy(true);
     setRankingError("");
@@ -65,7 +92,7 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
       if (active) setRankingBusy(false);
     });
     return () => { active = false; };
-  }, [clientId, request, section]);
+  }, [clientId, request, section, clubAccess.approved]);
 
   return (
     <div className="dashboard">
@@ -102,12 +129,36 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
       <div hidden={section !== "booking"}><Booking api={api} /></div>
       {section === "mural" && (
         <>
-          {clientId && <NoticeBoard clientId={clientId} />}
-          <Mural ranking={clientId ? ranking : demoLeaderboard} loading={rankingBusy && !ranking.length} error={rankingError}
-            loadingMore={rankingBusy && Boolean(ranking.length)} hasMore={hasMore}
-            onLoadMore={() => { if (!rankingBusy) setRequest({ offset: rankingOffset }); }} />
-          {rankingError && <button type="button" className="secondary mt-3"
-            onClick={() => setRequest({ offset: request.offset })}>Tentar classificação novamente</button>}
+          {clientId && !clubAccess.checked ? (
+            <p role="status">Verificando permissão de acesso…</p>
+          ) : clientId && !clubAccess.approved ? (
+            <div className="card-modern space-y-4 text-center">
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">Mural & Classificação</h2>
+                <p className="muted text-sm">
+                  O acesso ao mural de cortes e ao ranking do clube é liberado pelo administrador da barbearia.
+                  Toque abaixo para solicitar seu acesso.
+                </p>
+              </div>
+              <ClubAccessRequest key={clientId} />
+              <button
+                type="button"
+                className="secondary w-full"
+                onClick={() => setAccessAttempt((prev) => prev + 1)}
+              >
+                Já solicitou? Verificar aprovação
+              </button>
+            </div>
+          ) : (
+            <>
+              {clientId && <NoticeBoard clientId={clientId} />}
+              <Mural ranking={clientId ? ranking : demoLeaderboard} loading={rankingBusy && !ranking.length} error={rankingError}
+                loadingMore={rankingBusy && Boolean(ranking.length)} hasMore={hasMore}
+                onLoadMore={() => { if (!rankingBusy) setRequest({ offset: rankingOffset }); }} />
+              {rankingError && <button type="button" className="secondary mt-3"
+                onClick={() => setRequest({ offset: request.offset })}>Tentar classificação novamente</button>}
+            </>
+          )}
         </>
       )}
     </div>
