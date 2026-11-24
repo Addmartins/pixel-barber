@@ -5,6 +5,7 @@ do $$
 declare
   client_a uuid := gen_random_uuid();
   client_b uuid := gen_random_uuid();
+  visitor uuid := gen_random_uuid();
   barber_a uuid;
   barber_b uuid;
   haircut uuid;
@@ -23,14 +24,47 @@ declare
 begin
   insert into auth.users (id, phone, raw_user_meta_data) values
     (client_a, '5590000010101', profile_metadata || '{"nome":"Sprint Dois Cliente A"}'),
-    (client_b, '5590000010102', profile_metadata || '{"nome":"Teste Cliente B"}');
+    (client_b, '5590000010102', profile_metadata || '{"nome":"Teste Cliente B"}'),
+    (visitor, '5590000010103', profile_metadata || '{"nome":"Visitante Teste"}');
+  insert into public.club_members values (client_a), (client_b);
   perform public.post_points(client_a, 101, 'CORTE', 'Fixture ranking A', 'fixture-ranking-a');
   perform public.post_points(client_b, 50, 'CORTE', 'Fixture ranking B', 'fixture-ranking-b');
+  perform public.post_points(visitor, 999, 'CORTE', 'Fixture visitante', 'fixture-ranking-visitor');
 
   select id into strict barber_a from public.barbers where nome = 'Mestre Navalha' limit 1;
   select id into strict barber_b from public.barbers where nome = 'Du Corte' limit 1;
   select id into strict haircut from public.services where nome = 'Corte';
   select id into strict combo from public.services where nome = 'Combo';
+
+  perform set_config('request.jwt.claim.sub', visitor::text, true);
+  set local role authenticated;
+  if public.has_club_access() or exists (select from public.get_leaderboard())
+    or exists (select from public.barbers) or exists (select from public.services)
+    or exists (select from public.store_products) or exists (select from public.club_notices)
+    or exists (select from public.clients where id = client_a) then
+    raise exception 'O cadastro sem aprovação expôs dados do clube';
+  end if;
+  begin
+    perform public.get_available_slots(barber_a, haircut, target_day);
+    raise exception 'Visitante consultou a agenda';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.create_appointment(barber_a, haircut, local_start);
+    raise exception 'Visitante criou um agendamento';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.get_cut_albums(null);
+    raise exception 'Visitante consultou o mural de cortes';
+  exception when insufficient_privilege then null;
+  end;
+  if has_table_privilege('authenticated', 'public.club_members', 'INSERT')
+    or has_schema_privilege('authenticated', 'club_private', 'USAGE')
+    or has_table_privilege('anon', 'public.barbers', 'SELECT') then
+    raise exception 'As permissões permitem contornar a aprovação';
+  end if;
+  reset role;
 
   if has_function_privilege('anon', 'public.create_appointment(uuid,uuid,timestamptz)', 'EXECUTE')
     or has_function_privilege('anon', 'public.get_available_slots(uuid,uuid,date)', 'EXECUTE')

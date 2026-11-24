@@ -4,6 +4,7 @@ do $$
 declare
   admin_id uuid := gen_random_uuid();
   client_id uuid := gen_random_uuid();
+  barber_photo text := gen_random_uuid()::text || '.jpg';
   photo_path text := admin_id::text || '/' || gen_random_uuid()::text || '.jpg';
   post_id uuid;
   notice_id uuid;
@@ -13,6 +14,13 @@ begin
     (admin_id, '5581777700021', meta || '{"nome":"Gestor Mural"}'),
     (client_id, '5581777700022', meta || '{"nome":"Cliente Marcado","avatar_skin":"bigode"}');
   insert into public.club_admins values (admin_id);
+  insert into public.club_members values (client_id);
+  insert into public.barbers (nome, especialidade, foto_pixel)
+  values ('Barbeiro Teste', 'Corte', 'https://test.example/storage/v1/object/public/barber-photos/' || barber_photo);
+  insert into storage.objects (bucket_id, name) values ('barber-photos', barber_photo);
+  if exists (select from storage.buckets where id = 'barber-photos' and public) then
+    raise exception 'O bucket de fotos dos barbeiros está público';
+  end if;
 
   perform set_config('request.jwt.claim.sub', client_id::text, true);
   set local role authenticated;
@@ -61,6 +69,17 @@ begin
   end if;
   if not exists (select 1 from storage.objects where name = photo_path) then
     raise exception 'Foto publicada não ficou visível';
+  end if;
+  if not exists (select 1 from storage.objects where name = barber_photo) then
+    raise exception 'Foto do barbeiro não ficou visível para o membro';
+  end if;
+
+  reset role;
+  delete from public.club_members where user_id = client_id;
+  set local role authenticated;
+  if exists (select from storage.objects where name in (photo_path, barber_photo))
+    or exists (select from public.club_notices) then
+    raise exception 'O cliente manteve acesso aos dados do mural após a revogação';
   end if;
 
   perform set_config('request.jwt.claim.sub', admin_id::text, true);

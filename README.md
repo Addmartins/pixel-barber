@@ -71,6 +71,20 @@ supabase/tests/
 
 `npm run typecheck` verifica a tipagem. `npm run build` gera a compilação de produção.
 
+### Acesso ao clube e demonstração
+
+Compartilhe o link do projeto com recrutadores e indique **Experimentar demonstração**. A demonstração usa dados fictícios para agenda, ranking e pontos. Os cadastros por celular ficam pendentes até a aprovação da barbearia.
+
+Antes de publicar a atualização, aplique a migração `20261123000025_club_access.sql` no Supabase da barbearia. A migração também exige aprovação das contas existentes. Os administradores cadastrados em `club_admins` mantêm acesso. Para liberar um cliente, confirme sua identidade, copie o UID em **Authentication → Users** e execute no SQL Editor:
+
+```sql
+insert into public.club_members (user_id)
+values ('UID-DO-CLIENTE')
+on conflict (user_id) do nothing;
+```
+
+Para revogar o acesso, execute `delete from public.club_members where user_id = 'UID-DO-CLIENTE';`. O cliente pode tocar em **Verificar acesso** para consultar a aprovação. Distribua a atualização mobile para exibir a tela de aprovação e carregar as fotos dos barbeiros com URLs assinadas. As permissões do banco também se aplicam às versões anteriores do app.
+
 ## Verificação por SMS com TextBee
 
 O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao TextBee, que usa o chip do Android cadastrado. O cadastro, o reenvio e a alteração de senha por SMS funcionam também nos apps nativos. A alteração está disponível em **Esqueci minha senha** e em **Editar perfil**.

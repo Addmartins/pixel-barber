@@ -19,6 +19,7 @@ begin
     (client_id, '5581777700012', meta || '{"nome":"Operação Teste"}'),
     (other_id, '5581777700013', meta || '{"nome":"Outro Teste"}');
   insert into public.club_admins values (admin_id);
+  insert into public.club_members values (client_id), (other_id);
   select id into strict service_id from public.services where nome = 'Corte';
 
   perform set_config('request.jwt.claim.sub', client_id::text, true);
