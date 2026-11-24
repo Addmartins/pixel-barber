@@ -11,7 +11,7 @@ O Pixel Barber é o primeiro produto da Pixel e o foco da validação comercial.
 | Foco do portfólio | Priorizar o Pixel Barber. Reavaliar a expansão conforme os critérios do blueprint. | Diretriz do blueprint |
 | Modelo de negócio | Validar a assinatura recorrente com as barbearias. Tratar os preços apresentados como hipóteses. | Hipótese a testar |
 | Organização | Usar esta pasta como ponto central inicial para a estratégia, as decisões e o plano de execução. | Escolha operacional provisória |
-|| Blueprint v1.0 | Registrar a aprovação e eventuais alterações solicitadas pela direção. | Pendente |
+|| Blueprint v1.0 | Aprovado em 2026-11-24 | Estratégia e roadmap da Pixel | Blueprint aprovado; roadmap respeitado |
 || Plano de execução 30 dias | Aprovado em 2026-11-24 | Versão do produto e prioridade (Pixel Barber); porta de saída Dia 1 | Registrar a decisão e iniciar fundação |
 
 Para registrar uma nova decisão, incluir a data, a decisão, sua justificativa e quem a aprovou.
