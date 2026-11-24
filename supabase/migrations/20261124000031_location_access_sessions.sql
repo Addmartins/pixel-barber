@@ -23,14 +23,14 @@ as $$
       select 1 from public.club_members where user_id = (select auth.uid())
     ) as granted
   ), local_access as (
-    select s.expires_at
+    select s.session_id, s.expires_at
     from club_private.location_access_sessions s
     join public.barbershop_location l on l.id = 1 and l.updated_at = s.location_updated_at
     where s.user_id = (select auth.uid())
       and s.session_id = (select auth.jwt() ->> 'session_id')
       and (s.expires_at is null or s.expires_at > statement_timestamp())
   )
-  select m.granted or l.expires_at is not null,
+  select m.granted or l.session_id is not null,
     case when not m.granted then l.expires_at end
   from manual_access m left join local_access l on true;
 $$;
@@ -79,7 +79,7 @@ begin
 end;
 $$;
 
-drop function public.verify_location_access(double precision, double precision);
+drop function if exists public.verify_location_access(double precision, double precision);
 
 create or replace function public.verify_location_access(
   p_lat double precision, p_lng double precision, p_accuracy_m double precision
@@ -120,7 +120,8 @@ begin
     -- Conserva apenas o registro de participação no ranking.
     update club_private.location_access_sessions
     set expires_at = statement_timestamp()
-    where user_id = requester and session_id = current_session and expires_at > statement_timestamp();
+    where user_id = requester and session_id = current_session
+      and (expires_at is null or expires_at > statement_timestamp());
     return query select false, location.city;
     return;
   end if;
