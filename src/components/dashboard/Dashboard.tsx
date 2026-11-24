@@ -56,9 +56,11 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
     approved: !clientId,
   });
   const [accessAttempt, setAccessAttempt] = useState(0);
+  const [demoBooking, setDemoBooking] = useState(false);
+  const demoApi = useMemo(() => createDemoBookingApi(), []);
 
   useEffect(() => {
-    if (!clientId || section !== "mural") return;
+    if (!clientId) return;
     let active = true;
     void (async () => {
       try {
@@ -74,7 +76,7 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
       }
     })();
     return () => { active = false; };
-  }, [clientId, section, accessAttempt]);
+  }, [clientId, accessAttempt]);
 
   useEffect(() => {
     if (!clientId || section !== "mural" || !clubAccess.approved) return;
@@ -126,7 +128,53 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
       {arcadeOpened && <div hidden={section !== "arcade"}>
         <Arcade clientId={clientId} avatar={avatar} cosmetics={shop.equipped} demo={!clientId} visible={section === "arcade"} onBalance={updateBalance} />
       </div>}
-      <div hidden={section !== "booking"}><Booking api={api} /></div>
+      {section === "booking" && (
+        <>
+          {clientId && !clubAccess.checked ? (
+            <p role="status">Verificando permissão de acesso…</p>
+          ) : clientId && !clubAccess.approved && !demoBooking ? (
+            <div className="card-modern space-y-4 text-center">
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold">Agendamentos & Barbeiros</h2>
+                <p className="muted text-sm">
+                  Para visualizar os barbeiros e realizar agendamentos, é necessário solicitar acesso.
+                  O administrador fará a liberação.
+                </p>
+              </div>
+              <ClubAccessRequest key={clientId} />
+              <button
+                type="button"
+                className="secondary w-full"
+                onClick={() => setAccessAttempt((prev) => prev + 1)}
+              >
+                Já solicitou? Verificar aprovação
+              </button>
+              <div className="border-t border-white/10 pt-3 space-y-2">
+                <p className="muted text-xs">Conhecendo o projeto pelo portfólio?</p>
+                <button
+                  type="button"
+                  className="secondary w-full"
+                  onClick={() => setDemoBooking(true)}
+                >
+                  Testar fluxo com barbearia de demonstração
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {demoBooking && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
+                  <span className="muted">Modo demonstração (dados fictícios para teste de portfólio).</span>
+                  <button type="button" className="secondary text-xs" onClick={() => setDemoBooking(false)}>
+                    Voltar para solicitação
+                  </button>
+                </div>
+              )}
+              <Booking api={demoBooking ? demoApi : api} />
+            </div>
+          )}
+        </>
+      )}
       {section === "mural" && (
         <>
           {clientId && !clubAccess.checked ? (
@@ -134,10 +182,10 @@ export function Dashboard({ clientId, name, avatar, balance, initialSection = "b
           ) : clientId && !clubAccess.approved ? (
             <div className="card-modern space-y-4 text-center">
               <div className="space-y-1">
-                <h2 className="text-lg font-bold">Mural & Classificação</h2>
+                <h2 className="text-lg font-bold">Mural, Álbuns & Classificação</h2>
                 <p className="muted text-sm">
-                  O acesso ao mural de cortes e ao ranking do clube é liberado pelo administrador da barbearia.
-                  Toque abaixo para solicitar seu acesso.
+                  O acesso aos álbuns de cortes dos barbeiros, mural de publicações e ao ranking é exclusivo para membros liberados pelo administrador.
+                  Solicite o acesso abaixo para liberação.
                 </p>
               </div>
               <ClubAccessRequest key={clientId} />
