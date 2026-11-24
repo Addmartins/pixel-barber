@@ -232,7 +232,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     void mutate(async () => {
       const result = await db.from("barbers").delete().eq("id", barber.id).select("foto_pixel").single();
       if (result.error?.code === "23503") {
-        return { error: { code: "PT409", message: "Este barbeiro tem agendamentos vinculados. Abra a agenda dele para revisá-los antes de excluir o cadastro." } };
+        return { error: { code: "PT409", message: "Este barbeiro ainda tem agendamentos em aberto. Abra a agenda dele para finalizar ou cancelar os atendimentos pendentes." } };
       }
       if (!result.error) {
         setAgendaBarber((current) => current === barber.id ? "" : current);

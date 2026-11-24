@@ -23,7 +23,8 @@ type AppointmentStatus = Attendance;
 type AppointmentRow = {
   id: string;
   client_id: string;
-  barber_id: string;
+  barber_id: string | null;
+  former_barber_name: string | null;
   service_id: string;
   starts_at: string;
   ends_at: string;

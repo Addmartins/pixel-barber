@@ -9,6 +9,8 @@ declare
   barber_b uuid;
   service_id uuid;
   booking_id uuid;
+  cancelled_id uuid;
+  completed_id uuid;
   album_id uuid;
   target_day date := current_date + 1;
   local_start timestamptz := (target_day + time '09:00') at time zone 'America/Recife';
@@ -24,6 +26,13 @@ begin
   insert into public.appointments (client_id, barber_id, service_id, starts_at, ends_at)
   values (client_id, barber_a, service_id, local_start, local_start + interval '30 minutes')
   returning id into booking_id;
+
+  insert into public.appointments (client_id, barber_id, service_id, starts_at, ends_at)
+  values (client_id, barber_a, service_id, local_start + interval '1 hour', local_start + interval '90 minutes')
+  returning id into cancelled_id;
+  insert into public.appointments (client_id, barber_id, service_id, starts_at, ends_at, status)
+  values (client_id, barber_a, service_id, local_start - interval '1 hour', local_start - interval '30 minutes', 'CONCLUIDO')
+  returning id into completed_id;
 
   perform set_config('request.jwt.claim.sub', client_id::text, true);
   set local role authenticated;
@@ -51,6 +60,15 @@ begin
     raise exception 'Álbum com foto enviada não ficou vinculado ao barbeiro';
   end if;
 
+  if not public.cancel_club_appointment(cancelled_id) then
+    raise exception 'Cancelamento do agendamento de teste falhou';
+  end if;
+  begin
+    delete from public.barbers where id = barber_a;
+    raise exception 'Barbeiro com agendamento em aberto foi excluído';
+  exception when foreign_key_violation then null;
+  end;
+
   if not public.delete_club_appointment(booking_id) or public.delete_club_appointment(booking_id) then
     raise exception 'Exclusão do agendamento falhou';
   end if;
@@ -58,7 +76,12 @@ begin
     raise exception 'Agendamento excluído ainda aparece na agenda';
   end if;
   delete from public.barbers where id = barber_a;
-  if not found then raise exception 'Barbeiro sem agendamentos não foi excluído'; end if;
+  if not found then raise exception 'Barbeiro sem agendamentos em aberto não foi excluído'; end if;
+  if (select count(*) from public.get_club_appointments(target_day)
+      where barber_name = 'Barbeiro teste A'
+      and ((id = cancelled_id and status = 'CANCELADO') or (id = completed_id and status = 'CONCLUIDO'))) <> 2 then
+    raise exception 'Agendamentos encerrados perderam dados do histórico';
+  end if;
   reset role;
 end;
 $$;
