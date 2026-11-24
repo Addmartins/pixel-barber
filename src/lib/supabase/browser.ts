@@ -94,7 +94,6 @@ export type Database = {
       find_mural_clients: { Args: { p_query: string }; Returns: MuralTag[] };
       publish_mural_notice: { Args: { p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };
       is_club_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
-      has_club_access: { Args: Record<PropertyKey, never>; Returns: boolean };
       get_current_points_balance: { Args: Record<PropertyKey, never>; Returns: number };
       get_club_metrics: { Args: Record<PropertyKey, never>; Returns: ClubMetrics[] };
       get_club_appointments: { Args: { p_day: string }; Returns: ClubAppointment[] };

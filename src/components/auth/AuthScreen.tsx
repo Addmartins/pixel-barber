@@ -58,10 +58,7 @@ export function AuthScreen() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profileError, setProfileError] = useState(false);
-  const [clubAccess, setClubAccess] = useState<{ userId: string; approved: boolean }>();
-  const [accessAttempt, setAccessAttempt] = useState(0);
   const userId = session?.user.id;
-  const approved = clubAccess?.userId === userId ? clubAccess?.approved : undefined;
   const userPhone = session?.user.phone;
   const cosmeticsOwner = demo ? "demo" : userId;
   const updateCosmetics = useCallback((cosmetics: EquippedCosmetic[]) => {
@@ -91,11 +88,6 @@ export function AuthScreen() {
 
     void (async () => {
       try {
-        const access = await supabase.rpc("has_club_access");
-        if (!active) return;
-        if (access.error) throw access.error;
-        setClubAccess({ userId, approved: access.data });
-        if (!access.data) return;
         await supabase.rpc("get_current_points_balance");
         const { data, error: failure } = await supabase.from("clients")
           .select("id,nome,avatar_skin,level,points_balance").eq("id", userId).single();
@@ -108,10 +100,10 @@ export function AuthScreen() {
     })();
 
     return () => { active = false; };
-  }, [userId, accessAttempt]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!userId || !approved) return;
+    if (!userId) return;
     let active = true;
     let pending = false;
     async function refresh() {
@@ -132,7 +124,7 @@ export function AuthScreen() {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [userId, approved]);
+  }, [userId]);
 
   function startRecovery(phone = "") {
     setError("");
@@ -244,11 +236,7 @@ export function AuthScreen() {
     try {
       const result = await getSupabase()?.auth.signOut({ scope: "local" });
       if (result?.error) setError("Não foi possível encerrar a sessão. Tente novamente.");
-      else {
-        setProfile(null);
-        setClubAccess(undefined);
-        setProfileError(false);
-      }
+      else setProfile(null);
     } catch {
       setError("A conexão falhou. Tente novamente.");
     } finally {
@@ -270,9 +258,7 @@ export function AuthScreen() {
     setProfile((current) => current?.id === userId ? { ...current, ...data } : current);
   }
 
-  const currentProfile = demo
-    ? { ...demoProfile, ...demoDetails, points_balance: demoBalance }
-    : approved && profile?.id === userId ? profile : null;
+  const currentProfile = demo ? { ...demoProfile, ...demoDetails, points_balance: demoBalance } : profile?.id === userId ? profile : null;
   const signedIn = !recovery && (demo || Boolean(session));
 
   return (
@@ -317,21 +303,7 @@ export function AuthScreen() {
                 </>
               ) : (
                 <>
-                  <p role="status">{profileError ? "Não foi possível verificar seu acesso."
-                    : approved === false ? "Seu cadastro foi recebido. Aguarde a aprovação da barbearia para acessar o clube."
-                      : "Verificando seu acesso ao clube…"}</p>
-                  {(profileError || approved === false) && (
-                    <>
-                      <button type="button" className="secondary w-full" onClick={() => {
-                        setProfileError(false);
-                        setClubAccess(undefined);
-                        setAccessAttempt((attempt) => attempt + 1);
-                      }}>Verificar acesso</button>
-                      <button type="button" className="secondary w-full" onClick={() => setDemoEntry("booking")}>
-                        Experimentar demonstração
-                      </button>
-                    </>
-                  )}
+                  <p role="status">{profileError ? "Não foi possível carregar seu perfil. Saia e entre novamente para tentar de novo." : "Carregando seu perfil…"}</p>
                   <button type="button" className="secondary w-full" onClick={() => void leave()} disabled={busy}>Sair</button>
                 </>
               )}

@@ -106,15 +106,7 @@ export function NoticeBoard({ clientId }: { clientId: string }) {
         if (availability.error) throw availability.error;
         const result = await db.from("barbers").select("id,nome,foto_pixel").order("nome").order("id");
         if (result.error) throw result.error;
-        const storage = db.storage.from("barber-photos");
-        const barbers = await Promise.all(result.data.map(async (barber) => {
-          const path = barber.foto_pixel?.split("/").at(-1);
-          if (!path || !/^[0-9a-f-]{36}\.(jpg|png|webp)$/.test(path)
-            || storage.getPublicUrl(path).data.publicUrl !== barber.foto_pixel) return barber;
-          const { data } = await storage.createSignedUrl(path, 3600);
-          return { ...barber, foto_pixel: data?.signedUrl ?? null };
-        }));
-        if (active) setBarbers(barbers);
+        if (active) setBarbers(result.data);
       } catch { if (active) setBarberError(true); }
     })();
     return () => { active = false; };
