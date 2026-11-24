@@ -39,6 +39,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
+  const [agendaStatus, setAgendaStatus] = useState("");
   const [publicationStatus, setPublicationStatus] = useState("");
   const [loadError, setLoadError] = useState("");
   const db = getSupabase();
@@ -269,7 +270,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       <nav className="mode-switch grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Administração">
         {(Object.keys(sections) as Section[]).map((key) => (
           <button type="button" key={key} aria-pressed={section === key} disabled={busy}
-            onClick={() => { setSection(key); setError(""); setPublicationStatus(""); }}>{sections[key]}</button>
+            onClick={() => { setSection(key); setError(""); setAgendaStatus(""); setPublicationStatus(""); }}>{sections[key]}</button>
         ))}
       </nav>
 
@@ -281,19 +282,32 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
 
       {section === "agenda" && <section className="card-modern space-y-3">
         <h2>Agendamentos</h2>
+        {agendaStatus && <p role="status">{agendaStatus}</p>}
         <label className="field">Data <input type="date" value={day} disabled={busy}
-          onChange={(event) => { if (event.target.value) setDay(event.target.value); }} /></label>
+          onChange={(event) => { if (event.target.value) { setDay(event.target.value); setAgendaStatus(""); } }} /></label>
         {!loading && !loadError && (appointments.length ? <ul className="space-y-3">
           {appointments.map((item) => (
             <li key={item.id} className="border-t border-white/10 pt-3">
               <strong>{item.client_name}</strong>
               <p>{clubDateTime.format(new Date(item.starts_at))} · {item.service_name} · {item.barber_name}</p>
               <p className="muted">{attendanceLabel[item.status]}</p>
-              {item.status === "AGENDADO" && Date.parse(item.ends_at) <= Date.now() && <div className="mt-2 flex flex-wrap gap-2">
-                {(["CONCLUIDO", "NO_SHOW"] as const).map((status) => (
+              {item.status === "AGENDADO" && <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" className="secondary" disabled={busy} onClick={() => {
+                  if (!window.confirm(`Cancelar o agendamento de ${item.client_name} em ${clubDateTime.format(new Date(item.starts_at))}?`)) return;
+                  setAgendaStatus("");
+                  void mutate(async () => {
+                    const result = await db.rpc("cancel_club_appointment", { p_appointment_id: item.id });
+                    if (!result.error) {
+                      setAgendaStatus(result.data ? "Agendamento cancelado." : "O agendamento já foi atualizado.");
+                    }
+                    return result;
+                  });
+                }}>Cancelar agendamento</button>
+                {Date.parse(item.ends_at) <= Date.now() && (["CONCLUIDO", "NO_SHOW"] as const).map((status) => (
                   <button type="button" className="secondary" key={status} disabled={busy}
                     onClick={() => {
                       if (status === "NO_SHOW" && !window.confirm("Registrar falta e aplicar a regra de pontos?")) return;
+                      setAgendaStatus("");
                       void mutate(async () => {
                         const result = await db.rpc("set_club_attendance", { p_id: item.id, p_status: status });
                         return { error: result.error ?? (result.data ? null : { code: "PT409", message: "Este agendamento já foi atualizado ou ainda não terminou." }) };

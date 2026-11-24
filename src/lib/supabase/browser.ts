@@ -107,6 +107,7 @@ export type Database = {
       set_club_attendance: { Args: { p_id: string; p_status: Attendance }; Returns: boolean };
       get_available_slots: { Args: { p_barber_id: string; p_service_id: string; p_date: string }; Returns: Slot[] };
       create_appointment: { Args: { p_barber_id: string; p_service_id: string; p_starts_at: string }; Returns: string };
+      cancel_club_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       cancel_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       start_arcade_run: { Args: { p_client_id: string; p_game_code: GameCode; p_engine_version: number; p_difficulty: Difficulty }; Returns: { id: string; seed: number }[] };
       finish_arcade_run: { Args: { p_client_id: string; p_session_id: string; p_score: number; p_ticks: number; p_engine_version: number; p_won: boolean }; Returns: GameResult[] };

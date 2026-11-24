@@ -12,6 +12,8 @@ declare
   week_at timestamptz := public.club_week_start(statement_timestamp()) - interval '336 hours';
   credits uuid;
   current_booking uuid := gen_random_uuid();
+  admin_cancelled_booking uuid;
+  cancellation_start timestamptz := clock_timestamp() + interval '5 minutes';
   meta jsonb := '{"avatar_skin":"fade","consent_terms":true,"consent_version":"2026-11-21-phone-preview"}';
 begin
   insert into auth.users (id, phone, raw_user_meta_data) values
@@ -142,6 +144,39 @@ begin
     raise exception 'Expiração afetou a classificação';
   end if;
   reset role;
+
+  insert into public.appointments (client_id, barber_id, service_id, starts_at, ends_at)
+  values (client_id, barber_id, service_id, cancellation_start, cancellation_start + interval '30 minutes')
+  returning id into admin_cancelled_booking;
+  perform set_config('request.jwt.claim.sub', client_id::text, true);
+  set local role authenticated;
+  begin
+    perform public.cancel_club_appointment(admin_cancelled_booking);
+    raise exception 'Cliente executou cancelamento administrativo';
+  exception when insufficient_privilege then null;
+  end;
+  if public.cancel_appointment(admin_cancelled_booking) then
+    raise exception 'Cancelamento pelo cliente ignorou o prazo';
+  end if;
+
+  perform set_config('request.jwt.claim.sub', admin_id::text, true);
+  if not public.cancel_club_appointment(admin_cancelled_booking)
+    or public.cancel_club_appointment(admin_cancelled_booking)
+    or public.cancel_club_appointment(current_booking)
+    or public.cancel_club_appointment(bookings[5]) then
+    raise exception 'Cancelamento administrativo aceitou um estado inválido ou não cancelou';
+  end if;
+  perform set_config('request.jwt.claim.sub', client_id::text, true);
+  if not exists (select from public.appointments
+    where id = admin_cancelled_booking and status = 'CANCELADO' and cancelled_at is not null) then
+    raise exception 'Cancelamento não ficou visível ao cliente';
+  end if;
+  reset role;
+  if exists (select from public.appointment_penalties where appointment_id = admin_cancelled_booking) then
+    raise exception 'Cancelamento administrativo gerou penalidade';
+  end if;
+  insert into public.appointments (client_id, barber_id, service_id, starts_at, ends_at)
+  values (other_id, barber_id, service_id, cancellation_start, cancellation_start + interval '30 minutes');
 end;
 $$;
 
