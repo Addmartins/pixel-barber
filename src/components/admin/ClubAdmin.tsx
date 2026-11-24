@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { brasiliaDate } from "@/lib/booking";
 import type { Barber } from "@/lib/booking";
-import { attendanceLabel, clubDateTime, muralBucket, muralPhotoBytes, muralPhotoFormats, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
+import { attendanceLabel, clubDateTime, muralBucket, muralPhotoAccept, muralPhotoBytes, muralPhotoFormats, muralPhotoType, type ClubAppointment, type ClubMetrics, type ClubNotice, type ClubSuggestion } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 import { NoticePost } from "@/components/dashboard/NoticePost";
 import { CutMuralTitle } from "@/components/CutMuralTitle";
@@ -16,12 +16,13 @@ const barberPhotosBucket = "barber-photos";
 
 function BarberPhotoInput({ disabled }: { disabled: boolean }) {
   return <label className="field">Enviar foto (JPG, PNG ou WebP, até 6 MB)
-    <input type="file" name="photoFile" accept={Object.keys(muralPhotoFormats).join(",")} disabled={disabled} />
+    <input type="file" name="photoFile" accept={muralPhotoAccept} disabled={disabled} />
   </label>;
 }
 
 export function ClubAdmin({ accountId }: { accountId: string }) {
   const [section, setSection] = useState<Section>("agenda");
+  const [agendaBarber, setAgendaBarber] = useState("");
   const [day, setDay] = useState(() => brasiliaDate(Date.now()));
   const [metrics, setMetrics] = useState<ClubMetrics>();
   const [appointments, setAppointments] = useState<ClubAppointment[]>([]);
@@ -30,7 +31,8 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [notices, setNotices] = useState<ClubNotice[]>([]);
   const [suggestions, setSuggestions] = useState<ClubSuggestion[]>([]);
-  const [supportsAlbumBarbers, setSupportsAlbumBarbers] = useState(false);
+  const [supportsAlbumBarbers, setSupportsAlbumBarbers] = useState(true);
+  const [albumCatalogReady, setAlbumCatalogReady] = useState(false);
   const [albumBarbers, setAlbumBarbers] = useState<Record<string, string | null>>({});
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [reviewed, setReviewed] = useState(false);
@@ -52,41 +54,49 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     async function load() {
       setLoading(true);
       setLoadError("");
+      setAlbumCatalogReady(false);
       try {
         const metricsResult = await client.rpc("get_club_metrics");
         if (!active) return;
-        if (metricsResult.error) throw metricsResult.error;
-        setMetrics(metricsResult.data[0]);
+        if (!metricsResult.error) setMetrics(metricsResult.data[0]);
 
         switch (section) {
           case "agenda": {
-            const result = await client.rpc("get_club_appointments", { p_day: day });
-            if (result.error) throw result.error;
-            if (active) setAppointments(result.data);
+            const [result, catalog] = await Promise.all([
+              client.rpc("get_club_appointments", { p_day: day, ...(agendaBarber ? { p_barber_id: agendaBarber } : {}) }),
+              client.from("barbers").select("*").order("nome"),
+            ]);
+            if (result.error || catalog.error) throw result.error ?? catalog.error;
+            if (active) {
+              setAppointments(result.data);
+              setBarbers(catalog.data);
+            }
             break;
           }
           case "notices": {
-            const result = await client.rpc("get_club_posts", {
-              p_portfolio: portfolio, p_limit: portfolio ? 9 : 2, p_offset: portfolio ? postPage * 8 : 0,
-            });
-            if (result.error) throw result.error;
+            const [result, catalog] = await Promise.all([
+              client.rpc("get_club_posts", {
+                p_portfolio: portfolio, p_limit: portfolio ? 9 : 2, p_offset: portfolio ? postPage * 8 : 0,
+              }),
+              portfolio ? client.from("barbers").select("*").order("nome") : null,
+            ]);
+            if (catalog?.error) throw catalog.error;
+            if (active && catalog) {
+              setBarbers(catalog.data);
+              setAlbumCatalogReady(true);
+              setSupportsAlbumBarbers(true);
+              setAlbumBarbers({});
+            }
             if (portfolio) {
-              const ids = result.data.slice(0, 8).map(({ id }) => id);
-              const [catalog, assignments] = await Promise.all([
-                client.from("barbers").select("*").order("nome"),
-                ids.length ? client.from("club_notices").select("id,barber_id").in("id", ids)
-                  : client.from("club_notices").select("id,barber_id").limit(0),
-              ]);
-              const assignmentError = assignments.error?.code;
-              if (catalog.error || (assignments.error && assignmentError !== "42703" && assignmentError !== "42501")) {
-                throw catalog.error ?? assignments.error;
-              }
+              const ids = result.data?.slice(0, 8).map(({ id }) => id) ?? [];
+              const query = client.from("club_notices").select("id,barber_id");
+              const assignments = await (ids.length ? query.in("id", ids) : query.limit(0));
               if (active) {
-                setBarbers(catalog.data);
-                setSupportsAlbumBarbers(assignmentError !== "42703");
+                setSupportsAlbumBarbers(assignments.error?.code !== "42703");
                 setAlbumBarbers(Object.fromEntries((assignments.data ?? []).map(({ id, barber_id }) => [id, barber_id])));
               }
             }
+            if (result.error) throw result.error;
             if (active) {
               setNotices(result.data.slice(0, portfolio ? 8 : 2));
               setHasMorePosts(portfolio && result.data.length > 8);
@@ -120,7 +130,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     }
     void load();
     return () => { active = false; };
-  }, [db, day, portfolio, postPage, reviewed, revision, section, suggestionPage]);
+  }, [db, day, agendaBarber, portfolio, postPage, reviewed, revision, section, suggestionPage]);
 
   async function mutate(action: () => PromiseLike<{ error: { code?: string; message: string } | null }>, form?: HTMLFormElement) {
     if (busy) return;
@@ -149,16 +159,16 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       void mutate(() => save(), form);
       return;
     }
-    const extension = muralPhotoFormats[file.type];
-    if (!extension || file.size > muralPhotoBytes) {
+    const contentType = muralPhotoType(file);
+    if (!contentType || file.size > muralPhotoBytes) {
       setError("Escolha uma foto JPG, PNG ou WebP de até 6 MB.");
       return;
     }
 
     void mutate(async () => {
       const storage = db.storage.from(barberPhotosBucket);
-      const path = `${crypto.randomUUID()}.${extension}`;
-      const upload = await storage.upload(path, file, { contentType: file.type });
+      const path = `${crypto.randomUUID()}.${muralPhotoFormats[contentType]}`;
+      const upload = await storage.upload(path, file.slice(0, file.size, contentType), { contentType });
       if (upload.error) {
         return { error: { code: "PT409", message: "Não foi possível enviar a foto. Tente novamente." } };
       }
@@ -222,9 +232,31 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
     void mutate(async () => {
       const result = await db.from("barbers").delete().eq("id", barber.id).select("foto_pixel").single();
       if (result.error?.code === "23503") {
-        return { error: { code: "PT409", message: "Este barbeiro tem agendamentos vinculados e não pode ser excluído." } };
+        return { error: { code: "PT409", message: "Este barbeiro tem agendamentos vinculados. Abra a agenda dele para revisá-los antes de excluir o cadastro." } };
       }
-      if (!result.error) await removeBarberPhoto(result.data.foto_pixel);
+      if (!result.error) {
+        setAgendaBarber((current) => current === barber.id ? "" : current);
+        await removeBarberPhoto(result.data.foto_pixel);
+      }
+      return result;
+    });
+  }
+
+  function openBarberAgenda(barberId: string) {
+    setAgendaBarber(barberId);
+    setAgendaStatus("");
+    setError("");
+    setSection("agenda");
+  }
+
+  function deleteAppointment(item: ClubAppointment) {
+    if (!db || busy || !window.confirm(`Excluir definitivamente o agendamento de ${item.client_name}?`)) return;
+    setAgendaStatus("");
+    void mutate(async () => {
+      const result = await db.rpc("delete_club_appointment", { p_appointment_id: item.id });
+      if (!result.error) {
+        setAgendaStatus(result.data ? "Agendamento excluído." : "O agendamento já foi atualizado.");
+      }
       return result;
     });
   }
@@ -284,6 +316,12 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
       {section === "agenda" && <section className="card-modern space-y-3">
         <h2>Agendamentos</h2>
         {agendaStatus && <p role="status">{agendaStatus}</p>}
+        <label className="field">Agenda do barbeiro
+          <select value={agendaBarber} disabled={busy} onChange={(event) => openBarberAgenda(event.target.value)}>
+            <option value="">Todos os barbeiros</option>
+            {barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.nome}</option>)}
+          </select>
+        </label>
         <label className="field">Data <input type="date" value={day} disabled={busy}
           onChange={(event) => { if (event.target.value) { setDay(event.target.value); setAgendaStatus(""); } }} /></label>
         {!loading && !loadError && (appointments.length ? <ul className="space-y-3">
@@ -292,6 +330,9 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
               <strong>{item.client_name}</strong>
               <p>{clubDateTime.format(new Date(item.starts_at))} · {item.service_name} · {item.barber_name}</p>
               <p className="muted">{attendanceLabel[item.status]}</p>
+              {(item.status === "AGENDADO" || item.status === "CANCELADO") &&
+                <button type="button" className="secondary mt-2" disabled={busy}
+                  onClick={() => deleteAppointment(item)}>Excluir agendamento</button>}
               {item.status === "AGENDADO" && <div className="mt-2 flex flex-wrap gap-2">
                 <button type="button" className="secondary" disabled={busy} onClick={() => {
                   if (!window.confirm(`Cancelar o agendamento de ${item.client_name} em ${clubDateTime.format(new Date(item.starts_at))}?`)) return;
@@ -330,7 +371,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
         </div>
         {!portfolio && !loading && !loadError && notices.length >= 2
           ? <p className="muted">O quadro já tem dois avisos. Remova um para publicar outro.</p>
-          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} linkBarber={supportsAlbumBarbers} barbers={barbers} disabled={busy || (portfolio && (loading || Boolean(loadError)))}
+          : <MuralComposer key={String(portfolio)} accountId={accountId} portfolio={portfolio} linkBarber={supportsAlbumBarbers} barbers={barbers} disabled={busy || (portfolio && (loading || !albumCatalogReady))}
             onBusy={setBusy} onPublished={() => { setPostPage(0); setRevision((current) => current + 1); }} />}
         {!loading && !loadError && notices.map((notice) => (
           <article key={notice.id} className="space-y-2 border-t border-white/10 pt-3">
@@ -386,6 +427,9 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
               <BarberPhotoInput disabled={busy} />
               <button type="submit" className="secondary" disabled={busy}>Salvar dados</button>
             </form>}
+            <button type="button" className="secondary" disabled={busy} onClick={() => openBarberAgenda(barber.id)}>
+              Abrir agenda de {barber.nome}
+            </button>
             <button type="button" className="secondary" disabled={busy} onClick={() => deleteBarber(barber)}>
               Excluir barbeiro
             </button>

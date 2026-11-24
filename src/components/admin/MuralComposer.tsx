@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
-import { muralBucket, muralPhotoBytes, muralPhotoFormats, muralPhotoLimit, type MuralTag } from "@/lib/club";
+import { muralBucket, muralPhotoAccept, muralPhotoBytes, muralPhotoFormats, muralPhotoLimit, muralPhotoType, type MuralTag } from "@/lib/club";
 import { getSupabase } from "@/lib/supabase/browser";
 
 export function MuralComposer({ accountId, portfolio, linkBarber, barbers, disabled, onBusy, onPublished }: {
@@ -53,22 +53,26 @@ export function MuralComposer({ accountId, portfolio, linkBarber, barbers, disab
       setError(portfolio ? "Adicione um título e pelo menos uma foto." : "Preencha o título e o aviso.");
       return;
     }
-    if (files.length > muralPhotoLimit || files.some((file) => !muralPhotoFormats[file.type] || file.size > muralPhotoBytes)) {
+    const photos = files.map((file) => ({ file, contentType: muralPhotoType(file) }));
+    if (photos.length > muralPhotoLimit || photos.some(({ file, contentType }) => !contentType || file.size > muralPhotoBytes)) {
       setError("Escolha até 4 fotos JPG, PNG ou WebP, com até 6 MB cada.");
       return;
     }
     const storage = db.storage.from(muralBucket);
     const paths: string[] = [];
+    let uploading = true;
     setError("");
     setPublishing(true);
     onBusy(true);
     try {
-      for (const file of files) {
-        const path = `${accountId}/${crypto.randomUUID()}.${muralPhotoFormats[file.type]}`;
-        paths.push(path);
-        const upload = await storage.upload(path, file, { contentType: file.type });
+      for (const { file, contentType } of photos) {
+        if (!contentType) throw new Error("Formato inválido.");
+        const path = `${accountId}/${crypto.randomUUID()}.${muralPhotoFormats[contentType]}`;
+        const upload = await storage.upload(path, file.slice(0, file.size, contentType), { contentType });
         if (upload.error) throw upload.error;
+        paths.push(path);
       }
+      uploading = false;
       const args = { p_title: title, p_caption: caption, p_photos: paths, p_tagged_client: tag?.id };
       const result = await (portfolio && linkBarber
         ? db.rpc("publish_cut_album", { ...args, p_barber_id: barberId })
@@ -81,7 +85,7 @@ export function MuralComposer({ accountId, portfolio, linkBarber, barbers, disab
       onPublished();
     } catch (failure) {
       if (paths.length) await storage.remove(paths).catch(() => undefined);
-      setError(failure && typeof failure === "object" && "code" in failure && failure.code === "PT409"
+      setError(uploading ? "Não foi possível enviar as fotos. Confira a conexão e tente novamente." : failure && typeof failure === "object" && "code" in failure && failure.code === "PT409"
         ? "O quadro já tem dois avisos. Remova um antes de publicar outro."
         : "Não foi possível publicar. Confira o mural antes de tentar novamente.");
     } finally {
@@ -101,7 +105,7 @@ export function MuralComposer({ accountId, portfolio, linkBarber, barbers, disab
               {barbers.map((barber) => <option key={barber.id} value={barber.id}>{barber.nome}</option>)}
             </select>
           </label>}
-          <label className="field">Fotos <input name="photos" type="file" accept={Object.keys(muralPhotoFormats).join(",")} multiple required /></label>
+          <label className="field">Fotos <input name="photos" type="file" accept={muralPhotoAccept} multiple required /></label>
           <p className="muted text-sm">Até 4 fotos JPG, PNG ou WebP, de até 6 MB cada.</p>
         </>}
         <label className="field">{portfolio ? "Legenda" : "Aviso"}

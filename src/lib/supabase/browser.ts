@@ -104,10 +104,11 @@ export type Database = {
       approve_club_access: { Args: { p_user_id: string }; Returns: boolean };
       get_current_points_balance: { Args: Record<PropertyKey, never>; Returns: number };
       get_club_metrics: { Args: Record<PropertyKey, never>; Returns: ClubMetrics[] };
-      get_club_appointments: { Args: { p_day: string }; Returns: ClubAppointment[] };
+      get_club_appointments: { Args: { p_day: string; p_barber_id?: string }; Returns: ClubAppointment[] };
       set_club_attendance: { Args: { p_id: string; p_status: Attendance }; Returns: boolean };
       get_available_slots: { Args: { p_barber_id: string; p_service_id: string; p_date: string }; Returns: Slot[] };
       create_appointment: { Args: { p_barber_id: string; p_service_id: string; p_starts_at: string }; Returns: string };
+      delete_club_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       cancel_club_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       cancel_appointment: { Args: { p_appointment_id: string }; Returns: boolean };
       start_arcade_run: { Args: { p_client_id: string; p_game_code: GameCode; p_engine_version: number; p_difficulty: Difficulty }; Returns: { id: string; seed: number }[] };
