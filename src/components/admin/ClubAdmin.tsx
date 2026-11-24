@@ -6,6 +6,7 @@ import { getSupabase } from "@/lib/supabase/browser";
 import { NoticePost } from "@/components/dashboard/NoticePost";
 import { CutMuralTitle } from "@/components/CutMuralTitle";
 import { BarberAddress } from "@/components/BarberAddress";
+import { ClubAccessRequests } from "./ClubAccessRequests";
 import { MuralComposer } from "./MuralComposer";
 
 const sections = { agenda: "Agenda", notices: "Publicações", barbers: "Barbeiros", suggestions: "Sugestões" } as const;
@@ -251,6 +252,7 @@ export function ClubAdmin({ accountId }: { accountId: string }) {
   if (!db) return null;
   return (
     <div className="space-y-4">
+      <ClubAccessRequests />
       {metrics && <section className="card-modern space-y-3" aria-label="Métricas da semana">
         <h2>Métricas da semana</h2>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">

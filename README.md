@@ -71,6 +71,12 @@ supabase/tests/
 
 `npm run typecheck` verifica a tipagem. `npm run build` gera a compilação de produção.
 
+### Acesso ao clube e demonstração
+
+A demonstração usa dados fictícios. O mural, a agenda, o catálogo de barbeiros e o ranking ficam disponíveis após a aprovação da conta.
+
+Aplique as migrações `20261123000025_club_access.sql` e `20261123000026_club_access_requests.sql` no Supabase antes de publicar o app. O cliente entra na conta e toca em **Solicitar acesso**. Ao entrar no painel, o administrador vê os pedidos em **Solicitações de acesso** e pode tocar em **Aceitar solicitação**. Depois da aprovação, o cliente toca em **Verificar acesso**.
+
 ## Verificação por SMS com TextBee
 
 O Supabase Auth gera e valida o código. O Send SMS Hook encaminha o envio ao TextBee, que usa o chip do Android cadastrado. O cadastro, o reenvio e a alteração de senha por SMS funcionam também nos apps nativos. A alteração está disponível em **Esqueci minha senha** e em **Editar perfil**.

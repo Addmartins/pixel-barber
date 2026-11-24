@@ -13,6 +13,7 @@ begin
   insert into auth.users(id, phone, raw_user_meta_data) values
   (buyer, '5581111111111', '{"nome":"Loja Tester","avatar_skin":"fade","consent_terms":true,"consent_version":"2026-11-21-phone-preview"}'),
   (peer, '5581222222222', '{"nome":"Loja Peer","avatar_skin":"fade","consent_terms":true,"consent_version":"2026-11-21-phone-preview"}');
+  insert into public.club_members values (buyer), (peer);
   perform public.post_points(buyer, 500, 'CORTE', 'Fixture saldo da loja', 'fixture-loja');
   select id into strict snap from public.store_products where cosmetic_code = 'snapback';
   select id into strict boina from public.store_products where cosmetic_code = 'boina';
