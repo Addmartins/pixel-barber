@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101520">
+  <title>Como funciona | Pixel Barber</title>
+  <style>
+    :root { color-scheme: dark; font: 1rem/1.55 system-ui, sans-serif; background: #101520; color: #f3f6fa; }
+    body { margin: 0; }
+    main { max-width: 64rem; margin: auto; padding: clamp(1rem, 5vw, 3rem); }
+    header { margin-bottom: 2rem; }
+    .brand { display: flex; align-items: center; gap: .75rem; font-weight: 800; }
+    .brand img { border-radius: 12px; }
+    h1 { font-size: clamp(2.2rem, 7vw, 4rem); line-height: 1.1; margin: 1rem 0 .6rem; }
+    h2 { margin: 0 0 .25rem; font-size: 1.25rem; }
+    p { color: #bfccd9; margin: .25rem 0 .9rem; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+    article { background: #192231; border: 1px solid #354454; border-radius: 1rem; padding: 1rem; }
+    article img { width: min(100%, 320px); height: auto; display: block; margin: 1rem auto 0; border-radius: .65rem; }
+    nav { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+    nav a { border-radius: .5rem; padding: .65rem 1rem; font-weight: 700; background: #6ef2d8; color: #101520; text-decoration: none; }
+    nav a:last-child { background: #ffcf55; }
+    a:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand"><img src="/icon-192.png" width="42" height="42" alt=""> PIXEL BARBER</div>
+      <h1>Como funciona o app</h1>
+      <p>Veja as telas de demonstração para conhecer a agenda, os jogos e o clube de fidelidade.</p>
+      <nav aria-label="Acessar o Pixel Barber">
+        <a href="/api/download/lancamento">Baixar para Android</a>
+        <a href="/downloads/ios.html">Abrir no iPhone</a>
+      </nav>
+    </header>
+    <div class="steps">
+      <article><h2>Agende seu corte</h2><p>Escolha o serviço, o barbeiro e um horário disponível.</p>
+        <img src="./como-funciona/agendamento.webp" alt="Tela de agendamento com seleção de serviço, barbeiro e horário"></article>
+      <article><h2>Jogue no Pixel Boy</h2><p>Conheça os jogos do clube e acompanhe suas partidas.</p>
+        <img src="./como-funciona/pixel-boy.webp" alt="Tela do Pixel Boy com a lista de jogos" loading="lazy"></article>
+      <article><h2>Personalize seu avatar</h2><p>Use seus pontos para resgatar roupas e acessórios.</p>
+        <img src="./como-funciona/loja.webp" alt="Loja do avatar com saldo de pontos e itens disponíveis" loading="lazy"></article>
+      <article><h2>Acompanhe o mural</h2><p>Confira avisos e veja publicações e cortes da barbearia.</p>
+        <img src="./como-funciona/mural.webp" alt="Mural com avisos e publicações de exemplo" loading="lazy"></article>
+    </div>
+  </main>
+</body>
+</html>
