@@ -15,7 +15,7 @@ const pageSize = 20;
 export function WalletDialogs({ userId, balance }: { userId?: string; balance: number }) {
   const statement = useRef<HTMLDialogElement>(null);
   const popup = useRef<HTMLDialogElement>(null);
-  const opened = useRef<string>();
+  const opened = useRef<string | undefined>(undefined);
   const [bonus, setBonus] = useState<Bonus>();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);

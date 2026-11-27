@@ -32,14 +32,14 @@ try {
     }
   }
   await symlink(join(project, "node_modules"), join(staging, "node_modules"), "junction");
-  await writeFile(join(staging, "next.config.mjs"), 'export default { output: "export", images: { unoptimized: true } };\n');
+  await writeFile(join(staging, "next.config.mjs"), 'export default { output: "export", experimental: { useTypeScriptCli: false }, images: { unoptimized: true } };\n');
 
   const origin = new URL(process.env.NEXT_PUBLIC_BACKEND_ORIGIN || "https://pixel-barber.vercel.app");
   if (origin.protocol !== "https:" || origin.username || origin.password ||
       origin.pathname !== "/" || origin.search || origin.hash) {
     throw new Error("NEXT_PUBLIC_BACKEND_ORIGIN deve ser uma origem HTTPS, sem caminho.");
   }
-  const child = spawn(process.execPath, [join(project, "node_modules/next/dist/bin/next"), "build"], {
+  const child = spawn(process.execPath, [join(project, "node_modules/next/dist/bin/next"), "build", "--webpack"], {
     cwd: staging,
     stdio: "inherit",
     env: { ...process.env, NEXT_PUBLIC_BACKEND_ORIGIN: origin.origin },

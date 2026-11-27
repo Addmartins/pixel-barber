@@ -19,6 +19,7 @@ function sourceBuildId() {
 }
 
 export default {
+  experimental: { useTypeScriptCli: false },
   env: {
     NEXT_PUBLIC_PIXEL_BARBER_BUILD: process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || sourceBuildId(),
   },
