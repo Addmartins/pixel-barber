@@ -42,6 +42,12 @@ export type RankingEntry = { position: number; display_name: string; avatar_skin
 export type Database = {
   public: {
     Tables: {
+      partner_barbershops: {
+        Row: { id: string; owner_id: string; name: string; created_at: string };
+        Insert: never;
+        Update: { name: string };
+        Relationships: [];
+      };
       clients: {
         Row: ClientRow;
         Insert: never;
@@ -88,6 +94,8 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      create_partner_invite: { Args: { p_phone: string }; Returns: string };
+      accept_partner_invite: { Args: { p_invite_id: string; p_name: string }; Returns: string };
       get_club_posts: { Args: { p_portfolio: boolean; p_limit?: number; p_offset?: number }; Returns: ClubNotice[] };
       get_cut_albums: { Args: { p_barber_id: string | null; p_limit?: number; p_offset?: number }; Returns: ClubNotice[] };
       publish_cut_album: { Args: { p_barber_id: string; p_title: string; p_caption: string; p_photos: string[]; p_tagged_client?: string }; Returns: string };

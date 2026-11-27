@@ -5,6 +5,7 @@ import { getSupabase } from "@/lib/supabase/browser";
 import { normalizePhone } from "@/lib/phone";
 import { PasswordReset } from "@/components/auth/PasswordReset";
 import { ClubAdmin } from "./ClubAdmin";
+import { PartnerInviteForm } from "./PartnerInviteForm";
 
 type Access = "loading" | "signed-out" | "allowed" | "denied" | "error";
 
@@ -120,7 +121,10 @@ export function AdminScreen() {
             }}>Esqueci minha senha</button>
           </form>
         )}
-        {access === "allowed" && accountId && <ClubAdmin key={accountId} accountId={accountId} />}
+        {access === "allowed" && accountId && <>
+          <PartnerInviteForm key={`invite-${accountId}`} />
+          <ClubAdmin key={accountId} accountId={accountId} />
+        </>}
         {error && <p className="error" role="alert">{error}</p>}
       </div>
     </main>

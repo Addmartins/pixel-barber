@@ -404,6 +404,10 @@ export function AuthScreen() {
                 }}>
                 <Gamepad2 size={20} aria-hidden="true" /> Jogar Pixel Boy sem conta
               </button>
+              <a href={process.env.NEXT_PUBLIC_BACKEND_ORIGIN
+                ? new URL("/minha-barbearia", process.env.NEXT_PUBLIC_BACKEND_ORIGIN).href
+                : "/minha-barbearia"}
+                className="muted mt-4 block text-center text-sm underline">Cadastrar minha barbearia</a>
               <a href={process.env.NEXT_PUBLIC_BACKEND_ORIGIN ? "/admin.html" : "/admin"}
                 className="muted mt-4 block text-center text-sm underline">Acesso administrativo</a>
             </>
